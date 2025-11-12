@@ -5,6 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --cursor-size: 280px;
+  --cursor-opacity: 0;
+  --cursor-x: 50%;
+  --cursor-y: 50%;
   --background: #ffffff;
   --foreground: #0a0a0a;
   --card: #ffffff;
@@ -172,6 +176,20 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.cursor-spotlight {
+  position: fixed;
+  width: var(--cursor-size);
+  height: var(--cursor-size);
+  top: calc(var(--cursor-y) - var(--cursor-size) / 2);
+  left: calc(var(--cursor-x) - var(--cursor-size) / 2);
+  background: radial-gradient(circle at center, rgba(255, 214, 94, 0.35), rgba(0, 0, 0, 0));
+  mix-blend-mode: screen;
+  filter: blur(40px);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 30;
 }
 
 @keyframes shimmer {

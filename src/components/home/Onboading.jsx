@@ -75,7 +75,8 @@ const Onboading = () => {
         </h1>
 
         <p className="text-lg md:text-2xl text-muted-foreground max-w-3xl">
-          Join our network of freelancers and connect with clients who value your talent.
+          Join our network of freelancers and connect with clients who value
+          your talent.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-2 w-full sm:w-auto">
@@ -83,7 +84,7 @@ const Onboading = () => {
             <Button
               size="lg"
               className="text-lg gap-2 rounded-full shadow-md w-full sm:w-auto cursor-pointer">
-              Hiring <ArrowRight />
+              Hiring <ArrowRight className="h-5 w-4" />
             </Button>
           </Link>
           <Button

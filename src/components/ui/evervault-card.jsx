@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 export const EvervaultCard = ({
   text,
   className,
-  mousePosition,
-  active = false,
+  children,
 }) => {
   let mouseX = useMotionValue(0);
   let mouseY = useMotionValue(0);
@@ -25,7 +24,6 @@ export const EvervaultCard = ({
     clientX,
     clientY
   }) {
-    if (mousePosition) return;
     let { left, top } = currentTarget.getBoundingClientRect();
     mouseX.set(clientX - left);
     mouseY.set(clientY - top);
@@ -34,35 +32,25 @@ export const EvervaultCard = ({
     setRandomString(str);
   }
 
-  useEffect(() => {
-    if (!mousePosition) return;
-    mouseX.set(mousePosition.x);
-    mouseY.set(mousePosition.y);
-    setRandomString(generateRandomString(1500));
-  }, [mousePosition?.x, mousePosition?.y, mouseX, mouseY]);
-
   return (
     <div
       className={cn(
-        "p-0.5 bg-gradient-to-br from-yellow-400/40 via-amber-500/30 to-orange-400/30 aspect-square flex items-center justify-center w-full h-full relative rounded-[32px]",
+        "p-[2px] rounded-[30px] bg-gradient-to-br from-yellow-400/50 via-amber-500/40 to-orange-500/50 relative w-full h-full",
         className
       )}>
       <div
         onMouseMove={onMouseMove}
-        className="group/card rounded-3xl w-full relative overflow-hidden bg-gradient-to-br from-[#1b1300] via-[#2a1900] to-[#3a2500] flex items-center justify-center h-full">
-        <CardPattern
-          mouseX={mouseX}
-          mouseY={mouseY}
-          randomString={randomString}
-          active={active}
-        />
-        <div className="relative z-10 flex items-center justify-center">
-          <div
-            className="relative h-44 w-44 rounded-full flex items-center justify-center text-white font-bold text-4xl shadow-[0_20px_45px_rgba(0,0,0,0.35)]">
-            <div
-              className="absolute w-full h-full bg-gradient-to-br from-yellow-200/70 via-amber-400/60 to-orange-500/60 blur-sm rounded-full" />
-            <span className="text-amber-950 font-semibold tracking-wide z-20">{text}</span>
-          </div>
+        className="group/card rounded-[26px] w-full h-full relative overflow-hidden bg-[radial-gradient(circle_at_top,#1a1300_0%,#060606_65%)] flex items-center justify-center">
+        <CardPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />
+        <div className="relative z-10 flex items-center justify-center w-full h-full px-6 text-center text-white">
+          {children ? (
+            children
+          ) : (
+            <div className="relative flex h-40 w-40 items-center justify-center rounded-full font-bold text-3xl">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-200/70 via-amber-400/60 to-orange-500/60 blur-md" />
+              <span className="relative z-10 text-black">{text}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -72,8 +60,7 @@ export const EvervaultCard = ({
 export function CardPattern({
   mouseX,
   mouseY,
-  randomString,
-  active = false,
+  randomString
 }) {
   let maskImage = useMotionTemplate`radial-gradient(250px at ${mouseX}px ${mouseY}px, white, transparent)`;
   let style = { maskImage, WebkitMaskImage: maskImage };
@@ -81,24 +68,15 @@ export function CardPattern({
   return (
     <div className="pointer-events-none">
       <div
-        className={cn(
-          "absolute inset-0 rounded-2xl [mask-image:linear-gradient(white,transparent)] bg-gradient-to-b from-yellow-200/20 to-transparent transition-opacity duration-500",
-          active ? "opacity-60" : "opacity-20"
-        )}></div>
+        className="absolute inset-0 rounded-2xl  [mask-image:linear-gradient(white,transparent)] group-hover/card:opacity-50"></div>
       <motion.div
-        className={cn(
-          "absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 backdrop-blur-xl transition duration-500",
-          active ? "opacity-100" : "opacity-0"
-        )}
+        className="absolute inset-0 rounded-2xl bg-gradient-to-r from-green-500 to-blue-700 opacity-0  group-hover/card:opacity-100 backdrop-blur-xl transition duration-500"
         style={style} />
       <motion.div
-        className={cn(
-          "absolute inset-0 rounded-2xl mix-blend-overlay transition duration-500",
-          active ? "opacity-100" : "opacity-0"
-        )}
+        className="absolute inset-0 rounded-2xl opacity-0 mix-blend-overlay  group-hover/card:opacity-100"
         style={style}>
         <p
-          className="absolute inset-x-0 text-xs h-full break-words whitespace-pre-wrap text-yellow-200/80 font-mono font-bold transition duration-500">
+          className="absolute inset-x-0 text-xs h-full break-words whitespace-pre-wrap text-white font-mono font-bold transition duration-500">
           {randomString}
         </p>
       </motion.div>
