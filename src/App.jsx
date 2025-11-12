@@ -3,16 +3,19 @@ import { Routes, Route } from "react-router-dom";
 import Home from "@/components/home/Home";
 import Client from "@/components/client/Client";
 import { ThemeProvider } from "./components/theme-provider";
+import Navbar from "./components/Navbar";
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/client" element={<Client />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </ThemeProvider>
+    <main>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/client" element={<Client />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ThemeProvider>
+    </main>
   );
 };
 
