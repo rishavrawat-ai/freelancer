@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Routes, Route } from "react-router-dom";
 import Home from "@/components/home/Home.jsx";
 import Client from "@/components/client/Client.jsx";
@@ -6,24 +7,36 @@ import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
+import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
 import { Toaster } from "@/components/ui/sonner";
 
 const App = () => {
   return (
     <main>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<LayoutWithNavbar><Home /></LayoutWithNavbar>} />
+          <Route path="/signup" element={<LayoutWithNavbar><SignupPage /></LayoutWithNavbar>} />
+          <Route path="/login" element={<LayoutWithNavbar><LoginPage /></LayoutWithNavbar>} />
           <Route path="/client" element={<Client />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/freelancer" element={<FreelancerDashboard />} />
+          <Route path="*" element={<LayoutWithNavbar><NotFound /></LayoutWithNavbar>} />
         </Routes>
         <Toaster richColors position="top-center" />
       </ThemeProvider>
     </main>
   );
+};
+
+const LayoutWithNavbar = ({ children }) => (
+  <>
+    <Navbar />
+    {children}
+  </>
+);
+
+LayoutWithNavbar.propTypes = {
+  children: PropTypes.node.isRequired
 };
 
 const NotFound = () => (

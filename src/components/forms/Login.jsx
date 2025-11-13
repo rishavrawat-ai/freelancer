@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ function Login({ className, ...props }) {
   const [formData, setFormData] = useState(initialFormState);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -46,6 +48,8 @@ function Login({ className, ...props }) {
       persistSession(authPayload);
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
+      const nextRole = authPayload?.user?.role?.toUpperCase();
+      navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", { replace: true });
     } catch (error) {
       const message = error?.message || "Unable to log in with those details.";
       setFormError(message);

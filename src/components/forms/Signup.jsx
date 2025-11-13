@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ function Signup({ className, ...props }) {
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
+  const navigate = useNavigate();
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -62,6 +64,8 @@ function Signup({ className, ...props }) {
       persistSession(authPayload);
       toast.success("Account created successfully.");
       setFormData(initialFormState);
+      const nextRole = authPayload?.user?.role?.toUpperCase() || selectedRole;
+      navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", { replace: true });
     } catch (error) {
       const message =
         error?.message || "Unable to create your account right now.";
