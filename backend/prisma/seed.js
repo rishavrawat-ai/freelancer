@@ -1,8 +1,11 @@
 import { env } from "../src/config/env.js";
 import { prisma } from "../src/lib/prisma.js";
+import { hashPassword } from "../src/modules/users/password.utils.js";
 
 const main = async () => {
   console.log(`Seeding database for ${env.NODE_ENV}...`);
+
+  const defaultPasswordHash = await hashPassword("Password123!");
 
   const client = await prisma.user.upsert({
     where: { email: "client@example.com" },
@@ -10,6 +13,7 @@ const main = async () => {
     create: {
       email: "client@example.com",
       fullName: "Sample Client",
+      passwordHash: defaultPasswordHash,
       role: "CLIENT",
       bio: "Needs help shipping a new feature.",
       skills: []
@@ -22,6 +26,7 @@ const main = async () => {
     create: {
       email: "freelancer@example.com",
       fullName: "Sample Freelancer",
+      passwordHash: defaultPasswordHash,
       role: "FREELANCER",
       bio: "Product designer & front-end developer.",
       skills: ["React", "TypeScript", "UI/UX"],

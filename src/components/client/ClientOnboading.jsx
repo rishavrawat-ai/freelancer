@@ -1,4 +1,3 @@
-import React from "react";
 import { EvervaultCard } from "@/components/ui/evervault-card";
 
 const features = [
@@ -46,9 +45,9 @@ const features = [
 
 const ClientOnboading = () => {
   return (
-    <section className="text-white space-y-6">
+    <section className="mt-10 space-y-6 text-foreground transition-colors">
       <div className="text-center space-y-2">
-        <p className="text-lg uppercase tracking-[0.4em] text-yellow-300">
+        <p className="text-lg uppercase tracking-[0.4em] text-primary">
           Services
         </p>
         <h2 className="text-3xl font-semibold">
@@ -60,11 +59,11 @@ const ClientOnboading = () => {
         {features.map((feature, index) => (
           <EvervaultCard key={index} text={feature.title} className="h-72">
             <div className="text-center space-y-3">
-              <span className="block text-sm font-semibold text-yellow-300">
+              <span className="block text-sm font-semibold text-primary">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <h3 className="text-xl font-semibold">{feature.title}</h3>
-              <p className="text-sm text-white/80 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {feature.description}
               </p>
             </div>

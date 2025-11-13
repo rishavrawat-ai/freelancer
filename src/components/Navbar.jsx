@@ -53,9 +53,14 @@ const Navbar = () => {
             <Moon className="h-6 w-6 text-gray-500" />
           )}
         </div>
-        <NavbarButton as={Link} to="/signup">
-          Sign Up
-        </NavbarButton>
+        <div className="flex items-center gap-2">
+          <NavbarButton as={Link} to="/login" variant="outline">
+            Log In
+          </NavbarButton>
+          <NavbarButton as={Link} to="/signup">
+            Sign Up
+          </NavbarButton>
+        </div>
       </NavBody>
 
       {/* Mobile Navbar */}
@@ -88,7 +93,15 @@ const Navbar = () => {
               {item.name}
             </Link>
           ))}
-          <NavbarButton as={Link} to="/signup" className="w-full mt-4">
+          <NavbarButton
+            as={Link}
+            to="/login"
+            variant="outline"
+            className="w-full mt-4"
+          >
+            Log In
+          </NavbarButton>
+          <NavbarButton as={Link} to="/signup" className="w-full">
             Sign Up
           </NavbarButton>
         </MobileNavMenu>

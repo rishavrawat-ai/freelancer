@@ -1,7 +1,8 @@
 "use client";
 import { useMotionValue } from "motion/react";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useMotionTemplate, motion } from "motion/react";
+import PropTypes from "prop-types";
 import { cn } from "@/lib/utils";
 
 export const EvervaultCard = ({
@@ -32,6 +33,14 @@ export const EvervaultCard = ({
     setRandomString(str);
   }
 
+  const cardStyle = {
+    background: "var(--client-card-bg)"
+  };
+
+  const textStyle = {
+    color: "var(--client-card-text)"
+  };
+
   return (
     <div
       className={cn(
@@ -40,9 +49,14 @@ export const EvervaultCard = ({
       )}>
       <div
         onMouseMove={onMouseMove}
-        className="group/card rounded-[26px] w-full h-full relative overflow-hidden bg-[radial-gradient(circle_at_top,#1a1300_0%,#060606_65%)] flex items-center justify-center">
+        className="group/card rounded-[26px] w-full h-full relative overflow-hidden flex items-center justify-center"
+        style={cardStyle}
+      >
         <CardPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />
-        <div className="relative z-10 flex items-center justify-center w-full h-full px-6 text-center text-white">
+        <div
+          className="relative z-10 flex items-center justify-center w-full h-full px-6 text-center"
+          style={textStyle}
+        >
           {children ? (
             children
           ) : (
@@ -110,4 +124,20 @@ export const Icon = ({
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
     </svg>
   );
+};
+
+EvervaultCard.propTypes = {
+  text: PropTypes.string,
+  className: PropTypes.string,
+  children: PropTypes.node
+};
+
+CardPattern.propTypes = {
+  mouseX: PropTypes.object.isRequired,
+  mouseY: PropTypes.object.isRequired,
+  randomString: PropTypes.string.isRequired
+};
+
+Icon.propTypes = {
+  className: PropTypes.string
 };

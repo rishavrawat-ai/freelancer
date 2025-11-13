@@ -1,16 +1,14 @@
-import React from "react";
-
 import ClientOnboading from "./ClientOnboading";
 import CursorSpotlight from "@/components/ui/cursor-spotlight";
 
 const Client = () => {
   return (
-    <main className="relative min-h-screen bg-black text-white overflow-hidden">
+    <main className="relative min-h-screen bg-background text-foreground overflow-hidden transition-colors">
       <CursorSpotlight />
       <div
         aria-hidden="true"
         className="absolute inset-0 z-0 pointer-events-none
-          [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)]"
+          [background-image:linear-gradient(to_right,var(--grid-line-color)_1px,transparent_1px),linear-gradient(to_bottom,var(--grid-line-color)_1px,transparent_1px)]"
         style={{
           backgroundSize: "80px 80px",
           backgroundPosition: "0 0",

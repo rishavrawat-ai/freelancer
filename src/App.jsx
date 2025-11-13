@@ -5,6 +5,8 @@ import Client from "@/components/client/Client.jsx";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
+import LoginPage from "./components/forms/Login";
+import { Toaster } from "@/components/ui/sonner";
 
 const App = () => {
   return (
@@ -15,8 +17,10 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/client" element={<Client />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <Toaster richColors position="top-center" />
       </ThemeProvider>
     </main>
   );

@@ -1,11 +1,13 @@
 import { Prisma } from "@prisma/client";
+import jwt from "jsonwebtoken";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/app-error.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
+import { hashPassword, verifyPassword } from "./password.utils.js";
 
 export const listUsers = async (filters = {}) => {
-  return prisma.user.findMany({
+  const users = await prisma.user.findMany({
     where: {
       role: filters.role
     },
@@ -13,18 +15,54 @@ export const listUsers = async (filters = {}) => {
       createdAt: "desc"
     }
   });
+
+  return users.map(sanitizeUser);
 };
 
 export const createUser = async (payload) => {
+  const user = await createUserRecord(payload);
+  return sanitizeUser(user);
+};
+
+export const registerUser = async (payload) => {
+  const user = await createUserRecord(payload);
+  return {
+    user: sanitizeUser(user),
+    accessToken: issueAccessToken(user)
+  };
+};
+
+export const authenticateUser = async ({ email, password }) => {
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  const isValid =
+    user?.passwordHash && password
+      ? await verifyPassword(password, user.passwordHash)
+      : false;
+
+  if (!isValid) {
+    throw new AppError("Invalid email or password", 401);
+  }
+
+  return {
+    user: sanitizeUser(user),
+    accessToken: issueAccessToken(user)
+  };
+};
+
+const createUserRecord = async (payload) => {
   try {
     const user = await prisma.user.create({
       data: {
         email: payload.email,
         fullName: payload.fullName,
-        role: payload.role,
+        passwordHash: await hashUserPassword(payload.password),
+        role: payload.role ?? "FREELANCER",
         bio: payload.bio,
-        skills: payload.skills,
-        hourlyRate: payload.hourlyRate
+        skills: payload.skills ?? [],
+        hourlyRate: payload.hourlyRate ?? null
       }
     });
 
@@ -43,6 +81,14 @@ export const createUser = async (payload) => {
   }
 };
 
+const hashUserPassword = async (password) => {
+  if (!password) {
+    throw new AppError("Password is required", 400);
+  }
+
+  return hashPassword(password);
+};
+
 const maybeSendWelcomeEmail = async (user) => {
   if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) {
     return;
@@ -59,4 +105,28 @@ const maybeSendWelcomeEmail = async (user) => {
   } catch (emailError) {
     console.warn("Unable to send welcome email via Resend:", emailError);
   }
+};
+
+const sanitizeUser = (user) => {
+  if (!user) {
+    return user;
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  const { passwordHash, ...safeUser } = user;
+  return safeUser;
+};
+
+const issueAccessToken = (user) => {
+  return jwt.sign(
+    {
+      sub: user.id,
+      role: user.role,
+      email: user.email
+    },
+    env.JWT_SECRET,
+    {
+      expiresIn: env.JWT_EXPIRES_IN
+    }
+  );
 };

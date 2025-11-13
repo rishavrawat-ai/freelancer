@@ -44,6 +44,10 @@ PORT=5000
 CORS_ORIGIN=http://localhost:5173
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL="Freelancer Platform <noreply@example.com>"
+JWT_SECRET="super-secret-jwt-key-at-least-32-characters"
+JWT_EXPIRES_IN="7d"
+PASSWORD_PEPPER="another-long-secret-value"
+PASSWORD_SALT_ROUNDS=12
 ```
 
 - `DATABASE_URL` should be the **pooled** Neon connection string (PgBouncer). The API server and Prisma client use this for day-to-day queries.
@@ -82,6 +86,8 @@ When `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set, the user service sends a 
 | `GET /api/health` | Connectivity + Neon database check |
 | `GET /api/users?role=FREELANCER` | List users (optional role filter) |
 | `POST /api/users` | Create a user (welcome email sent when Resend is configured) |
+| `POST /api/auth/signup` | Register a user with salted + peppered password hashing and receive a JWT |
+| `POST /api/auth/login` | Validate credentials and receive a JWT |
 
 Routes follow this pattern: Zod schemas -> `validateResource` middleware -> controller -> Prisma-backed service.
 
@@ -96,6 +102,6 @@ Whenever you rotate Neon credentials, update both connection strings, rerun `npm
 
 ### Next steps
 
-- Mirror the `users` module to add projects, proposals, auth, etc.
-- Hook the frontend to the new `/api` routes (native `fetch`, TanStack Query, etc.).
+- Mirror the `users` module to add projects, proposals, etc.
+- Propagate the authenticated session across the rest of the frontend (protected dashboards, client views, etc.).
 - Deploy: ship the backend to any Node-friendly host (Neon pairs well with Railway, Render, Fly.io, AWS, Vercel functions, etc.) and either proxy it behind the frontend domain or expose it separately with HTTPS.
