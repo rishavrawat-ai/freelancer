@@ -6,6 +6,9 @@ import { env } from "./config/env.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
 import { apiRouter } from "./routes/index.js";
+import { prisma } from "./lib/prisma.js";
+
+const runningInVercel = process.env.VERCEL === "1";
 
 export const createApp = () => {
   const app = express();
@@ -32,3 +35,23 @@ export const createApp = () => {
 
   return app;
 };
+
+const app = createApp();
+
+if (!runningInVercel) {
+  const server = app.listen(env.PORT, () => {
+    console.log(`API server ready on http://localhost:${env.PORT}`);
+  });
+
+  const gracefulShutdown = async () => {
+    console.log("Shutting down server...");
+    server.close();
+    await prisma.$disconnect();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", gracefulShutdown);
+  process.on("SIGTERM", gracefulShutdown);
+}
+
+export default app;
