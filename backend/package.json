@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon index.js",
     "build": "echo \"Backend build step is not required for plain JavaScript\"",
-    "start": "node src/index.js",
+    "start": "node index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

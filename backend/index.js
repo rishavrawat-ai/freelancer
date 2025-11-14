@@ -2,11 +2,11 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import { env } from "./config/env.js";
-import { errorHandler } from "./middlewares/error-handler.js";
-import { notFoundHandler } from "./middlewares/not-found.js";
-import { apiRouter } from "./routes/index.js";
-import { prisma } from "./lib/prisma.js";
+import { env } from "./src/config/env.js";
+import { errorHandler } from "./src/middlewares/error-handler.js";
+import { notFoundHandler } from "./src/middlewares/not-found.js";
+import { apiRouter } from "./src/routes/index.js";
+import { prisma } from "./src/lib/prisma.js";
 
 const runningInVercel = process.env.VERCEL === "1";
 
@@ -41,6 +41,17 @@ const app = createApp();
 if (!runningInVercel) {
   const server = app.listen(env.PORT, () => {
     console.log(`API server ready on http://localhost:${env.PORT}`);
+  });
+
+  server.on("error", (error) => {
+    if (error && error.code === "EADDRINUSE") {
+      console.error(
+        `Port ${env.PORT} is already in use. Make sure another backend instance is not running or change the PORT in your environment.`
+      );
+    } else {
+      console.error("Server error:", error);
+    }
+    process.exit(1);
   });
 
   const gracefulShutdown = async () => {
