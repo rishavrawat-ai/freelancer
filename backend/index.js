@@ -6,7 +6,7 @@ import { env, envInitError } from "./src/config/env.js";
 import { errorHandler } from "./src/middlewares/error-handler.js";
 import { notFoundHandler } from "./src/middlewares/not-found.js";
 import { apiRouter } from "./src/routes/index.js";
-import { prisma } from "./src/lib/prisma.js";
+import { prisma, prismaInitError } from "./src/lib/prisma.js";
 
 const runningInVercel = process.env.VERCEL === "1";
 
@@ -58,6 +58,23 @@ if (envInitError) {
   }
 }
 
+if (prismaInitError) {
+  console.error("Prisma initialization failed:", prismaInitError);
+
+  if (runningInVercel) {
+    app.use((req, res) => {
+      res.status(500).json({
+        error: "Database configuration error",
+        message:
+          "Prisma Client failed to initialize. Make sure `prisma generate` runs during the build (see https://pris.ly/d/vercel-build)."
+      });
+    });
+  } else {
+    console.error("Exiting due to Prisma client initialization failure.");
+    process.exit(1);
+  }
+}
+
 if (!runningInVercel) {
   const server = app.listen(env.PORT, () => {
     console.log(`API server ready on http://localhost:${env.PORT}`);
@@ -77,7 +94,13 @@ if (!runningInVercel) {
   const gracefulShutdown = async () => {
     console.log("Shutting down server...");
     server.close();
-    await prisma.$disconnect();
+    if (prisma && typeof prisma.$disconnect === "function") {
+      try {
+        await prisma.$disconnect();
+      } catch (e) {
+        console.warn("Error disconnecting Prisma client:", e);
+      }
+    }
     process.exit(0);
   };
 

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "build": "echo \"Backend build step is not required for plain JavaScript\"",
+    "build": "prisma generate",
+    "vercel-build": "prisma generate",
+    "postinstall": "prisma generate",
     "start": "node index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
