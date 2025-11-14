@@ -34,5 +34,28 @@ const envSchema = z.object({
     .default(12)
 });
 
-export const env = envSchema.parse(process.env);
+let env;
+try {
+  env = envSchema.parse(process.env);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    console.error("Invalid or missing environment variables:", error.flatten().fieldErrors);
+
+    if (!process.env.JWT_SECRET) {
+      console.error(
+        "Environment variable JWT_SECRET is missing. Set it in your hosting provider's settings (e.g. Vercel → Project → Settings → Environment Variables)."
+      );
+    }
+
+    if (!process.env.PASSWORD_PEPPER) {
+      console.error(
+        "Environment variable PASSWORD_PEPPER is missing. Set it in your hosting provider's settings (e.g. Vercel → Project → Settings → Environment Variables)."
+      );
+    }
+  }
+
+  throw error;
+}
+
+export { env };
 export const isProduction = env.NODE_ENV === "production";
