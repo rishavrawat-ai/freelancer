@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "@/components/home/Home.jsx";
