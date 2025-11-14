@@ -36,25 +36,6 @@ npm run backend:start
 npm run backend:prisma:studio
 ```
 
-### Environment variables (`backend/.env`)
-
-```env
-DATABASE_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-DIRECT_DATABASE_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-PORT=5000
-CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
-RESEND_API_KEY=your_resend_api_key
-RESEND_FROM_EMAIL="Freelancer Platform <noreply@example.com>"
-JWT_SECRET="super-secret-jwt-key-at-least-32-characters"
-JWT_EXPIRES_IN="7d"
-PASSWORD_PEPPER="another-long-secret-value"
-PASSWORD_SALT_ROUNDS=12
-```
-
-- `DATABASE_URL` should be the **pooled** Neon connection string (PgBouncer). The API server and Prisma client use this for day-to-day queries.
-- `DIRECT_DATABASE_URL` should be the **direct** Neon connection string. Prisma migrations and `prisma db push` automatically switch to it when available, which avoids pooling limits.
-- Leave the Resend values empty to skip email sending locally.
-
 ### Backend structure
 
 ```
