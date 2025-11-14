@@ -9,19 +9,14 @@ import { apiRouter } from "./routes/index.js";
 import { prisma } from "./lib/prisma.js";
 
 const runningInVercel = process.env.VERCEL === "1";
-const normalizeOrigin = (origin) =>
-  typeof origin === "string" ? origin.replace(/\/+$/, "") : origin;
 
 export const createApp = () => {
   const app = express();
 
   const allowedOrigins =
-    env.CORS_ORIGIN === "*" || !env.CORS_ORIGIN
+    env.CORS_ORIGIN === "*"
       ? undefined
-      : env.CORS_ORIGIN
-        .split(",")
-        .map((origin) => normalizeOrigin(origin.trim()))
-        .filter(Boolean);
+      : env.CORS_ORIGIN.split(",").map((origin) => origin.trim());
 
   app.use(
     cors({
