@@ -19,12 +19,13 @@ npm run build    # Production build
 
 ```bash
 cd backend
-cp .env.example .env               # fill in Neon + Resend credentials
 npm install
 npm run prisma:migrate -- --name init   # applies schema to Neon using the direct connection string
 npm run prisma:seed                     # optional sample data
 npm run dev                             # nodemon on http://localhost:5000
 ```
+
+Fill in `backend/.env` with your Neon, Resend, and auth secrets before running the commands above.
 
 You can execute the same commands from the repository root:
 
@@ -41,7 +42,7 @@ npm run backend:prisma:studio
 DATABASE_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 DIRECT_DATABASE_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 PORT=5000
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL="Freelancer Platform <noreply@example.com>"
 JWT_SECRET="super-secret-jwt-key-at-least-32-characters"
