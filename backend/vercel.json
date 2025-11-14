@@ -7,7 +7,7 @@
       "runtime": "nodejs20.x",
       "memory": 1024,
       "maxDuration": 10,
-      "includeFiles": ["prisma/schema.prisma"]
+      "includeFiles": "prisma/schema.prisma"
     }
   },
   "builds": [
