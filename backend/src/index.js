@@ -12,16 +12,35 @@ const runningInVercel = process.env.VERCEL === "1";
 const normalizeOrigin = (origin) =>
   typeof origin === "string" ? origin.replace(/\/+$/, "") : origin;
 
+const resolveAllowedOrigins = () => {
+  const sources = [
+    env.CORS_ORIGIN,
+    env.LOCAL_CORS_ORIGIN,
+    env.VERCEL_CORS_ORIGIN
+  ].filter((value) => typeof value === "string" && value.length > 0);
+
+  if (sources.length === 0) {
+    return undefined;
+  }
+
+  const parsedOrigins = sources.flatMap((value) =>
+    value
+      .split(",")
+      .map((origin) => normalizeOrigin(origin.trim()))
+      .filter(Boolean)
+  );
+
+  if (parsedOrigins.length === 0 || parsedOrigins.includes("*")) {
+    return undefined;
+  }
+
+  return [...new Set(parsedOrigins)];
+};
+
 export const createApp = () => {
   const app = express();
 
-  const allowedOrigins =
-    env.CORS_ORIGIN === "*" || !env.CORS_ORIGIN
-      ? undefined
-      : env.CORS_ORIGIN
-        .split(",")
-        .map((origin) => normalizeOrigin(origin.trim()))
-        .filter(Boolean);
+  const allowedOrigins = resolveAllowedOrigins();
 
   app.use(
     cors({
