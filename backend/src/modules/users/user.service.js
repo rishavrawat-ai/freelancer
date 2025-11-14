@@ -4,7 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/app-error.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
-import { hashPassword, verifyPassword } from "./password.utils.js";
+import { hashPassword, verifyPassword, verifyLegacyPassword } from "./password.utils.js";
 
 export const listUsers = async (filters = {}) => {
   const users = await prisma.user.findMany({
@@ -37,10 +37,23 @@ export const authenticateUser = async ({ email, password }) => {
     where: { email }
   });
 
-  const isValid =
+  let isValid =
     user?.passwordHash && password
       ? await verifyPassword(password, user.passwordHash)
       : false;
+
+  if (!isValid && user?.passwordHash && password) {
+    const legacyValid = await verifyLegacyPassword(password, user.passwordHash);
+    if (legacyValid) {
+      isValid = true;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: await hashPassword(password)
+        }
+      });
+    }
+  }
 
   if (!isValid) {
     throw new AppError("Invalid email or password", 401);

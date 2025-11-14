@@ -18,3 +18,7 @@ export const verifyPassword = async (password, hash) => {
   const peppered = pepperPassword(password);
   return bcrypt.compare(peppered, hash);
 };
+
+export const verifyLegacyPassword = async (password, hash) => {
+  return bcrypt.compare(password, hash);
+};
