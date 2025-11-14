@@ -35,6 +35,7 @@ const envSchema = z.object({
 });
 
 let env;
+let envInitError = null;
 try {
   env = envSchema.parse(process.env);
 } catch (error) {
@@ -54,8 +55,27 @@ try {
     }
   }
 
-  throw error;
+  // Don't throw here to avoid crashing serverless function at import time.
+  // Export the parsing error so the application can return a friendly 500 response
+  // for incoming requests while keeping the process alive for diagnostics.
+  const fallbackEnv = {
+    NODE_ENV: process.env.NODE_ENV || "development",
+    PORT: Number(process.env.PORT) || 5000,
+    DATABASE_URL: process.env.DATABASE_URL || "",
+    DIRECT_DATABASE_URL: process.env.DIRECT_DATABASE_URL,
+    CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    JWT_SECRET: process.env.JWT_SECRET || "",
+    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
+    PASSWORD_PEPPER: process.env.PASSWORD_PEPPER || "",
+    PASSWORD_SALT_ROUNDS: Number(process.env.PASSWORD_SALT_ROUNDS) || 12
+  };
+
+  env = fallbackEnv;
+  // attach the original parse error for runtime checks
+  envInitError = error;
 }
 
-export { env };
+export { env, envInitError };
 export const isProduction = env.NODE_ENV === "production";

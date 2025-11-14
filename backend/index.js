@@ -2,7 +2,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import { env } from "./src/config/env.js";
+import { env, envInitError } from "./src/config/env.js";
 import { errorHandler } from "./src/middlewares/error-handler.js";
 import { notFoundHandler } from "./src/middlewares/not-found.js";
 import { apiRouter } from "./src/routes/index.js";
@@ -37,6 +37,26 @@ export const createApp = () => {
 };
 
 const app = createApp();
+
+// If environment validation failed during import, keep the process alive in
+// serverless (Vercel) so requests can return a helpful 500, but in local/dev
+// fail fast so the developer can fix the configuration.
+if (envInitError) {
+  console.error("Environment validation failed:", envInitError);
+
+  if (runningInVercel) {
+    app.use((req, res) => {
+      res.status(500).json({
+        error: "Server configuration error",
+        message:
+          "Missing or invalid environment variables. Check server logs for details."
+      });
+    });
+  } else {
+    console.error("Exiting due to invalid environment configuration.");
+    process.exit(1);
+  }
+}
 
 if (!runningInVercel) {
   const server = app.listen(env.PORT, () => {
