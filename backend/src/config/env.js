@@ -1,7 +1,19 @@
 import { config } from "dotenv";
+import { existsSync } from "fs";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import { z } from "zod";
 
-config({ path: process.env.NODE_ENV === "test" ? ".env.test" : ".env" });
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const projectRoot = resolve(__dirname, "../../");
+const envFileName = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
+const candidatePath = resolve(projectRoot, envFileName);
+
+if (existsSync(candidatePath)) {
+  config({ path: candidatePath });
+} else {
+  config();
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
