@@ -16,9 +16,23 @@ const App = () => {
     <main>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <Routes>
-          <Route path="/" element={<LayoutWithNavbar><Home /></LayoutWithNavbar>} />
+          <Route
+            path="/"
+            element={
+              <LayoutWithNavbar>
+                <Home />
+              </LayoutWithNavbar>
+            }
+          />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/login" element={<LayoutWithNavbar><LoginPage /></LayoutWithNavbar>} />
+          <Route
+            path="/login"
+            element={
+              <LayoutWithNavbar>
+                <LoginPage />
+              </LayoutWithNavbar>
+            }
+          />
           <Route
             path="/client"
             element={
@@ -27,7 +41,14 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/service" element={<LayoutWithNavbar><Client /></LayoutWithNavbar>} />
+          <Route
+            path="/service"
+            element={
+              <LayoutWithNavbar>
+                <Client />
+              </LayoutWithNavbar>
+            }
+          />
           <Route
             path="/freelancer"
             element={
@@ -36,9 +57,16 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<LayoutWithNavbar><NotFound /></LayoutWithNavbar>} />
+          <Route
+            path="*"
+            element={
+              <LayoutWithNavbar>
+                <NotFound />
+              </LayoutWithNavbar>
+            }
+          />
         </Routes>
-        <Toaster richColors position="top-center" />
+        <Toaster richColors position="right-bottom" />
       </ThemeProvider>
     </main>
   );
@@ -52,7 +80,7 @@ const LayoutWithNavbar = ({ children }) => (
 );
 
 LayoutWithNavbar.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node.isRequired,
 };
 
 const ProtectedRoute = ({ children }) => {
@@ -74,7 +102,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 ProtectedRoute.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node.isRequired,
 };
 
 const NotFound = () => (

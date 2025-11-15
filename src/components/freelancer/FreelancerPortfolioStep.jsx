@@ -46,7 +46,7 @@ const StepIndicator = ({ activeIndex = 4 }) => (
             </div>
           </div>
           {index < steps.length - 1 ? (
-            <div className="ml-4 mt-2 h-6 w-px rounded-full bg-gradient-to-b from-white/30 to-transparent" />
+            <div className="ml-2.5 mt-2 h-6 w-px rounded-full bg-gradient-to-b from-white/30 to-transparent" />
           ) : null}
         </div>
       );
