@@ -46,13 +46,13 @@ try {
 
     if (!process.env.JWT_SECRET) {
       console.error(
-        "Environment variable JWT_SECRET is missing. Set it in your hosting provider's settings (e.g. Vercel → Project → Settings → Environment Variables)."
+        "Environment variable JWT_SECRET is missing. Set it in your hosting provider's settings (e.g. Vercel ? Project ? Settings ? Environment Variables)."
       );
     }
 
     if (!process.env.PASSWORD_PEPPER) {
       console.error(
-        "Environment variable PASSWORD_PEPPER is missing. Set it in your hosting provider's settings (e.g. Vercel → Project → Settings → Environment Variables)."
+        "Environment variable PASSWORD_PEPPER is missing. Set it in your hosting provider's settings (e.g. Vercel ? Project ? Settings ? Environment Variables)."
       );
     }
   }
@@ -66,6 +66,8 @@ try {
     DATABASE_URL: process.env.DATABASE_URL || "",
     DIRECT_DATABASE_URL: process.env.DIRECT_DATABASE_URL,
     CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
+    LOCAL_CORS_ORIGIN: process.env.LOCAL_CORS_ORIGIN,
+    VERCEL_CORS_ORIGIN: process.env.VERCEL_CORS_ORIGIN,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     JWT_SECRET: process.env.JWT_SECRET || "",

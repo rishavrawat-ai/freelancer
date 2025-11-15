@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react/no-unknown-property */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -310,3 +311,4 @@ const SyntheticHero = ({
 };
 
 export default SyntheticHero;
+/* eslint-enable react/no-unknown-property */

@@ -1,5 +1,4 @@
 "use client";
-import React from "react";
 import { Link } from "react-router-dom";
 import { Sparkles, ChevronRight, ArrowRight } from "lucide-react";
 

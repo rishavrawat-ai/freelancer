@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Navbar as ResizableNavbar,
@@ -83,7 +83,7 @@ const Navbar = () => {
           <MobileNavToggle isOpen={mobileOpen} onClick={toggleMobileMenu} />
         </MobileNavHeader>
 
-        <MobileNavMenu isOpen={mobileOpen} onClose={closeMobileMenu}>
+        <MobileNavMenu isOpen={mobileOpen}>
           {navItems.map((item, idx) => (
             <Link
               key={`mobile-link-${idx}`}

@@ -158,8 +158,7 @@ export const MobileNavHeader = ({
 export const MobileNavMenu = ({
   children,
   className,
-  isOpen,
-  onClose
+  isOpen
 }) => {
   return (
     (<AnimatePresence>
