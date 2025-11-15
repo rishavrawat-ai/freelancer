@@ -46,9 +46,9 @@ const StepIndicator = ({ activeIndex = 0 }) => (
           <div className="flex items-center gap-3">
             <div
               className={cn(
-                "flex size-6 items-center justify-center rounded-full border text-xs font-semibold uppercase tracking-[0.2em] transition-all",
+                "flex size-6 items-center text-center justify-center rounded-full border text-xs font-semibold uppercase tracking-[0.3em] transition-all",
                 isActive &&
-                  "border-yellow-400 bg-yellow-400/10 text-yellow-400",
+                  "border-yellow-400 item-center bg-yellow-400/10 text-yellow-400",
                 isComplete && "border-yellow-300 bg-yellow-300 text-slate-900",
                 !isActive &&
                   !isComplete &&
@@ -61,7 +61,7 @@ const StepIndicator = ({ activeIndex = 0 }) => (
             </div>
           </div>
           {index < steps.length - 1 ? (
-            <div className="ml-4 mt-2 h-6 w-px rounded-full bg-gradient-to-b from-white/30 to-transparent" />
+            <div className="ml-2.5 mt-2 h-6 w-px rounded-full bg-gradient-to-b from-white/30 to-transparent" />
           ) : null}
         </div>
       );
