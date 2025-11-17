@@ -12,7 +12,7 @@ export const PROFILE_SECTIONS = [
     title: "Key skills",
     description: "List your top skills so clients can filter you correctly.",
     placeholder:
-      "Design systems · UX strategy · AI workflow design · React · Tailwind · Storybook",
+      "Design systems • UX strategy • AI workflow design • React • Tailwind • Storybook",
     type: "textarea",
     rows: 3,
   },
@@ -29,7 +29,7 @@ export const PROFILE_SECTIONS = [
     key: "educationBackground",
     title: "Education & certifications",
     description: "Mention relevant programs, bootcamps, or certifications.",
-    placeholder: "B.Des, NID · Google UX Cert · Design Leadership Bootcamp",
+    placeholder: "B.Des, NID • Google UX Cert • Design Leadership Bootcamp",
     type: "textarea",
     rows: 3,
   },
@@ -37,7 +37,7 @@ export const PROFILE_SECTIONS = [
     key: "portfolioLinks",
     title: "Portfolio & socials",
     description: "Link to up-to-date case studies, dribbble shots, or Github repos.",
-    placeholder: "https://figma.com/@you · https://dribbble.com/you · https://github.com/you",
+    placeholder: "https://figma.com/@you • https://dribbble.com/you • https://github.com/you",
     type: "input",
   },
   {
@@ -45,7 +45,7 @@ export const PROFILE_SECTIONS = [
     title: "Availability & preferences",
     description: "Share bandwidth, rate, and preferred engagement models.",
     placeholder:
-      "30 hrs / week · Open to fractional leadership · Target rate $80/hr · Prefer remote-first teams",
+      "30 hrs / week • Open to fractional leadership • Target rate $80/hr • Prefer remote-first teams",
     type: "textarea",
     rows: 3,
   },
