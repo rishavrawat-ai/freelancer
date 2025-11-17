@@ -39,16 +39,44 @@ const request = async (path, options = {}) => {
   return payload?.data ?? payload;
 };
 
-export const signup = ({ fullName, email, password, role = "FREELANCER" }) => {
+export const signup = ({
+  fullName,
+  email,
+  password,
+  role = "FREELANCER",
+  freelancerProfile = null
+}) => {
+  const payload = {
+    fullName,
+    email,
+    password,
+    role,
+    skills: []
+  };
+
+  if (role === "FREELANCER") {
+    const normalizedProfile = freelancerProfile ?? {};
+    const portfolio = normalizedProfile?.portfolio ?? {};
+    const skills = Array.isArray(normalizedProfile?.skills)
+      ? normalizedProfile.skills
+      : [];
+
+    payload.skills = skills;
+    payload.freelancerProfile = {
+      category: normalizedProfile?.category ?? "",
+      specialty: normalizedProfile?.specialty ?? "",
+      experience: normalizedProfile?.experience ?? "",
+      portfolio: {
+        portfolioUrl: portfolio?.portfolioUrl ?? "",
+        linkedinUrl: portfolio?.linkedinUrl ?? ""
+      },
+      acceptedTerms: Boolean(normalizedProfile?.acceptedTerms)
+    };
+  }
+
   return request("/auth/signup", {
     method: "POST",
-    body: JSON.stringify({
-      fullName,
-      email,
-      password,
-      role,
-      skills: []
-    })
+    body: JSON.stringify(payload)
   });
 };
 

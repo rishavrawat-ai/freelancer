@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
@@ -15,8 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { signup } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { FreelancerOnboarding } from "@/components/freelancer/Onboading";
-import { SignupRoleSelect } from "./SignupRoleSelect";
 
 const initialFormState = {
   fullName: "",
@@ -25,31 +23,26 @@ const initialFormState = {
   confirmPassword: ""
 };
 
+const ROLE_OPTIONS = [
+  {
+    id: "CLIENT",
+    title: "I'm a client",
+    description: "Post projects, review proposals, and collaborate with top talent."
+  },
+  {
+    id: "FREELANCER",
+    title: "I'm a freelancer",
+    description: "Showcase your skills, submit proposals, and get hired faster."
+  }
+];
+
 function Signup({ className, ...props }) {
   const [formData, setFormData] = useState(initialFormState);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState(null);
-  const [showFreelancerOnboarding, setShowFreelancerOnboarding] = useState(false);
-  const [freelancerCategory, setFreelancerCategory] = useState(null);
+  const [selectedRole, setSelectedRole] = useState("CLIENT");
   const navigate = useNavigate();
   const { login: setAuthSession } = useAuth();
-
-  useEffect(() => {
-    if (typeof document === "undefined") {
-      return undefined;
-    }
-
-    if (!showFreelancerOnboarding) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showFreelancerOnboarding]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -65,11 +58,6 @@ function Signup({ className, ...props }) {
 
     if (formData.password !== formData.confirmPassword) {
       setFormError("Passwords do not match.");
-      return;
-    }
-
-    if (!selectedRole) {
-      setFormError("Please choose whether you are a client or freelancer.");
       return;
     }
 
@@ -96,53 +84,10 @@ function Signup({ className, ...props }) {
     }
   };
 
-  const handleRoleContinue = (role) => {
+  const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setFormError("");
-    if (role === "FREELANCER") {
-      setShowFreelancerOnboarding(true);
-    } else {
-      setShowFreelancerOnboarding(false);
-      setFreelancerCategory(null);
-    }
   };
-
-  const resetToRoleSelection = () => {
-    setSelectedRole(null);
-    setFreelancerCategory(null);
-    setShowFreelancerOnboarding(false);
-    setFormData(initialFormState);
-    setFormError("");
-  };
-
-  const renderRoleStep = () => (
-    <div className="flex h-screen flex-col items-center justify-center p-4 md:p-10">
-      <SignupRoleSelect onContinue={handleRoleContinue} />
-    </div>
-  );
-
-  const renderFreelancerOnboarding = () => (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
-      <div className="w-full mt-10 max-w-5xl space-y-6">
-        <FreelancerOnboarding
-          initialCategory={freelancerCategory ?? ""}
-          onContinue={(category) => {
-            setFreelancerCategory(category);
-            setShowFreelancerOnboarding(false);
-          }}
-        />
-        <div className="text-center">
-          <button
-            type="button"
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-            onClick={resetToRoleSelection}
-          >
-            Change role
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderForm = () => (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
@@ -166,15 +111,39 @@ function Signup({ className, ...props }) {
                   <FieldDescription className="text-center text-sm text-muted-foreground">
                     {selectedRole === "CLIENT"
                       ? "You're creating a client account."
-                      : "You're creating a freelancer account."}{" "}
-                    <button
-                      type="button"
-                      className="underline underline-offset-4 text-primary"
-                      onClick={resetToRoleSelection}
-                    >
-                      Change role
-                    </button>
+                      : "You're creating a freelancer account."}
                   </FieldDescription>
+                  <Field>
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      Account type
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {ROLE_OPTIONS.map((option) => {
+                        const isActive = selectedRole === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => handleRoleSelect(option.id)}
+                            className={cn(
+                              "rounded-2xl border p-4 text-left transition-all",
+                              isActive
+                                ? "border-primary bg-primary/10 text-primary shadow-lg"
+                                : "border-white/10 bg-transparent text-foreground hover:border-primary/40"
+                            )}
+                            aria-pressed={isActive}
+                          >
+                            <span className="text-base font-semibold">
+                              {option.title}
+                            </span>
+                            <span className="mt-1 block text-sm text-muted-foreground">
+                              {option.description}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
                   <Field>
                     <FieldLabel htmlFor="fullName">Full name</FieldLabel>
                     <Input
@@ -290,14 +259,6 @@ function Signup({ className, ...props }) {
       </div>
     </div>
   );
-
-  if (!selectedRole) {
-    return renderRoleStep();
-  }
-
-  if (selectedRole === "FREELANCER" && showFreelancerOnboarding) {
-    return renderFreelancerOnboarding();
-  }
 
   return renderForm();
 }

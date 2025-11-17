@@ -8,6 +8,7 @@ import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
+import FreelancerProfile from "@/components/freelancer/FreelancerProfile";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
 
@@ -24,7 +25,14 @@ const App = () => {
               </LayoutWithNavbar>
             }
           />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/signup"
+            element={
+              <LayoutWithNavbar>
+                <SignupPage />
+              </LayoutWithNavbar>
+            }
+          />
           <Route
             path="/login"
             element={
@@ -54,6 +62,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <FreelancerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/profile"
+            element={
+              <ProtectedRoute>
+                <FreelancerProfile />
               </ProtectedRoute>
             }
           />
@@ -119,3 +135,11 @@ const NotFound = () => (
 );
 
 export default App;
+          <Route
+            path="/freelancer/profile"
+            element={
+              <ProtectedRoute>
+                <FreelancerProfile />
+              </ProtectedRoute>
+            }
+          />
