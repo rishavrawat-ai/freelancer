@@ -1,23 +1,9 @@
-import { Trash2, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Menu, Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
 import { getSession } from "@/lib/auth-storage";
 import { toast } from "sonner";
-
-const SectionCard = ({ title, actionLabel, onAction, children }) => (
-  <div className="space-y-2 border-b border-border/60 pb-5 last:border-0">
-    <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-      <span>{title}</span>
-      <button
-        type="button"
-        onClick={onAction}
-        className="text-[11px] font-semibold text-primary tracking-[0.35em]"
-      >
-        {actionLabel}
-      </button>
-    </div>
-    {children}
-  </div>
-);
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const serviceOptions = [
   "Web development",
@@ -41,11 +27,11 @@ const initialWorkForm = {
 const FreelancerProfile = () => {
   const [modalType, setModalType] = useState(null);
   const [skills, setSkills] = useState([]); // [{ name }]
-  const [workExperience, setWorkExperience] = useState([]); // array of {title, period, description}
+  const [workExperience, setWorkExperience] = useState([]); // {title, period, description}
   const [services, setServices] = useState([]); // string[]
   const [skillForm, setSkillForm] = useState({ name: "" });
   const [workForm, setWorkForm] = useState(initialWorkForm);
-  const [editingIndex, setEditingIndex] = useState(null); // null = adding, number = editing
+  const [editingIndex, setEditingIndex] = useState(null); // null = add, number = edit
 
   const [personal, setPersonal] = useState({
     name: "",
@@ -54,6 +40,16 @@ const FreelancerProfile = () => {
     location: "",
   });
   const [session, setSession] = useState(null);
+
+  // Derive initials for avatar
+  const initials =
+    personal.name
+      ?.trim()
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "KS";
 
   useEffect(() => {
     const authSession = getSession();
@@ -82,7 +78,6 @@ const FreelancerProfile = () => {
 
         const { data = {} } = await response.json();
 
-        // personal
         setPersonal((prev) => ({
           ...prev,
           name: data.personal?.name ?? prev.name,
@@ -91,7 +86,6 @@ const FreelancerProfile = () => {
           location: data.personal?.location ?? "",
         }));
 
-        // skills come from prisma as string[]
         const skillsFromApi = Array.isArray(data.skills) ? data.skills : [];
         setSkills(
           skillsFromApi.map((s) =>
@@ -156,12 +150,10 @@ const FreelancerProfile = () => {
     };
 
     if (editingIndex !== null) {
-      // update
       setWorkExperience((prev) =>
         prev.map((item, idx) => (idx === editingIndex ? newItem : item))
       );
     } else {
-      // add
       setWorkExperience((prev) => [...prev, newItem]);
     }
 
@@ -183,7 +175,6 @@ const FreelancerProfile = () => {
       return;
     }
 
-    // prisma User.skills is String[]
     const skillsForApi = skills
       .map((s) => (typeof s === "string" ? s : s.name))
       .map((s) => s?.trim())
@@ -236,166 +227,229 @@ const FreelancerProfile = () => {
     }
   };
 
-  // ----- Sections descriptor -----
-  const sectionContent = useMemo(
-    () => [
-      {
-        title: "Skills",
-        actionLabel: "Add Skill",
-        onAction: () => setModalType("skill"),
-        items: skills,
-        onDelete: deleteSkill,
-        onEdit: null,
-      },
-      {
-        title: "Work Experience",
-        actionLabel: "Add Work Experience",
-        onAction: openCreateExperienceModal,
-        items: workExperience,
-        onDelete: deleteExperience,
-        onEdit: openEditExperienceModal,
-      },
-    ],
-    [skills, workExperience]
-  );
-
-  const emptyMessage = (label) => (
-    <p className="text-sm text-muted-foreground">
-      {`No ${label.toLowerCase()} yet`}
-    </p>
-  );
-
   return (
-    <section className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background text-foreground relative">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-12">
-        {/* Header */}
-        <div className="rounded-[28px] border border-border/70 bg-card/90 backdrop-blur shadow-xl shadow-black/30 px-6 py-7">
-          <p className="text-[11px] uppercase tracking-[0.4em] text-muted-foreground/80">
-            Profile
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold text-foreground">
-            {personal.name || "Your name"}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {personal.email || "your@email.com"}
-          </p>
-          {(personal.location || personal.phone) && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {personal.location && <span>{personal.location}</span>}
-              {personal.location && personal.phone && <span> • </span>}
-              {personal.phone && <span>{personal.phone}</span>}
-            </p>
-          )}
-        </div>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-6 py-16">
+        {/* Header Section with Profile Picture */}
+        <section className="mb-20">
+          <div className="flex flex-col md:flex-row items-start md:items-end gap-8 mb-8">
+            {/* Profile Image / Initials */}
+            <div className="relative">
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-card border border-border p-1 overflow-hidden shadow">
+                <div className="w-full h-full rounded-xl bg-secondary flex items-center justify-center text-3xl md:text-5xl font-bold text-secondary-foreground">
+                  {initials}
+                </div>
+              </div>
+              <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-primary rounded-full text-xs font-semibold text-primary-foreground shadow-sm">
+                Available
+              </div>
+            </div>
 
-        {/* Services */}
-        <div className="rounded-full border border-border/70 bg-card/80 backdrop-blur px-4 py-3 flex items-center gap-3 overflow-x-auto no-scrollbar">
-          <span className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground/80 shrink-0">
-            Services
-          </span>
+            {/* Profile Info */}
+            <div className="flex-1">
+              <p className="text-muted-foreground text-xs tracking-widest uppercase mb-2">
+                Profile
+              </p>
+              <h1 className="text-5xl md:text-6xl font-bold mb-3 text-foreground leading-tight">
+                {personal.name || "Your name"}
+              </h1>
+              <p className="text-lg text-foreground mb-2">
+                {/* Could later be dynamic (headline) */}
+                Full-stack Developer & Digital Creator
+              </p>
+              <a
+                href={personal.email ? `mailto:${personal.email}` : "#"}
+                className="text-muted-foreground text-sm hover:text-primary transition-colors"
+              >
+                {personal.email || "your@email.com"}
+              </a>
+              {(personal.location || personal.phone) && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {personal.location && <span>{personal.location}</span>}
+                  {personal.location && personal.phone && <span> • </span>}
+                  {personal.phone && <span>{personal.phone}</span>}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
 
-          <div className="flex flex-wrap gap-2">
-            {serviceOptions.map((option) => {
-              const isActive = services.includes(option);
+        {/* Services Section */}
+        <section className="mb-20">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
+                Expertise
+              </p>
+              <h2 className="text-2xl font-bold text-foreground">Services</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {serviceOptions.map((label) => {
+              const active = services.includes(label);
               return (
-                <button
-                  key={option}
-                  type="button"
-                  className={`relative rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] transition
-                    ${
-                      isActive
-                        ? "border border-primary/80 bg-primary/15 text-primary shadow-[0_0_0_1px_rgba(250,204,21,0.35)]"
-                        : "border-border/60 text-muted-foreground hover:border-primary/60 hover:text-primary hover:bg-primary/5"
-                    }`}
+                <div
+                  key={label}
                   onClick={() =>
                     setServices((prev) =>
-                      prev.includes(option)
-                        ? prev.filter((item) => item !== option)
-                        : [...prev, option]
+                      prev.includes(label)
+                        ? prev.filter((item) => item !== label)
+                        : [...prev, label]
                     )
                   }
+                  className={`px-4 py-3 rounded-lg text-sm font-medium text-center transition-all cursor-pointer border
+                    ${
+                      active
+                        ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary border-border text-secondary-foreground hover:border-primary hover:bg-primary/10"
+                    }`}
                 >
-                  <span className="relative z-10">{option}</span>
-                  {isActive && (
-                    <span className="pointer-events-none absolute inset-0 rounded-full bg-primary/10 blur-[2px]" />
-                  )}
-                </button>
+                  {label}
+                </div>
               );
             })}
+            {services.length === 0 && (
+              <p className="col-span-full text-sm text-muted-foreground mt-2">
+                No services selected yet. Click a service to add it to your profile.
+              </p>
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Skills & Experience */}
-        <div className="rounded-[28px] border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/40">
-          {sectionContent.map((section) => (
-            <SectionCard
-              key={section.title}
-              title={section.title}
-              actionLabel={section.actionLabel}
-              onAction={section.onAction}
+        {/* Skills Section */}
+        <section className="mb-20">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
+                Technical Skills
+              </p>
+              <h2 className="text-2xl font-bold text-foreground">Skills</h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+              onClick={() => setModalType("skill")}
             >
-              {section.items.length ? (
-                <div className="space-y-3 pt-3">
-                  {section.items.map((item, index) => (
-                    <article
-                      key={`${section.title}-${index}`}
-                      className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/90 p-4 text-sm shadow-sm hover:shadow-lg hover:border-primary/70 hover:-translate-y-0.5 transition"
-                    >
-                      <div>
-                        {/* Title as h1 + paragraph(s) */}
-                        <h1 className="text-base sm:text-lg font-semibold text-foreground">
-                          {item.title || item.name || item}
-                        </h1>
-                        {item.period && (
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
-                            {item.period}
-                          </p>
-                        )}
-                        {item.description && (
-                          <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {section.onEdit && (
-                          <button
-                            type="button"
-                            onClick={() => section.onEdit(item, index)}
-                            className="rounded-full p-1.5 hover:bg-muted/40 transition"
-                            aria-label="Edit"
-                          >
-                            <Pencil className="size-4 text-muted-foreground" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => section.onDelete(index)}
-                          className="rounded-full p-1.5 hover:bg-muted/40 transition"
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="size-4 text-muted-foreground" />
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="pt-3">{emptyMessage(section.title)}</div>
-              )}
-            </SectionCard>
-          ))}
-          <div className="mt-6 flex justify-end">
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded-full bg-primary px-7 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-background transition hover:bg-primary/85 shadow-md hover:shadow-lg"
-            >
-              Save profile
-            </button>
+              <Plus className="w-4 h-4 mr-2" /> Add Skill
+            </Button>
           </div>
-        </div>
-      </div>
+
+          {skills.length ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {skills.map((skill, idx) => (
+                <div
+                  key={`${skill.name}-${idx}`}
+                  className={`group px-4 py-3 rounded-lg text-sm font-medium text-center transition-all cursor-pointer border flex items-center justify-between
+                    bg-secondary border-border text-secondary-foreground hover:border-primary hover:bg-primary/10`}
+                >
+                  <span className="flex-1 text-left truncate">
+                    {skill.name || "Untitled skill"}
+                  </span>
+                  <Trash2
+                    className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-destructive ml-2"
+                    onClick={() => deleteSkill(idx)}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No skills added yet. Use &quot;Add Skill&quot; to start listing your strengths.
+            </p>
+          )}
+        </section>
+
+        {/* Work Experience Section */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
+                Professional Journey
+              </p>
+              <h2 className="text-2xl font-bold text-foreground">
+                Work Experience
+              </h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+              onClick={openCreateExperienceModal}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add
+            </Button>
+          </div>
+
+          {workExperience.length ? (
+            <div className="space-y-4">
+              {workExperience.map((exp, idx) => {
+                const [position, company] = (exp.title ?? "").split(" · ");
+                return (
+                  <Card
+                    key={`${exp.title}-${idx}`}
+                    className="p-5 md:p-6 border-border bg-card hover:border-primary hover:shadow-md transition-all duration-300 group"
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-all mb-1">
+                          {position || exp.title || "Role"}
+                        </h3>
+                        {company && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="text-primary text-sm font-medium">
+                              {company}
+                            </p>
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <Edit2
+                          className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                          onClick={() => openEditExperienceModal(exp, idx)}
+                        />
+                        <Trash2
+                          className="w-4 h-4 text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
+                          onClick={() => deleteExperience(idx)}
+                        />
+                      </div>
+                    </div>
+                    {exp.period && (
+                      <p className="text-muted-foreground text-xs font-medium mb-3 uppercase tracking-wide">
+                        {exp.period}
+                      </p>
+                    )}
+                    {exp.description && (
+                      <p className="text-foreground text-sm leading-relaxed">
+                        {exp.description}
+                      </p>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No work experience added yet. Use &quot;Add&quot; to document your
+              professional journey.
+            </p>
+          )}
+        </section>
+
+        {/* CTA Section */}
+        <section className="flex flex-col sm:flex-row items-center justify-center gap-4 py-12 border-t border-border mt-8">
+          <Button
+            size="lg"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg shadow-sm w-full sm:w-auto"
+            onClick={handleSave}
+          >
+            Save Profile
+          </Button>
+        </section>
+      </main>
 
       {/* Modal */}
       {modalType && (
@@ -440,7 +494,9 @@ const FreelancerProfile = () => {
             ) : (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
-                  {editingIndex !== null ? "Edit Work Experience" : "Add Work Experience"}
+                  {editingIndex !== null
+                    ? "Edit Work Experience"
+                    : "Add Work Experience"}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Capture your role, timeline, and the impact you had.
@@ -545,7 +601,7 @@ const FreelancerProfile = () => {
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 };
 
