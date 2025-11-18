@@ -364,22 +364,23 @@ const FreelancerMultiStepForm = () => {
     <div className="min-h-screen w-full bg-[#050506] text-foreground flex items-center justify-center px-4 pt-24 pb-10">
       <div className="w-full max-w-3xl">
         <Card className="border-none bg-[#111111] text-white shadow-2xl max-h-[80vh] flex flex-col">
-          <CardHeader className="border-b border-white/5 py-3">
-            <div className="mb-6 flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-3">
+          <CardHeader className="border-b border-white/5 pt-5 pb-3">
+            <div className="mb-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-4">
                 {STEPS.map((step, index) => {
                   const isCompleted = currentStep > step.id;
                   const isActive = currentStep === step.id;
 
                   return (
                     <React.Fragment key={step.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleGoToStep(step.id)}
-                        className="flex flex-col items-center gap-2 focus:outline-none group">
-                        <div
-                          className={cn(
-                            "flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors",
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => handleGoToStep(step.id)}
+                          className="flex flex-col items-center gap-1 bg-transparent px-0 hover:bg-transparent focus-visible:ring-0">
+                        <span
+                            className={cn(
+                              "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold transition-colors",
                             isCompleted && "border-yellow-400 bg-yellow-400 text-black",
                             isActive && !isCompleted && "border-yellow-400 text-yellow-400",
                             !isActive && !isCompleted && "border-white/15 text-white/50",
@@ -389,7 +390,7 @@ const FreelancerMultiStepForm = () => {
                           ) : (
                             <span>{step.id}</span>
                           )}
-                        </div>
+                        </span>
                         <span
                           className={cn(
                             "text-xs font-medium tracking-tight text-white/60",
@@ -397,19 +398,19 @@ const FreelancerMultiStepForm = () => {
                           )}>
                           {step.label}
                         </span>
-                      </button>
-                      {index < STEPS.length - 1 && (
-                        <div className="hidden flex-1 items-center justify-center md:flex">
-                          <div className="h-[2px] w-full rounded-full bg-white/10">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all",
-                                currentStep > step.id ? "w-full bg-yellow-400" : "w-0 bg-transparent",
-                              )}
-                            />
+                      </Button>
+                        {index < STEPS.length - 1 && (
+                          <div className="hidden flex-1 items-center md:flex">
+                            <div className="h-[2px] w-full rounded-full bg-white/10">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  currentStep > step.id ? "w-full bg-yellow-400" : "w-0 bg-transparent",
+                                )}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </React.Fragment>
                   );
                 })}
@@ -425,7 +426,7 @@ const FreelancerMultiStepForm = () => {
             </div>
           </CardHeader>
 
-          <CardContent className="pt-6 pb-4 space-y-6 overflow-y-auto">
+          <CardContent className="pt-6 pb-4 space-y-6 overflow-y-auto scrollbar-thin">
             {currentStep === 1 && (
               <StepProfessional
                 selectedField={formData.professionalField}
@@ -609,16 +610,18 @@ const StepSkills = ({
         {DEFAULT_SKILLS.map(skill => {
           const isActive = skills.includes(skill);
           return (
-            <button
+            <Button
               key={skill}
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onToggleSkill(skill)}
               className={cn(
                 "rounded-lg border border-white/15 bg-[#1c1c1f] px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-yellow-400 hover:text-black",
                 isActive && "border-yellow-400 bg-yellow-400 text-black",
               )}>
               {skill}
-            </button>
+            </Button>
           );
         })}
       </div>

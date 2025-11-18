@@ -49,11 +49,12 @@ const resolveAllowedOrigins = () => {
 export const createApp = () => {
   const app = express();
 
-  // For this project we allow all origins so the
-  // Vite dev server (http://localhost:5173) and the
-  // deployed frontend on Vercel can both call the API
-  // without CORS issues.
+  // Allow all origins so both local dev (http://localhost:5173)
+  // and the deployed frontend can call this API. Also handle
+  // CORS preflight (OPTIONS) explicitly so Vercel returns a
+  // 204 with the correct headers instead of a 404.
   app.use(cors());
+  app.options("*", cors());
   app.use(helmet());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
