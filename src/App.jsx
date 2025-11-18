@@ -9,7 +9,6 @@ import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
 import FreelancerProfile from "@/components/freelancer/FreelancerProfile";
-import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
 
 const App = () => {
@@ -82,7 +81,6 @@ const App = () => {
             }
           />
         </Routes>
-        <Toaster richColors position="right-bottom" />
       </ThemeProvider>
     </main>
   );
@@ -135,11 +133,3 @@ const NotFound = () => (
 );
 
 export default App;
-          <Route
-            path="/freelancer/profile"
-            element={
-              <ProtectedRoute>
-                <FreelancerProfile />
-              </ProtectedRoute>
-            }
-          />
