@@ -28,11 +28,6 @@ const ROLE_OPTIONS = [
     id: "CLIENT",
     title: "I'm a client",
     description: "Post projects, review proposals, and collaborate with top talent."
-  },
-  {
-    id: "FREELANCER",
-    title: "I'm a freelancer",
-    description: "Showcase your skills, submit proposals, and get hired faster."
   }
 ];
 
@@ -103,15 +98,11 @@ function Signup({ className, ...props }) {
                       Enter your details below to create your account
                     </p>
                     <p className="text-xs uppercase tracking-[0.35em] text-primary">
-                      {selectedRole === "CLIENT"
-                        ? "Client account"
-                        : "Freelancer account"}
+                      Client account
                     </p>
                   </div>
                   <FieldDescription className="text-center text-sm text-muted-foreground">
-                    {selectedRole === "CLIENT"
-                      ? "You're creating a client account."
-                      : "You're creating a freelancer account."}
+                    You're creating a client account.
                   </FieldDescription>
                   <Field>
                     <p className="text-sm font-semibold text-muted-foreground">

@@ -20,7 +20,10 @@ const resolveAllowedOrigins = () => {
   ].filter((value) => typeof value === "string" && value.length > 0);
 
   if (sources.length === 0) {
-    return undefined;
+    // No explicit CORS config provided – allow all origins so
+    // local development (e.g. http://localhost:5173) can call
+    // the deployed API without failing preflight.
+    return null;
   }
 
   const parsedOrigins = sources.flatMap((value) =>
@@ -30,8 +33,14 @@ const resolveAllowedOrigins = () => {
       .filter(Boolean)
   );
 
-  if (parsedOrigins.length === 0 || parsedOrigins.includes("*")) {
-    return undefined;
+  if (parsedOrigins.length === 0) {
+    return null;
+  }
+
+  // If any of the configured origins is "*", treat this as
+  // "allow all" instead of disabling CORS.
+  if (parsedOrigins.includes("*")) {
+    return null;
   }
 
   return [...new Set(parsedOrigins)];
@@ -40,13 +49,11 @@ const resolveAllowedOrigins = () => {
 export const createApp = () => {
   const app = express();
 
-  const allowedOrigins = resolveAllowedOrigins();
-
-  app.use(
-    cors({
-      origin: allowedOrigins
-    })
-  );
+  // For this project we allow all origins so the
+  // Vite dev server (http://localhost:5173) and the
+  // deployed frontend on Vercel can both call the API
+  // without CORS issues.
+  app.use(cors());
   app.use(helmet());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
