@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { API_BASE_URL, signup } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 
 const STEPS = [
   { id: 1, key: "professional", label: "Professional" },
@@ -84,6 +88,8 @@ const fallbackSpecialtyOptions = [
 
 const FreelancerMultiStepForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [stepError, setStepError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     professionalField: "",
     specialty: "",
@@ -101,23 +107,17 @@ const FreelancerMultiStepForm = () => {
     location: "",
   });
 
+  const navigate = useNavigate();
+  const { login: setAuthSession } = useAuth();
+
   const totalSteps = STEPS.length;
   const progress = Math.round((currentStep / totalSteps) * 100);
 
-  const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
   const handleFieldChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (stepError) {
+      setStepError("");
+    }
   };
 
   const toggleSkill = skill => {
@@ -152,11 +152,205 @@ const FreelancerMultiStepForm = () => {
     handleFieldChange("portfolioFileName", file ? file.name : "");
   };
 
-  const handleSubmit = () => {
-    // For now we just log. You can replace this with an API call.
-    // eslint-disable-next-line no-console
-    console.log("Freelancer onboarding data:", formData);
-    alert("Your freelancer profile details have been captured. You can now wire this to your backend.");
+  const validateStep = (step, data) => {
+    switch (step) {
+      case 1: {
+        if (!data.professionalField) {
+          return "Please choose your professional field to continue.";
+        }
+        return "";
+      }
+      case 2: {
+        if (!data.specialty) {
+          return "Please select your specialty to continue.";
+        }
+        return "";
+      }
+      case 3: {
+        if (!data.skills || data.skills.length === 0) {
+          return "Add at least one skill before continuing.";
+        }
+        return "";
+      }
+      case 4: {
+        if (!data.experience) {
+          return "Please select your years of experience.";
+        }
+        return "";
+      }
+      case 5: {
+        if (!data.portfolioWebsite.trim() || !data.linkedinProfile.trim()) {
+          return "Please provide both your portfolio website and LinkedIn profile.";
+        }
+        return "";
+      }
+      case 6: {
+        if (!data.termsAccepted) {
+          return "You must agree to the Terms and Conditions to continue.";
+        }
+        return "";
+      }
+      case 7: {
+        if (
+          !data.fullName.trim() ||
+          !data.email.trim() ||
+          !data.password.trim() ||
+          !data.location.trim()
+        ) {
+          return "Full name, email, password, and location are required.";
+        }
+        if (!data.email.includes("@")) {
+          return "Please enter a valid email address.";
+        }
+        if (data.password.trim().length < 8) {
+          return "Password must be at least 8 characters long.";
+        }
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const findFirstInvalidStep = (targetStep = totalSteps, data = formData) => {
+    for (let step = 1; step <= targetStep; step += 1) {
+      const message = validateStep(step, data);
+      if (message) {
+        return { step, message };
+      }
+    }
+    return null;
+  };
+
+  const handleNext = () => {
+    const validation = validateStep(currentStep, formData);
+    if (validation) {
+      setStepError(validation);
+      toast.error(validation);
+      return;
+    }
+
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+      setStepError("");
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+      setStepError("");
+    }
+  };
+
+  const handleGoToStep = (targetStep) => {
+    if (targetStep === currentStep) return;
+
+    // Always allow navigating back freely.
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+      setStepError("");
+      return;
+    }
+
+    const validation = findFirstInvalidStep(targetStep, formData);
+    if (validation) {
+      setCurrentStep(validation.step);
+      setStepError(validation.message);
+      toast.error(validation.message);
+      return;
+    }
+
+    setCurrentStep(targetStep);
+    setStepError("");
+  };
+
+  const handleSubmit = async () => {
+    const validation = findFirstInvalidStep(totalSteps, formData);
+    if (validation) {
+      setCurrentStep(validation.step);
+      setStepError(validation.message);
+      toast.error(validation.message);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStepError("");
+
+    try {
+      const normalizedEmail = formData.email.trim().toLowerCase();
+      const freelancerProfile = {
+        category: formData.professionalField,
+        specialty: formData.specialty,
+        experience: formData.experience,
+        skills: formData.skills,
+        portfolio: {
+          portfolioUrl: formData.portfolioWebsite,
+          linkedinUrl: formData.linkedinProfile,
+        },
+        acceptedTerms: formData.termsAccepted,
+        phone: formData.phone,
+        location: formData.location,
+      };
+
+      const authPayload = await signup({
+        fullName: formData.fullName.trim(),
+        email: normalizedEmail,
+        password: formData.password,
+        role: "FREELANCER",
+        freelancerProfile,
+      });
+
+      setAuthSession(authPayload?.user, authPayload?.accessToken);
+
+      // Persist initial profile details (phone, location, skills, services) to backend profile API.
+      const profilePayload = {
+        personal: {
+          name: formData.fullName.trim(),
+          email: normalizedEmail,
+          phone: formData.phone.trim(),
+          location: formData.location.trim(),
+        },
+        skills: Array.isArray(formData.skills)
+          ? formData.skills.filter(Boolean)
+          : [],
+        workExperience: [],
+        services: [formData.professionalField, formData.specialty].filter(Boolean),
+      };
+
+      try {
+        const baseUrl = API_BASE_URL || "/api";
+        const response = await fetch(`${baseUrl}/profile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authPayload?.accessToken
+              ? { Authorization: `Bearer ${authPayload.accessToken}` }
+              : {}),
+          },
+          body: JSON.stringify(profilePayload),
+        });
+
+        if (!response.ok) {
+          // We log but don't block signup success on profile issues.
+          // eslint-disable-next-line no-console
+          console.warn("Unable to persist initial profile details", response.status);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn("Profile save during onboarding failed:", error);
+      }
+
+      toast.success("Your freelancer account has been created.");
+      navigate("/freelancer", { replace: true });
+    } catch (error) {
+      const message =
+        error?.message || "Unable to create your freelancer account right now.";
+      setStepError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const currentSpecialtyOptions =
@@ -164,13 +358,13 @@ const FreelancerMultiStepForm = () => {
 
   const isLastStep = currentStep === totalSteps;
   const disableNext =
-    currentStep === 6 && !formData.termsAccepted; // Require terms acceptance before moving on.
+    isSubmitting || (currentStep === 6 && !formData.termsAccepted);
 
   return (
-    <div className="min-h-screen w-full bg-[#050506] text-foreground flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-5xl">
-        <Card className="border-none bg-[#111111] text-white shadow-2xl">
-          <CardHeader className="border-b border-white/5 pb-6">
+    <div className="min-h-screen w-full bg-[#050506] text-foreground flex items-center justify-center px-4 pt-24 pb-10">
+      <div className="w-full max-w-3xl">
+        <Card className="border-none bg-[#111111] text-white shadow-2xl max-h-[80vh] flex flex-col">
+          <CardHeader className="border-b border-white/5 py-3">
             <div className="mb-6 flex flex-col gap-4">
               <div className="flex items-center justify-between gap-3">
                 {STEPS.map((step, index) => {
@@ -181,7 +375,7 @@ const FreelancerMultiStepForm = () => {
                     <React.Fragment key={step.id}>
                       <button
                         type="button"
-                        onClick={() => setCurrentStep(step.id)}
+                        onClick={() => handleGoToStep(step.id)}
                         className="flex flex-col items-center gap-2 focus:outline-none group">
                         <div
                           className={cn(
@@ -231,7 +425,7 @@ const FreelancerMultiStepForm = () => {
             </div>
           </CardHeader>
 
-          <CardContent className="pt-8 pb-6 space-y-8">
+          <CardContent className="pt-6 pb-4 space-y-6 overflow-y-auto">
             {currentStep === 1 && (
               <StepProfessional
                 selectedField={formData.professionalField}
@@ -287,6 +481,12 @@ const FreelancerMultiStepForm = () => {
               />
             )}
 
+            {stepError && (
+              <p className="text-sm text-red-400">
+                {stepError}
+              </p>
+            )}
+
             <p className="text-sm text-white/50">
               Already have an account?{" "}
               <a href="/login" className="font-semibold text-yellow-400 hover:underline">
@@ -300,18 +500,23 @@ const FreelancerMultiStepForm = () => {
               type="button"
               variant="outline"
               className="bg-[#2b2b2b] border-none text-white hover:bg-white hover:text-black"
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isSubmitting}
               onClick={handleBack}>
               Back
             </Button>
             <Button
-              type={isLastStep ? "button" : "button"}
+              type="button"
               className={cn(
                 "min-w-[120px] bg-yellow-400 text-black hover:bg-yellow-500",
                 disableNext && "opacity-60 pointer-events-none",
               )}
+              disabled={disableNext}
               onClick={isLastStep ? handleSubmit : handleNext}>
-              {isLastStep ? "Submit" : "Next"}
+              {isSubmitting && isLastStep
+                ? "Submitting..."
+                : isLastStep
+                  ? "Submit"
+                  : "Next"}
             </Button>
           </CardFooter>
         </Card>
@@ -690,4 +895,3 @@ const StepPersonalInfo = ({
 };
 
 export default FreelancerMultiStepForm;
-
