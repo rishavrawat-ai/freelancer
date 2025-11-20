@@ -54,7 +54,7 @@ const Onboading = () => {
         />
       </div>
 
-      <section className="relative z-10 w-full max-w-6xl text-center flex flex-col items-center justify-center gap-10 py-16 min-h-screen">
+      <section className="relative z-10 w-full max-w-6xl text-center flex flex-col items-center justify-center gap-5 py-16 min-h-screen">
         <Link to="/signup" className="inline-block">
           <Button
             variant="outline"
@@ -69,8 +69,8 @@ const Onboading = () => {
           </Button>
         </Link>
 
-        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium leading-tight tracking-tight">
-          Choose your way
+        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium leading-tight tracking-tight text-foreground max-w-6x">
+          Find clever minds<br/> Upgrade your craft
         </h1>
 
         <p className="text-lg md:text-2xl text-muted-foreground max-w-3xl">
@@ -83,7 +83,7 @@ const Onboading = () => {
             <Button
               size="lg"
               className="text-lg gap-2 rounded-full shadow-md w-full sm:w-auto cursor-pointer">
-              Hiring <ArrowRight className="h-5 w-4" />
+              Hire a professional <ArrowRight className="h-5 w-4" />
             </Button>
           </Link>
           <Link to="/freelancer/onboarding" className="w-full sm:w-auto">
@@ -91,7 +91,7 @@ const Onboading = () => {
               variant="outline"
               size="lg"
               className="text-lg rounded-full border-foreground/20 hover:bg-foreground/10 w-full sm:w-auto cursor-pointer">
-              Earn Money
+              Get Hired
             </Button>
           </Link>
         </div>

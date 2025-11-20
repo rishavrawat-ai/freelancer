@@ -1,3 +1,4 @@
+// Updated Signup component with confirm password field and logic removed
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
@@ -10,7 +11,7 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator
+  FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { signup } from "@/lib/api-client";
@@ -20,22 +21,14 @@ const initialFormState = {
   fullName: "",
   email: "",
   password: "",
-  confirmPassword: ""
 };
 
-const ROLE_OPTIONS = [
-  {
-    id: "CLIENT",
-    title: "I'm a client",
-    description: "Post projects, review proposals, and collaborate with top talent."
-  }
-];
+const CLIENT_ROLE = "CLIENT";
 
 function Signup({ className, ...props }) {
   const [formData, setFormData] = useState(initialFormState);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("CLIENT");
   const navigate = useNavigate();
   const { login: setAuthSession } = useAuth();
 
@@ -43,7 +36,7 @@ function Signup({ className, ...props }) {
     const { name, value } = event.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -51,37 +44,30 @@ function Signup({ className, ...props }) {
     event.preventDefault();
     setFormError("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setFormError("Passwords do not match.");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const authPayload = await signup({
         fullName: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        role: selectedRole
+        role: CLIENT_ROLE,
       });
+
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success("Account created successfully.");
       setFormData(initialFormState);
-      const nextRole = authPayload?.user?.role?.toUpperCase() || selectedRole;
-      navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", { replace: true });
+
+      const nextRole = authPayload?.user?.role?.toUpperCase() || CLIENT_ROLE;
+      navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", {
+        replace: true,
+      });
     } catch (error) {
-      const message =
-        error?.message || "Unable to create your account right now.";
+      const message = error?.message || "Unable to create your account right now.";
       setFormError(message);
       toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleRoleSelect = (role) => {
-    setSelectedRole(role);
-    setFormError("");
   };
 
   const renderForm = () => (
@@ -98,43 +84,10 @@ function Signup({ className, ...props }) {
                       Enter your details below to create your account
                     </p>
                     <p className="text-xs uppercase tracking-[0.35em] text-primary">
-                      Client account
+                      You&apos;re creating a client account.
                     </p>
                   </div>
-                  <FieldDescription className="text-center text-sm text-muted-foreground">
-                    You're creating a client account.
-                  </FieldDescription>
-                  <Field>
-                    <p className="text-sm font-semibold text-muted-foreground">
-                      Account type
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {ROLE_OPTIONS.map((option) => {
-                        const isActive = selectedRole === option.id;
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => handleRoleSelect(option.id)}
-                            className={cn(
-                              "rounded-2xl border p-4 text-left transition-all",
-                              isActive
-                                ? "border-primary bg-primary/10 text-primary shadow-lg"
-                                : "border-white/10 bg-transparent text-foreground hover:border-primary/40"
-                            )}
-                            aria-pressed={isActive}
-                          >
-                            <span className="text-base font-semibold">
-                              {option.title}
-                            </span>
-                            <span className="mt-1 block text-sm text-muted-foreground">
-                              {option.description}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </Field>
+
                   <Field>
                     <FieldLabel htmlFor="fullName">Full name</FieldLabel>
                     <Input
@@ -148,6 +101,7 @@ function Signup({ className, ...props }) {
                       required
                     />
                   </Field>
+
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
                     <Input
@@ -161,78 +115,63 @@ function Signup({ className, ...props }) {
                       required
                     />
                     <FieldDescription>
-                      We&apos;ll use this to contact you. We will not share your
-                      email with anyone else.
+                      We&apos;ll use this to contact you. We will not share your email with anyone else.
                     </FieldDescription>
                   </Field>
+
                   <Field>
-                    <Field className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Field>
-                        <FieldLabel htmlFor="password">Password</FieldLabel>
-                        <Input
-                          id="password"
-                          name="password"
-                          type="password"
-                          autoComplete="new-password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          required
-                        />
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor="confirmPassword">
-                          Confirm Password
-                        </FieldLabel>
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password"
-                          autoComplete="new-password"
-                          value={formData.confirmPassword}
-                          onChange={handleChange}
-                          required
-                        />
-                      </Field>
-                    </Field>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                    />
                     <FieldDescription>
                       Must be at least 8 characters long.
                     </FieldDescription>
                   </Field>
+
                   <Field>
                     <Button type="submit" disabled={isSubmitting}>
                       {isSubmitting ? "Creating account..." : "Create Account"}
                     </Button>
                   </Field>
+
                   {formError ? (
-                    <FieldDescription
-                      className="text-destructive text-sm"
-                      aria-live="polite"
-                    >
+                    <FieldDescription className="text-destructive text-sm" aria-live="polite">
                       {formError}
                     </FieldDescription>
                   ) : null}
+
                   <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                     Or continue with
                   </FieldSeparator>
+
                   <Field>
-                    <Button variant="outline" type="button">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      <span className="sr-only">Sign up with Google</span>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="flex items-center justify-center gap-2 w-full"
+                    >
+                      <img
+                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                        alt="Google logo"
+                        className="h-5 w-5"
+                      />
+                      <span className="font-medium">Continue with Google</span>
                     </Button>
                   </Field>
+
                   <FieldDescription className="text-center">
                     Already have an account? <a href="/login">Sign in</a>
                   </FieldDescription>
                 </FieldGroup>
               </form>
+
               <div className="bg-muted relative hidden md:block">
                 <img
                   src="https://images.unsplash.com/photo-1697718363306-a02488b41f57?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGZyZWVsYW5jZXJlJTIwaW1hZ2V8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=500"
@@ -242,9 +181,9 @@ function Signup({ className, ...props }) {
               </div>
             </CardContent>
           </Card>
+
           <FieldDescription className="px-6 text-center">
-            By clicking continue, you agree to our{" "}
-            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+            By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
           </FieldDescription>
         </div>
       </div>
@@ -257,5 +196,5 @@ function Signup({ className, ...props }) {
 export default Signup;
 
 Signup.propTypes = {
-  className: PropTypes.string
+  className: PropTypes.string,
 };

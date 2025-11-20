@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import {
+  BarChart,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -88,8 +89,8 @@ const navConfigs = {
       isActive: true
     },
     {
-      title: "Briefs",
-      url: "/client/briefs",
+      title: "Proposal",
+      url: "/client/proposal",
       icon: FileText,
       items: [
         { title: "Drafts", url: "/client/briefs/drafts" },
@@ -98,9 +99,9 @@ const navConfigs = {
       ]
     },
     {
-      title: "Vendors",
-      url: "/client/vendors",
-      icon: Users,
+      title: "Project",
+      url: "/client/project",
+      icon: BarChart,
       items: [
         { title: "Shortlist", url: "/client/vendors/shortlist" },
         { title: "Contracts", url: "/client/vendors/contracts" },

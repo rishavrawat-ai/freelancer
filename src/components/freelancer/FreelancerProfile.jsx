@@ -1,4 +1,4 @@
-import { Menu, Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getSession } from "@/lib/auth-storage";
 import { toast } from "sonner";

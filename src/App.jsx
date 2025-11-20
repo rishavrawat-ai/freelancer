@@ -9,8 +9,8 @@ import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
 import FreelancerProfile from "@/components/freelancer/FreelancerProfile";
-import FreelancerMultiStepForm from "@/components/freelancer/multi-step-form";
 import { useAuth } from "@/context/AuthContext";
+import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
 
 const App = () => {
   return (
@@ -28,9 +28,7 @@ const App = () => {
           <Route
             path="/signup"
             element={
-              <LayoutWithNavbar>
                 <SignupPage />
-              </LayoutWithNavbar>
             }
           />
           <Route
