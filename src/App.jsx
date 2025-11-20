@@ -3,6 +3,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "@/components/home/Home.jsx";
 import Client from "@/components/client/Client.jsx";
 import ClientDashboard from "@/components/client/ClientDashboard.jsx";
+import ClientProposal from "@/components/client/ClientProposal.jsx";
+import ClientProjects from "@/components/client/ClientProjects.jsx";
+import ClientChat from "@/components/client/ClientChat.jsx";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
@@ -44,6 +47,30 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ClientDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/project"
+            element={
+              <ProtectedRoute>
+                <ClientProjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/proposal"
+            element={
+              <ProtectedRoute>
+                <ClientProposal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/messages"
+            element={
+              <ProtectedRoute>
+                <ClientChat />
               </ProtectedRoute>
             }
           />
