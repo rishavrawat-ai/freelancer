@@ -12,6 +12,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  Banknote,
 } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -42,22 +43,28 @@ const dashboardTemplate = {
   completion: 72,
   metrics: [
     {
-      label: "Open briefs",
+      label: "Active projects",
       value: "6",
       trend: "2 awaiting review",
       icon: Briefcase,
     },
     {
-      label: "Active freelancers",
+      label: "Completed projects",
       value: "3",
       trend: "1 onboarding",
       icon: Sparkles,
     },
     {
-      label: "Avg. response time",
-      value: "1.9 hrs",
+      label: "Proposals Sent",
+      value: "2",
       trend: "Vendors are responsive",
       icon: Clock,
+    },
+    {
+      label: "Total Spend",
+      value: "$ 24",
+      trend: "Vendors are responsive",
+      icon: Banknote,
     },
   ],
   pipelineTitle: "Hiring pipeline",
@@ -117,12 +124,62 @@ const dashboardTemplate = {
   ],
 };
 
+const PROPOSAL_STORAGE_KEYS = [
+  "markify:savedProposal",
+  "markify:pendingProposal",
+  "pendingProposal",
+  "savedProposal",
+];
+
+const PRIMARY_PROPOSAL_STORAGE_KEY = PROPOSAL_STORAGE_KEYS[0];
+
+const loadSavedProposalFromStorage = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  for (const storageKey of PROPOSAL_STORAGE_KEYS) {
+    const rawValue = window.localStorage.getItem(storageKey);
+    if (!rawValue) continue;
+    try {
+      return JSON.parse(rawValue);
+    } catch {
+      return { content: rawValue };
+    }
+  }
+
+  return null;
+};
+
+const persistSavedProposalToStorage = (proposal) => {
+  if (typeof window === "undefined" || !proposal) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    PRIMARY_PROPOSAL_STORAGE_KEY,
+    JSON.stringify(proposal)
+  );
+};
+
+const clearSavedProposalFromStorage = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  PROPOSAL_STORAGE_KEYS.forEach((storageKey) =>
+    window.localStorage.removeItem(storageKey)
+  );
+};
+
 const ClientDashboardContent = () => {
   const { state, toggleSidebar } = useSidebar();
   const navigate = useNavigate();
   const [sessionUser, setSessionUser] = useState(null);
   const [showBriefPrompt, setShowBriefPrompt] = useState(false);
   const [briefPromptDismissed, setBriefPromptDismissed] = useState(false);
+  const [savedProposal, setSavedProposal] = useState(null);
+  const [proposalDeliveryState, setProposalDeliveryState] = useState("idle");
 
   useEffect(() => {
     const session = getSession();
@@ -136,6 +193,37 @@ const ClientDashboardContent = () => {
     }
     setShowBriefPrompt(true);
   }, [sessionUser, briefPromptDismissed]);
+
+  useEffect(() => {
+    setSavedProposal(loadSavedProposalFromStorage());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleStorageChange = (event) => {
+      if (event?.key && !PROPOSAL_STORAGE_KEYS.includes(event.key)) {
+        return;
+      }
+      setSavedProposal(loadSavedProposalFromStorage());
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  useEffect(() => {
+    if (savedProposal && proposalDeliveryState === "idle") {
+      setProposalDeliveryState("pending");
+      return;
+    }
+
+    if (!savedProposal && proposalDeliveryState === "pending") {
+      setProposalDeliveryState("idle");
+    }
+  }, [savedProposal, proposalDeliveryState]);
 
   const roleLabel = useMemo(() => {
     const baseRole = sessionUser?.role ?? "CLIENT";
@@ -180,9 +268,125 @@ const ClientDashboardContent = () => {
     remindersDescription,
   } = template;
 
+  const [messagesFeed, setMessagesFeed] = useState(messages);
+
+  useEffect(() => {
+    setMessagesFeed(messages);
+  }, [messages]);
+
   const heroTitle = sessionUser?.fullName?.trim()
     ? `${sessionUser.fullName.split(" ")[0]}'s control room`
     : `${roleLabel} control room`;
+
+  const savedProposalDetails = useMemo(() => {
+    if (!savedProposal) {
+      return null;
+    }
+
+    const baseProposal =
+      typeof savedProposal === "object" && savedProposal !== null
+        ? savedProposal
+        : { content: savedProposal };
+
+    const projectTitle =
+      baseProposal.projectTitle ||
+      baseProposal.title ||
+      baseProposal.project ||
+      "Untitled project";
+
+    const service =
+      baseProposal.service ||
+      baseProposal.category ||
+      baseProposal.professionalField ||
+      baseProposal.serviceType ||
+      "General services";
+
+    const summary =
+      baseProposal.summary ||
+      baseProposal.executiveSummary ||
+      baseProposal.description ||
+      baseProposal.notes ||
+      baseProposal.content ||
+      "";
+
+    const budgetValue =
+      baseProposal.budget || baseProposal.budgetRange || baseProposal.estimate;
+
+    const preparedFor =
+      baseProposal.preparedFor ||
+      baseProposal.client ||
+      baseProposal.clientName ||
+      sessionUser?.fullName ||
+      "Client";
+
+    const createdAtValue =
+      baseProposal.createdAt ||
+      baseProposal.savedAt ||
+      baseProposal.timestamp ||
+      baseProposal.created_on ||
+      baseProposal.created;
+
+    let createdAtDisplay = null;
+    if (createdAtValue) {
+      const parsed = new Date(createdAtValue);
+      createdAtDisplay = Number.isNaN(parsed.getTime())
+        ? String(createdAtValue)
+        : parsed.toLocaleString();
+    }
+
+    const freelancerName =
+      baseProposal.freelancerName ||
+      baseProposal.targetFreelancer ||
+      baseProposal.vendor ||
+      baseProposal.recipient ||
+      "Freelancer";
+
+    return {
+      projectTitle,
+      service,
+      preparedFor,
+      summary,
+      budget:
+        typeof budgetValue === "number"
+          ? `$${budgetValue.toLocaleString()}`
+          : budgetValue,
+      createdAtDisplay: createdAtDisplay ?? new Date().toLocaleString(),
+      freelancerName,
+      raw: baseProposal,
+    };
+  }, [savedProposal, sessionUser]);
+
+  const hasSavedProposal = Boolean(savedProposalDetails);
+
+  const proposalStatusCopy = useMemo(() => {
+    switch (proposalDeliveryState) {
+      case "sent":
+        return {
+          title: "Proposal sent",
+          body: "We added it to your vendor updates so you can track replies.",
+        };
+      case "cleared":
+        return {
+          title: "Proposal dismissed",
+          body: "You cleared the saved content from this dashboard view.",
+        };
+      case "saved":
+        return {
+          title: "Saved to dashboard",
+          body: "We'll keep it handy here until you decide to send it.",
+        };
+      case "pending":
+        return {
+          title: "Pending proposal",
+          body: "Found a proposal you created before logging in.",
+        };
+      default:
+        return {
+          title: "No saved proposals",
+          body: "Create a proposal and save it to find it here later.",
+        };
+    }
+  }, [proposalDeliveryState]);
 
   const { theme, setTheme } = useTheme();
   const isDarkMode = theme === "dark";
@@ -200,6 +404,43 @@ const ClientDashboardContent = () => {
   const handleBriefDismiss = () => {
     setBriefPromptDismissed(true);
     setShowBriefPrompt(false);
+  };
+
+  const handleClearSavedProposal = () => {
+    clearSavedProposalFromStorage();
+    setSavedProposal(null);
+    setProposalDeliveryState("cleared");
+  };
+
+  const handleExploreFreelancers = () => {
+    navigate("/service");
+  };
+
+  const handleSaveProposalToDashboard = () => {
+    if (!savedProposal) {
+      return;
+    }
+    persistSavedProposalToStorage(savedProposal);
+    setProposalDeliveryState("saved");
+  };
+
+  const handleSendProposal = () => {
+    if (!savedProposalDetails) {
+      return;
+    }
+
+    setMessagesFeed((prev) => [
+      {
+        from: savedProposalDetails.freelancerName,
+        company: savedProposalDetails.service,
+        excerpt:
+          savedProposalDetails.summary?.slice(0, 160) ||
+          "Proposal shared from dashboard.",
+        time: "Just now",
+      },
+      ...prev,
+    ]);
+    setProposalDeliveryState("sent");
   };
 
   return (
@@ -252,7 +493,7 @@ const ClientDashboardContent = () => {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => {
             const Icon = metric.icon;
             return (
@@ -274,108 +515,105 @@ const ClientDashboardContent = () => {
           })}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>{pipelineTitle ?? "Pipeline"}</CardTitle>
-              <CardDescription>{pipelineDescription}</CardDescription>
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Card className="border border-yellow-500/60 bg-background/60 shadow-lg">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg font-semibold text-yellow-400">
+                  Saved proposal
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  {hasSavedProposal
+                    ? `Service: ${savedProposalDetails.service} · Created: ${savedProposalDetails.createdAtDisplay}`
+                    : "Save a proposal before logging in and it will appear here."}
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="border border-transparent text-yellow-400 hover:border-yellow-500/60 hover:bg-yellow-500/10 disabled:opacity-40"
+                onClick={handleClearSavedProposal}
+                disabled={!hasSavedProposal}>
+                Clear
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {pipeline.map((project) => (
-                <div
-                  key={project.title}
-                  className="flex flex-col gap-2 rounded-lg border bg-card/50 p-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-semibold leading-tight">
-                      {project.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {project.client}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge variant="secondary">{project.status}</Badge>
-                    <p className="text-sm text-muted-foreground">
-                      {project.due}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{availabilityTitle ?? "Budget focus"}</CardTitle>
-              <CardDescription>{availabilityDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {availability.map((track) => (
-                <div key={track.label} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>{track.label}</span>
-                    <span className="text-muted-foreground">
-                      {track.progress}%
-                    </span>
-                  </div>
-                  <Progress value={track.progress} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>{messagesTitle ?? "Messages"}</CardTitle>
-              <CardDescription>{messagesDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.from}
-                  className="rounded-lg border bg-card/60 p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{message.from}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {message.company}
+              <div className="rounded-2xl border border-yellow-500/40 bg-card/60 p-4 text-sm text-muted-foreground shadow-inner">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-yellow-400">
+                  --- Project Proposal ---
+                </p>
+                {hasSavedProposal ? (
+                  <>
+                    <div className="mt-3 space-y-1.5 text-foreground">
+                      <p className="text-base font-semibold">
+                        {savedProposalDetails.projectTitle}
                       </p>
+                      <p>
+                        <span className="text-muted-foreground">
+                          Prepared for:
+                        </span>{" "}
+                        {savedProposalDetails.preparedFor}
+                      </p>
+                      {savedProposalDetails.budget ? (
+                        <p>
+                          <span className="text-muted-foreground">Budget:</span>{" "}
+                          {savedProposalDetails.budget}
+                        </p>
+                      ) : null}
                     </div>
-                    <Badge variant="outline" className="gap-1">
-                      <CheckCircle2 className="size-3" />
-                      High intent
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {message.excerpt}
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">
+                      {savedProposalDetails.summary ||
+                        "Proposal details recovered from your previous session."}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Draft a proposal from the services page and we&apos;ll keep
+                    a copy here so you can send it once you sign in.
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {message.time}
-                  </p>
-                </div>
-              ))}
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  className="border-yellow-500/60 text-yellow-400 hover:bg-yellow-500/10"
+                  onClick={handleExploreFreelancers}>
+                  Show matching freelancers
+                </Button>
+                <Button
+                  className="bg-yellow-400 text-black hover:bg-yellow-300 disabled:opacity-40"
+                  onClick={handleSaveProposalToDashboard}
+                  disabled={!hasSavedProposal}>
+                  Save to dashboard
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 disabled:opacity-40"
+                  onClick={handleSendProposal}
+                  disabled={!hasSavedProposal}>
+                  Use as message (Send)
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{remindersTitle ?? "Approvals"}</CardTitle>
-              <CardDescription>{remindersDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {reminders.map(({ icon: ReminderIcon, title, subtitle }) => (
-                <div
-                  key={title}
-                  className="flex items-center gap-3 rounded-lg border bg-card/40 p-3">
-                  <ReminderIcon className="size-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">{title}</p>
-                    <p className="text-xs text-muted-foreground">{subtitle}</p>
-                  </div>
-                </div>
-              ))}
+          <Card className="border border-yellow-500/40 bg-yellow-500/5">
+            <CardContent className="flex h-full flex-col justify-center gap-3 p-6">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-400">
+                {proposalStatusCopy.title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {proposalStatusCopy.body}
+              </p>
+              {hasSavedProposal ? (
+                <p className="text-xs text-muted-foreground">
+                  Ready to send to {savedProposalDetails.freelancerName}.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Create a proposal draft to unlock quick-send actions here.
+                </p>
+              )}
             </CardContent>
           </Card>
         </section>

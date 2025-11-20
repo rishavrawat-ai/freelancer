@@ -1,11 +1,13 @@
+"use client";
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
+import { Check, ChevronRight, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,8 +18,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import { API_BASE_URL, signup } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
+
+const PROFESSIONAL_FIELD_ICONS = {
+  "Development & Tech": "💻",
+  "Digital Marketing": "📱",
+  "Creative & Design": "🎨",
+  "Writing & Content": "✍️",
+  "Lead Generation": "🎯",
+  "Video Services": "🎬",
+  "Travel Services": "✈️",
+  "Event Management": "🎪",
+  "Visa & Passport": "📋",
+  "Insurance Services": "🛡️",
+  "Real Estate": "🏠",
+  "HR Services": "👥",
+  "Influencer Services": "⭐",
+  "Business & Finance": "💼",
+  "Legal & Compliance": "⚖️",
+  "Education & Training": "🎓",
+  "Lifestyle & Personal": "💆",
+  "Customer Support": "💬",
+  "Administrative Services": "📊",
+  "Audio Services": "🎧",
+};
 
 const STEPS = [
   { id: 1, key: "professional", label: "Professional" },
@@ -52,7 +78,120 @@ const PROFESSIONAL_FIELDS = [
   "Audio Services",
 ];
 
-const DEFAULT_SKILLS = ["Swift (iOS)", "Kotlin (Android)", "React Native", "Flutter", "Java"];
+const SPECIALTY_SKILLS_MAP = {
+  "Front-end Development": [
+    "React",
+    "Vue.js",
+    "Angular",
+    "Tailwind CSS",
+    "TypeScript",
+    "Next.js",
+    "Svelte",
+  ],
+  "Back-end Development": [
+    "Node.js",
+    "Python",
+    "Java",
+    "C#",
+    "PostgreSQL",
+    "MongoDB",
+    "Docker",
+  ],
+  "Full-stack Development": [
+    "React",
+    "Node.js",
+    "PostgreSQL",
+    "Docker",
+    "TypeScript",
+    "AWS",
+    "Git",
+  ],
+  "Mobile App Development": [
+    "Swift (iOS)",
+    "Kotlin (Android)",
+    "React Native",
+    "Flutter",
+    "Firebase",
+  ],
+  "DevOps & Cloud": [
+    "AWS",
+    "Docker",
+    "Kubernetes",
+    "CI/CD",
+    "Linux",
+    "Terraform",
+    "GitHub Actions",
+  ],
+  "Data & Analytics": [
+    "Python",
+    "SQL",
+    "Tableau",
+    "Power BI",
+    "Machine Learning",
+    "Pandas",
+    "Data Science",
+  ],
+  "SEO Specialist": [
+    "SEO",
+    "SEM",
+    "Google Analytics",
+    "Keyword Research",
+    "Content Optimization",
+    "Link Building",
+  ],
+  "Performance Marketer": [
+    "Google Ads",
+    "Facebook Ads",
+    "Conversion Optimization",
+    "A/B Testing",
+    "Analytics",
+  ],
+  "Content Marketing": [
+    "Content Writing",
+    "Copywriting",
+    "Blog Writing",
+    "SEO Writing",
+    "Social Media Content",
+  ],
+  "Email Marketing": [
+    "Email Campaigns",
+    "Automation",
+    "Segmentation",
+    "Copy Writing",
+    "A/B Testing",
+  ],
+  "UI/UX Design": [
+    "Figma",
+    "Sketch",
+    "Adobe XD",
+    "Prototyping",
+    "User Research",
+    "Wireframing",
+  ],
+  "Graphic Design": [
+    "Adobe Creative Suite",
+    "Canva",
+    "Logo Design",
+    "Branding",
+    "Typography",
+    "Illustration",
+  ],
+  "Product Design": [
+    "Figma",
+    "Prototyping",
+    "User Testing",
+    "Design Systems",
+    "Interaction Design",
+  ],
+  "Brand Identity": [
+    "Logo Design",
+    "Brand Strategy",
+    "Color Theory",
+    "Typography",
+    "Visual Identity",
+  ],
+  "General Specialist": ["General Services", "Consulting", "Strategy"],
+};
 
 const EXPERIENCE_OPTIONS = ["0-1", "1-3", "3-5", "5-8", "10+"];
 
@@ -114,27 +253,36 @@ const FreelancerMultiStepForm = () => {
   const progress = Math.round((currentStep / totalSteps) * 100);
 
   const handleFieldChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (stepError) {
       setStepError("");
     }
   };
 
-  const toggleSkill = skill => {
-    setFormData(prev => {
+  const toggleSkill = (skill) => {
+    setFormData((prev) => {
       const exists = prev.skills.includes(skill);
       return {
         ...prev,
-        skills: exists ? prev.skills.filter(s => s !== skill) : [...prev.skills, skill],
+        skills: exists
+          ? prev.skills.filter((s) => s !== skill)
+          : [...prev.skills, skill],
       };
     });
+  };
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((s) => s !== skillToRemove),
+    }));
   };
 
   const handleAddCustomSkill = () => {
     const value = formData.customSkillInput.trim();
     if (!value) return;
 
-    setFormData(prev => {
+    setFormData((prev) => {
       if (prev.skills.includes(value)) {
         return { ...prev, customSkillInput: "" };
       }
@@ -147,7 +295,7 @@ const FreelancerMultiStepForm = () => {
     });
   };
 
-  const handleFileChange = event => {
+  const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     handleFieldChange("portfolioFileName", file ? file.name : "");
   };
@@ -246,7 +394,6 @@ const FreelancerMultiStepForm = () => {
   const handleGoToStep = (targetStep) => {
     if (targetStep === currentStep) return;
 
-    // Always allow navigating back freely.
     if (targetStep < currentStep) {
       setCurrentStep(targetStep);
       setStepError("");
@@ -303,7 +450,6 @@ const FreelancerMultiStepForm = () => {
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
 
-      // Persist initial profile details (phone, location, skills, services) to backend profile API.
       const profilePayload = {
         personal: {
           name: formData.fullName.trim(),
@@ -315,7 +461,9 @@ const FreelancerMultiStepForm = () => {
           ? formData.skills.filter(Boolean)
           : [],
         workExperience: [],
-        services: [formData.professionalField, formData.specialty].filter(Boolean),
+        services: [formData.professionalField, formData.specialty].filter(
+          Boolean
+        ),
       };
 
       try {
@@ -332,12 +480,12 @@ const FreelancerMultiStepForm = () => {
         });
 
         if (!response.ok) {
-          // We log but don't block signup success on profile issues.
-          // eslint-disable-next-line no-console
-          console.warn("Unable to persist initial profile details", response.status);
+          console.warn(
+            "Unable to persist initial profile details",
+            response.status
+          );
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.warn("Profile save during onboarding failed:", error);
       }
 
@@ -354,202 +502,441 @@ const FreelancerMultiStepForm = () => {
   };
 
   const currentSpecialtyOptions =
-    specialtyOptionsByField[formData.professionalField] || fallbackSpecialtyOptions;
+    specialtyOptionsByField[formData.professionalField] ||
+    fallbackSpecialtyOptions;
+
+  const currentSpecialtySkills = SPECIALTY_SKILLS_MAP[formData.specialty] || [];
 
   const isLastStep = currentStep === totalSteps;
   const disableNext =
     isSubmitting || (currentStep === 6 && !formData.termsAccepted);
 
   return (
-    <div className="min-h-screen w-full bg-[#050506] text-foreground flex items-center justify-center px-4 pt-24 pb-10">
-      <div className="w-full max-w-3xl">
-        <Card className="border-none bg-[#111111] text-white shadow-2xl max-h-[80vh] flex flex-col">
-          <CardHeader className="border-b border-white/5 pt-5 pb-3">
-            <div className="mb-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-4">
-                {STEPS.map((step, index) => {
-                  const isCompleted = currentStep > step.id;
-                  const isActive = currentStep === step.id;
+    <div className="min-h-screen w-full flex items-center justify-center px-4 py-8 md:py-12 relative overflow-hidden bg-background text-foreground">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <svg
+          className="w-full h-full opacity-10"
+          xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern
+              id="grid"
+              width="40"
+              height="40"
+              patternUnits="userSpaceOnUse">
+              <path
+                d="M 40 0 L 0 0 0 40"
+                fill="none"
+                stroke="var(--grid-line-color)"
+                strokeWidth="0.5"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+        {/* Animated orbs in primary tone */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/25 rounded-full blur-3xl animate-pulse" />
+        <div
+          className="absolute bottom-20 right-10 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: "2s" }}
+        />
+      </div>
 
-                  return (
-                    <React.Fragment key={step.id}>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => handleGoToStep(step.id)}
-                          className="flex flex-col items-center gap-1 bg-transparent px-0 hover:bg-transparent focus-visible:ring-0">
-                        <span
-                            className={cn(
-                              "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold transition-colors",
-                            isCompleted && "border-yellow-400 bg-yellow-400 text-black",
-                            isActive && !isCompleted && "border-yellow-400 text-yellow-400",
-                            !isActive && !isCompleted && "border-white/15 text-white/50",
-                          )}>
-                          {isCompleted ? (
-                            <Check className="h-5 w-5" />
-                          ) : (
-                            <span>{step.id}</span>
-                          )}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-xs font-medium tracking-tight text-white/60",
-                            (isActive || isCompleted) && "text-white",
-                          )}>
-                          {step.label}
-                        </span>
-                      </Button>
-                        {index < STEPS.length - 1 && (
-                          <div className="hidden flex-1 items-center md:flex">
-                            <div className="h-[2px] w-full rounded-full bg-white/10">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all",
-                                  currentStep > step.id ? "w-full bg-yellow-400" : "w-0 bg-transparent",
-                                )}
-                              />
-                            </div>
-                          </div>
-                        )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between text-xs text-white/50">
-                <span className="uppercase tracking-[0.2em] text-yellow-400">
-                  GoHypeMedia • Freelancer Onboarding
-                </span>
-                <span>
-                  Step {currentStep} of {totalSteps} • {progress}% complete
-                </span>
-              </div>
+      <div className="w-full max-w-7xl">
+        {/* Header */}
+        <div className="mb-8 text-center relative z-10">
+          <div className="inline-flex items-center justify-center mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
+            <span className="text-xs font-semibold text-primary uppercase tracking-[0.18em]">
+              GoHypeMedia
+            </span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
+            Become a Freelancer
+          </h1>
+          <p className="text-sm md:text-base max-w-md mx-auto text-muted-foreground">
+            Join our community and start earning from your expertise
+          </p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mb-8 px-1 relative z-10">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Step {currentStep} of {totalSteps}
+            </span>
+            <span className="text-xs font-semibold text-primary">
+              {progress}% Complete
+            </span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Step Indicators */}
+        <div className="mb-12 px-1 relative z-10">
+          <div className="grid grid-cols-7 gap-2">
+            {STEPS.map((step) => {
+              const isCompleted = currentStep > step.id;
+              const isActive = currentStep === step.id;
+
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => handleGoToStep(step.id)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-2 group transition-all duration-300",
+                    isActive || isCompleted
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-60"
+                  )}>
+                  <div
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-lg font-semibold text-sm transition-all duration-300 transform shadow-sm",
+                      isCompleted
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : isActive
+                        ? "bg-card text-primary border-2 border-primary"
+                        : "bg-muted text-muted-foreground border border-border"
+                    )}>
+                    {isCompleted ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <span>{step.id}</span>
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      "text-xs font-medium text-center transition-all duration-300",
+                      isActive || isCompleted
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    )}>
+                    {step.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
+          {/* Left Panel - Form Content */}
+          <div className="lg:col-span-2">
+            <Card className="border border-border bg-card text-card-foreground shadow-xl backdrop-blur-sm h-full">
+              <CardContent className="pt-8 pb-6 space-y-6 min-h-[500px] flex flex-col justify-between">
+                {/* Step Content */}
+                <div className="space-y-6">
+                  {currentStep === 1 && (
+                    <StepProfessional
+                      selectedField={formData.professionalField}
+                      onSelectField={(value) =>
+                        handleFieldChange("professionalField", value)
+                      }
+                    />
+                  )}
+                  {currentStep === 2 && (
+                    <StepSpecialty
+                      specialty={formData.specialty}
+                      onChange={(value) =>
+                        handleFieldChange("specialty", value)
+                      }
+                      options={currentSpecialtyOptions}
+                    />
+                  )}
+                  {currentStep === 3 && (
+                    <StepSkills
+                      skills={formData.skills}
+                      currentSpecialtySkills={currentSpecialtySkills}
+                      customSkillInput={formData.customSkillInput}
+                      onToggleSkill={toggleSkill}
+                      onRemoveSkill={handleRemoveSkill}
+                      onCustomInputChange={(value) =>
+                        handleFieldChange("customSkillInput", value)
+                      }
+                      onAddCustomSkill={handleAddCustomSkill}
+                      specialty={formData.specialty}
+                    />
+                  )}
+                  {currentStep === 4 && (
+                    <StepExperience
+                      experience={formData.experience}
+                      onSelectExperience={(value) =>
+                        handleFieldChange("experience", value)
+                      }
+                    />
+                  )}
+                  {currentStep === 5 && (
+                    <StepPortfolio
+                      website={formData.portfolioWebsite}
+                      linkedin={formData.linkedinProfile}
+                      fileName={formData.portfolioFileName}
+                      onWebsiteChange={(value) =>
+                        handleFieldChange("portfolioWebsite", value)
+                      }
+                      onLinkedinChange={(value) =>
+                        handleFieldChange("linkedinProfile", value)
+                      }
+                      onFileChange={handleFileChange}
+                    />
+                  )}
+                  {currentStep === 6 && (
+                    <StepTerms
+                      accepted={formData.termsAccepted}
+                      onToggle={(value) =>
+                        handleFieldChange("termsAccepted", value)
+                      }
+                    />
+                  )}
+                  {currentStep === 7 && (
+                    <StepPersonalInfo
+                      fullName={formData.fullName}
+                      email={formData.email}
+                      password={formData.password}
+                      phone={formData.phone}
+                      location={formData.location}
+                      onChange={handleFieldChange}
+                    />
+                  )}
+
+                  {stepError && (
+                    <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/40">
+                      <p className="text-sm text-destructive">
+                        {stepError}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Login Link */}
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <a
+                    href="/login"
+                    className="font-semibold text-primary hover:underline">
+                    Login here
+                  </a>
+                </p>
+              </CardContent>
+
+              <CardFooter className="border-t border-border pt-6 flex items-center justify-between gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-secondary text-secondary-foreground hover:bg-muted"
+                  disabled={currentStep === 1 || isSubmitting}
+                  onClick={handleBack}>
+                  Back
+                </Button>
+
+                <Button
+                  type="button"
+                  className={cn(
+                    "min-w-[140px] bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm disabled:opacity-60"
+                  )}
+                  disabled={disableNext}
+                  onClick={isLastStep ? handleSubmit : handleNext}>
+                  <span className="flex items-center gap-2">
+                    {isSubmitting && isLastStep
+                      ? "Submitting..."
+                      : isLastStep
+                      ? "Submit"
+                      : "Next"}
+                    {!isLastStep && !isSubmitting && (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </span>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+
+          {/* Right Visual Panel */}
+          <div className="hidden lg:flex flex-col">
+            <div className="sticky top-20 h-[500px] rounded-xl overflow-hidden border border-border bg-card shadow-xl flex items-center justify-center p-6">
+              <StepVisualPanel currentStep={currentStep} formData={formData} />
             </div>
-          </CardHeader>
-
-          <CardContent className="pt-6 pb-4 space-y-6 overflow-y-auto scrollbar-thin">
-            {currentStep === 1 && (
-              <StepProfessional
-                selectedField={formData.professionalField}
-                onSelectField={value => handleFieldChange("professionalField", value)}
-              />
-            )}
-            {currentStep === 2 && (
-              <StepSpecialty
-                specialty={formData.specialty}
-                onChange={value => handleFieldChange("specialty", value)}
-                options={currentSpecialtyOptions}
-              />
-            )}
-            {currentStep === 3 && (
-              <StepSkills
-                skills={formData.skills}
-                customSkillInput={formData.customSkillInput}
-                onToggleSkill={toggleSkill}
-                onCustomInputChange={value => handleFieldChange("customSkillInput", value)}
-                onAddCustomSkill={handleAddCustomSkill}
-              />
-            )}
-            {currentStep === 4 && (
-              <StepExperience
-                experience={formData.experience}
-                onSelectExperience={value => handleFieldChange("experience", value)}
-              />
-            )}
-            {currentStep === 5 && (
-              <StepPortfolio
-                website={formData.portfolioWebsite}
-                linkedin={formData.linkedinProfile}
-                fileName={formData.portfolioFileName}
-                onWebsiteChange={value => handleFieldChange("portfolioWebsite", value)}
-                onLinkedinChange={value => handleFieldChange("linkedinProfile", value)}
-                onFileChange={handleFileChange}
-              />
-            )}
-            {currentStep === 6 && (
-              <StepTerms
-                accepted={formData.termsAccepted}
-                onToggle={value => handleFieldChange("termsAccepted", value)}
-              />
-            )}
-            {currentStep === 7 && (
-              <StepPersonalInfo
-                fullName={formData.fullName}
-                email={formData.email}
-                password={formData.password}
-                phone={formData.phone}
-                location={formData.location}
-                onChange={handleFieldChange}
-              />
-            )}
-
-            {stepError && (
-              <p className="text-sm text-red-400">
-                {stepError}
-              </p>
-            )}
-
-            <p className="text-sm text-white/50">
-              Already have an account?{" "}
-              <a href="/login" className="font-semibold text-yellow-400 hover:underline">
-                Login here
-              </a>
-            </p>
-          </CardContent>
-
-          <CardFooter className="flex items-center justify-between border-t border-white/5 pt-6">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-[#2b2b2b] border-none text-white hover:bg-white hover:text-black"
-              disabled={currentStep === 1 || isSubmitting}
-              onClick={handleBack}>
-              Back
-            </Button>
-            <Button
-              type="button"
-              className={cn(
-                "min-w-[120px] bg-yellow-400 text-black hover:bg-yellow-500",
-                disableNext && "opacity-60 pointer-events-none",
-              )}
-              disabled={disableNext}
-              onClick={isLastStep ? handleSubmit : handleNext}>
-              {isSubmitting && isLastStep
-                ? "Submitting..."
-                : isLastStep
-                  ? "Submit"
-                  : "Next"}
-            </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
+};
+
+const StepVisualPanel = ({ currentStep, formData }) => {
+  const getVisualContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="text-6xl">
+              {PROFESSIONAL_FIELD_ICONS[formData.professionalField] || "💼"}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                {formData.professionalField
+                  ? "Professional Field Selected"
+                  : "Choose Your Field"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.professionalField
+                  ? `You're ready to share your ${formData.professionalField}`
+                  : "Pick a professional field that matches your expertise"}
+              </p>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="text-6xl">🎯</div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                {formData.specialty
+                  ? "Specialty Confirmed"
+                  : "Select Your Specialty"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.specialty
+                  ? `Your specialty: ${formData.specialty}`
+                  : "Narrow down your focus area to attract the right clients"}
+              </p>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="flex flex-wrap gap-2 justify-center">
+              {formData.skills.slice(0, 3).map((skill, idx) => (
+                <div
+                  key={skill}
+                  className="px-3 py-1 rounded-full bg-primary/15 border border-primary/40 text-primary text-xs font-semibold"
+                  style={{ animationDelay: `${idx * 100}ms` }}>
+                  {skill}
+                </div>
+              ))}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                Skills Added: {formData.skills.length}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.skills.length > 0
+                  ? "Great! Your skills make you stand out"
+                  : "Add skills that match your specialty"}
+              </p>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="text-6xl">📈</div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                {formData.experience
+                  ? `${formData.experience} Years`
+                  : "Experience Level"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.experience
+                  ? `You bring ${formData.experience} years of expertise`
+                  : "Tell us about your professional experience"}
+              </p>
+            </div>
+          </div>
+        );
+      case 5:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="text-6xl">🎨</div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                Portfolio Ready
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.portfolioWebsite && formData.linkedinProfile
+                  ? "Your profile is looking professional!"
+                  : "Link your portfolio and LinkedIn to showcase your work"}
+              </p>
+            </div>
+          </div>
+        );
+      case 6:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="text-6xl">
+              {formData.termsAccepted ? "✅" : "📋"}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                {formData.termsAccepted ? "Terms Accepted" : "Agree to Terms"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.termsAccepted
+                  ? "You're all set with our terms!"
+                  : "Review and accept our terms to proceed"}
+              </p>
+            </div>
+          </div>
+        );
+      case 7:
+        return (
+          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="text-6xl">👤</div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground">
+                {formData.fullName
+                  ? "Profile Complete!"
+                  : "Complete Your Profile"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formData.fullName
+                  ? `Welcome, ${formData.fullName}! Ready to launch your career`
+                  : "Add your personal details to finalize your profile"}
+              </p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return getVisualContent();
 };
 
 const StepProfessional = ({ selectedField, onSelectField }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">Choose Your Professional Field</h2>
-        <p className="mt-2 text-sm text-white/60">
+        <h2 className="text-2xl font-semibold text-foreground">
+          Choose Your Professional Field
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           Select the category that best describes your work.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        {PROFESSIONAL_FIELDS.map(field => {
+        {PROFESSIONAL_FIELDS.map((field) => {
           const isActive = selectedField === field;
+          const icon = PROFESSIONAL_FIELD_ICONS[field] || "💼";
           return (
-            <Button
+            <button
               key={field}
-              type="button"
-              variant="outline"
               onClick={() => onSelectField(field)}
               className={cn(
-                "w-full justify-between rounded-lg border border-white/10 bg-[#1c1c1f] px-4 py-4 text-left text-sm font-medium text-white/80 hover:bg-yellow-400 hover:text-black",
-                isActive && "border-yellow-400 bg-yellow-400 text-black",
+                "w-full px-4 py-4 rounded-lg border text-left text-sm font-medium transition-all duration-300 transform hover:-translate-y-[1px] flex items-center gap-3 shadow-xs",
+                isActive
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-muted text-foreground hover:bg-secondary"
               )}>
+              <span className="text-xl">{icon}</span>
               <span>{field}</span>
-            </Button>
+            </button>
           );
         })}
       </div>
@@ -561,19 +948,24 @@ const StepSpecialty = ({ specialty, onChange, options }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">Select Your Specialty</h2>
-        <p className="mt-2 text-sm text-white/60">
-          Now, select your specific skill within your professional field.
+        <h2 className="text-2xl font-semibold text-foreground">
+          Select Your Specialty
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Choose your specific skill within your professional field.
         </p>
       </div>
 
       <Select value={specialty} onValueChange={onChange}>
-        <SelectTrigger className="h-12 rounded-lg bg-[#1c1c1f] border-white/15 text-white">
+        <SelectTrigger className="h-12 rounded-lg bg-background border border-input text-foreground font-medium focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background">
           <SelectValue placeholder="-- Select a specialty to continue --" />
         </SelectTrigger>
-        <SelectContent>
-          {options.map(option => (
-            <SelectItem key={option} value={option}>
+        <SelectContent className="bg-popover border border-border">
+          {options.map((option) => (
+            <SelectItem
+              key={option}
+              value={option}
+              className="text-foreground">
               {option}
             </SelectItem>
           ))}
@@ -585,12 +977,15 @@ const StepSpecialty = ({ specialty, onChange, options }) => {
 
 const StepSkills = ({
   skills,
+  currentSpecialtySkills,
   customSkillInput,
   onToggleSkill,
+  onRemoveSkill,
   onCustomInputChange,
   onAddCustomSkill,
+  specialty,
 }) => {
-  const handleKeyDown = event => {
+  const handleKeyDown = (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
       onAddCustomSkill();
@@ -600,56 +995,85 @@ const StepSkills = ({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">Select Your Skills</h2>
-        <p className="mt-2 text-sm text-white/60">
-          Choose the skills you have related to your specialty. You can also add custom skills below.
+        <h2 className="text-2xl font-semibold text-foreground">
+          Select Your Skills
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Choose the skills related to {specialty}. You can also add custom
+          skills.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        {DEFAULT_SKILLS.map(skill => {
-          const isActive = skills.includes(skill);
-          return (
-            <Button
-              key={skill}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onToggleSkill(skill)}
-              className={cn(
-                "rounded-lg border border-white/15 bg-[#1c1c1f] px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-yellow-400 hover:text-black",
-                isActive && "border-yellow-400 bg-yellow-400 text-black",
-              )}>
-              {skill}
-            </Button>
-          );
-        })}
-      </div>
+      {skills.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
+            Selected Skills ({skills.length})
+          </p>
+          <div className="flex flex-wrap gap-2 p-4 rounded-lg bg-muted border border-border min-h-12">
+            {skills.map((skill, index) => (
+              <div
+                key={skill}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/40 text-primary text-sm font-medium"
+                style={{ animationDelay: `${index * 50}ms` }}>
+                <span>{skill}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemoveSkill(skill)}
+                  className="ml-1 hover:text-primary-foreground/80 transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
-        <Label className="text-sm text-white/80">Add a skill</Label>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
+          Recommended Skills for {specialty}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {currentSpecialtySkills.map((skill) => {
+            const isActive = skills.includes(skill);
+            return (
+              <button
+                key={skill}
+                type="button"
+                onClick={() => onToggleSkill(skill)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full border text-sm font-medium transition-all duration-300 transform hover:-translate-y-[1px]",
+                  isActive
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    : "border-border bg-muted text-foreground hover:bg-secondary"
+                )}>
+                {skill}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Custom skill input */}
+      <div className="space-y-3">
+        <Label className="text-sm text-foreground font-semibold">
+          Add Custom Skill
+        </Label>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Input
             type="text"
             value={customSkillInput}
-            onChange={event => onCustomInputChange(event.target.value)}
+            onChange={(event) => onCustomInputChange(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a skill and press Add or Enter"
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
           <Button
             type="button"
             onClick={onAddCustomSkill}
-            className="h-11 rounded-lg bg-yellow-400 text-black px-6 hover:bg-yellow-500">
+            className="h-11 rounded-lg bg-primary text-primary-foreground px-6 font-semibold hover:bg-primary/90">
             Add
           </Button>
         </div>
-
-        {skills.length > 0 && (
-          <p className="text-xs text-white/50">
-            Added skills will be saved as part of your profile when you proceed.
-          </p>
-        )}
       </div>
     </div>
   );
@@ -659,25 +1083,29 @@ const StepExperience = ({ experience, onSelectExperience }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">Your expertise level</h2>
-        <p className="mt-2 text-sm text-white/60">Select your years of experience.</p>
+        <h2 className="text-2xl font-semibold text-foreground">
+          Your Expertise Level
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Select your years of experience.
+        </p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        {EXPERIENCE_OPTIONS.map(option => {
+        {EXPERIENCE_OPTIONS.map((option) => {
           const isActive = experience === option;
           return (
-            <Button
+            <button
               key={option}
-              type="button"
-              variant="outline"
               onClick={() => onSelectExperience(option)}
               className={cn(
-                "w-full rounded-lg border border-white/15 bg-[#1c1c1f] px-4 py-3 text-sm font-medium text-white/80 hover:bg-yellow-400 hover:text-black",
-                isActive && "border-yellow-400 bg-yellow-400 text-black",
+                "w-full px-4 py-3 rounded-lg border text-sm font-medium transition-all duration-300 transform hover:-translate-y-[1px]",
+                isActive
+                  ? "border-primary bg-primary/10 text-primary shadow-sm"
+                  : "border-border bg-muted text-foreground hover:bg-secondary"
               )}>
-              {option}
-            </Button>
+              {option} years
+            </button>
           );
         })}
       </div>
@@ -696,56 +1124,64 @@ const StepPortfolio = ({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">
+        <h2 className="text-2xl font-semibold text-foreground">
           Portfolio &amp; Online Presence
         </h2>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-muted-foreground">
           Share your portfolio and professional profiles.
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="portfolioWebsite" className="text-sm text-white/80">
+          <Label
+            htmlFor="portfolioWebsite"
+            className="text-sm text-foreground font-semibold">
             Portfolio Website
           </Label>
           <Input
             id="portfolioWebsite"
             type="url"
             value={website}
-            onChange={event => onWebsiteChange(event.target.value)}
+            onChange={(event) => onWebsiteChange(event.target.value)}
             placeholder="https://yourportfolio.com"
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="linkedinProfile" className="text-sm text-white/80">
+          <Label
+            htmlFor="linkedinProfile"
+            className="text-sm text-foreground font-semibold">
             LinkedIn Profile
           </Label>
           <Input
             id="linkedinProfile"
             type="url"
             value={linkedin}
-            onChange={event => onLinkedinChange(event.target.value)}
+            onChange={(event) => onLinkedinChange(event.target.value)}
             placeholder="https://linkedin.com/in/yourprofile"
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="portfolioFile" className="text-sm text-white/80">
-            Upload pdf file
+          <Label
+            htmlFor="portfolioFile"
+            className="text-sm text-foreground font-semibold">
+            Upload PDF File (Optional)
           </Label>
           <Input
             id="portfolioFile"
             type="file"
             accept=".pdf"
             onChange={onFileChange}
-            className="h-11 cursor-pointer rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white/70 file:bg-transparent"
+            className="h-11 cursor-pointer rounded-lg bg-background border border-input text-muted-foreground file:bg-transparent"
           />
           {fileName && (
-            <p className="text-xs text-white/50">Selected file: {fileName}</p>
+            <p className="text-xs text-muted-foreground">
+              Selected: {fileName}
+            </p>
           )}
         </div>
       </div>
@@ -757,52 +1193,51 @@ const StepTerms = ({ accepted, onToggle }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">Term &amp; Conditions</h2>
-        <p className="mt-2 text-sm text-white/60">
+        <h2 className="text-2xl font-semibold text-foreground">
+          Terms &amp; Conditions
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           Please agree to the terms to complete your profile.
         </p>
       </div>
 
       <div className="space-y-4">
-        <div className="max-h-64 overflow-y-auto rounded-lg bg-[#1c1c1f] p-4 text-xs leading-relaxed text-white/70 border border-white/10">
-          <p className="font-semibold text-yellow-400 mb-2">
-            Freelancer Terms &amp; Conditions – Karyasetu
-          </p>
-          <p className="mb-2">
-            These Terms &amp; Conditions (&quot;Agreement&quot;) apply to all freelancers engaged by
-            Karyasetu (&quot;Company&quot;) for projects, assignments, or services. By accepting work
-            from Karyasetu, you agree to the following:
+        <div className="max-h-64 overflow-y-auto rounded-lg bg-muted p-4 text-xs leading-relaxed text-muted-foreground border border-border scrollbar-thin">
+          <p className="font-semibold text-primary mb-3">
+            Freelancer Terms &amp; Conditions – GoHypeMedia
           </p>
           <ol className="list-decimal space-y-2 ps-4">
             <li>
-              <span className="font-semibold">Project Completion</span> – Payment will only be made
-              upon successful completion and delivery of the assigned project as per the agreed
-              scope, timeline, and quality standards.
+              <span className="font-semibold">Project Completion</span> – Payment
+              will only be made upon successful completion and delivery of the
+              assigned project as per the agreed scope, timeline, and quality
+              standards.
             </li>
             <li>
-              <span className="font-semibold">Professional Conduct</span> – You agree to maintain
-              clear communication, meet deadlines, and deliver original, high-quality work.
+              <span className="font-semibold">Professional Conduct</span> – You
+              agree to maintain clear communication, meet deadlines, and deliver
+              original, high-quality work.
             </li>
             <li>
-              <span className="font-semibold">Confidentiality</span> – All client and project
-              information shared with you must remain confidential and may not be reused or
-              disclosed without written permission.
+              <span className="font-semibold">Confidentiality</span> – All
+              client and project information must remain confidential.
             </li>
             <li>
-              <span className="font-semibold">Payment Terms</span> – Payments are processed after
-              approval of deliverables. Delays caused by revisions or incomplete work may impact
-              payment timelines.
+              <span className="font-semibold">Payment Terms</span> – Payments
+              are processed after approval of deliverables.
             </li>
           </ol>
         </div>
 
-        <label className="flex items-center gap-3 text-sm text-white/80">
+        <label className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border cursor-pointer hover:bg-secondary transition-colors">
           <Checkbox
             checked={accepted}
-            onCheckedChange={value => onToggle(Boolean(value))}
-            className="border-white/40 data-[state=checked]:bg-yellow-400 data-[state=checked]:border-yellow-400"
+            onCheckedChange={(value) => onToggle(Boolean(value))}
+            className="border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary"
           />
-          <span>I have read and agree to the Terms and Conditions.</span>
+          <span className="text-sm text-foreground">
+            I agree to the Terms and Conditions
+          </span>
         </label>
       </div>
     </div>
@@ -820,76 +1255,92 @@ const StepPersonalInfo = ({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold leading-tight">Personal Information</h2>
-        <p className="mt-2 text-sm text-white/60">
+        <h2 className="text-2xl font-semibold text-foreground">
+          Personal Information
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           This information will be used to create your account.
         </p>
       </div>
 
       <div className="grid gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fullName" className="text-sm text-white/80">
+          <Label
+            htmlFor="fullName"
+            className="text-sm text-foreground font-semibold">
             Full Name *
           </Label>
           <Input
             id="fullName"
             type="text"
             value={fullName}
-            onChange={event => onChange("fullName", event.target.value)}
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            onChange={(event) => onChange("fullName", event.target.value)}
+            placeholder="John Doe"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm text-white/80">
-            Email address *
+          <Label
+            htmlFor="email"
+            className="text-sm text-foreground font-semibold">
+            Email Address *
           </Label>
           <Input
             id="email"
             type="email"
             value={email}
-            onChange={event => onChange("email", event.target.value)}
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            onChange={(event) => onChange("email", event.target.value)}
+            placeholder="you@example.com"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm text-white/80">
-            Password *
+          <Label
+            htmlFor="password"
+            className="text-sm text-foreground font-semibold">
+            Password * (Min 8 characters)
           </Label>
           <Input
             id="password"
             type="password"
             value={password}
-            onChange={event => onChange("password", event.target.value)}
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            onChange={(event) => onChange("password", event.target.value)}
+            placeholder="••••••••"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone" className="text-sm text-white/80">
-            Phone no.
+          <Label
+            htmlFor="phone"
+            className="text-sm text-foreground font-semibold">
+            Phone Number
           </Label>
           <Input
             id="phone"
             type="tel"
             value={phone}
-            onChange={event => onChange("phone", event.target.value)}
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            onChange={(event) => onChange("phone", event.target.value)}
+            placeholder="+1 (555) 000-0000"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="location" className="text-sm text-white/80">
+          <Label
+            htmlFor="location"
+            className="text-sm text-foreground font-semibold">
             Location *
           </Label>
           <Input
             id="location"
             type="text"
             value={location}
-            onChange={event => onChange("location", event.target.value)}
+            onChange={(event) => onChange("location", event.target.value)}
             placeholder="City, Country"
-            className="h-11 rounded-lg bg-[#1c1c1f] border-white/15 text-sm text-white"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>
       </div>
