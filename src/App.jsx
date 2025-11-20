@@ -5,6 +5,7 @@ import Client from "@/components/client/Client.jsx";
 import ClientDashboard from "@/components/client/ClientDashboard.jsx";
 import ClientProposal from "@/components/client/ClientProposal.jsx";
 import ClientProjects from "@/components/client/ClientProjects.jsx";
+import ClientProjectDetail from "@/components/client/ClientProjectDetail.jsx";
 import ClientChat from "@/components/client/ClientChat.jsx";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
@@ -55,6 +56,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ClientProjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/project/:projectId"
+            element={
+              <ProtectedRoute>
+                <ClientProjectDetail />
               </ProtectedRoute>
             }
           />

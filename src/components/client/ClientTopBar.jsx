@@ -14,7 +14,7 @@ import { useSidebar } from "@/components/ui/sidebar"
 import { useTheme } from "@/components/theme-provider"
 import { getSession } from "@/lib/auth-storage"
 
-export const ClientTopBar = ({ label }) => {
+export const ClientTopBar = ({ label, interactive = true }) => {
   const { state, toggleSidebar } = useSidebar()
   const { theme, setTheme } = useTheme()
   const [sessionUser, setSessionUser] = useState(null)
@@ -46,15 +46,24 @@ export const ClientTopBar = ({ label }) => {
   const isDarkMode = theme === "dark"
   const ThemeIcon = isDarkMode ? Sun : Moon
 
-  const toggleTheme = () => setTheme(isDarkMode ? "light" : "dark")
+  const toggleTheme = () => {
+    if (!interactive) return
+    setTheme(isDarkMode ? "light" : "dark")
+  }
+
+  const handleSidebarToggle = () => {
+    if (!interactive) return
+    toggleSidebar()
+  }
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
       <Button
         variant="ghost"
         size="icon"
-        className="rounded-full border border-border text-muted-foreground hover:text-foreground"
-        onClick={toggleSidebar}
+        className="rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-60"
+        onClick={handleSidebarToggle}
+        disabled={!interactive}
       >
         <SidebarToggleIcon className="size-4" />
         <span className="sr-only">
@@ -69,9 +78,10 @@ export const ClientTopBar = ({ label }) => {
         type="button"
         variant="ghost"
         size="icon"
-        className="rounded-full border border-border text-muted-foreground hover:text-foreground"
+        className="rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-60"
         onClick={toggleTheme}
         aria-label="Toggle theme"
+        disabled={!interactive}
       >
         <ThemeIcon className="size-4" />
       </Button>

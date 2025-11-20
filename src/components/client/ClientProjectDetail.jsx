@@ -123,73 +123,79 @@ const ClientProjectDetailContent = () => {
         <ClientTopBar label={`${project.title} detail`} />
 
         <div className="grid gap-6 lg:grid-cols-12">
-          <aside className="space-y-3 lg:col-span-3">
-            {phases.map((phase) => (
-              <Card
-                key={phase.id}
-                className={`cursor-pointer border transition-all ${
-                  phase.status === "active"
-                    ? "border-primary/40 bg-primary/5 shadow-[0_15px_60px_-50px_rgba(253,200,0,0.9)]"
-                    : "border-border/50 bg-card hover:border-border"
-                }`}
-                onClick={() =>
-                  setExpandedPhase(expandedPhase === phase.id ? 0 : phase.id)
-                }
-              >
-                <div className="flex gap-3 p-4">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold ${
-                      phase.status === "active"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+          <aside className="space-y-4 lg:col-span-3">
+            {phases.map((phase) => {
+              const isOpen = expandedPhase === phase.id
+              return (
+                <Card
+                  key={phase.id}
+                  className={`border transition-all duration-300 ${
+                    phase.status === "active"
+                      ? "border-primary/40 bg-gradient-to-b from-primary/15 via-background to-background shadow-[0_20px_80px_-60px_rgba(253,200,0,0.9)]"
+                      : "border-border/50 bg-card/80 hover:border-border/70"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedPhase(isOpen ? 0 : phase.id)
+                    }
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-4 text-left"
                   >
-                    {phase.id}
-                  </div>
-                  <div className="flex-1">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold">{phase.name}</h3>
-                      <Badge
-                        variant={
-                          phase.status === "active" ? "default" : "secondary"
-                        }
-                        className="text-xs"
-                      >
-                        {phase.status === "active" ? "Ongoing" : "Queued"}
-                      </Badge>
+                    <div
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                        phase.status === "active"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {phase.id}
                     </div>
-                    {phase.tasks && expandedPhase === phase.id && (
-                      <div className="overflow-hidden rounded-2xl border border-border/50 bg-card/80 p-3">
-                        <div className="space-y-3">
-                          {phase.tasks.map((task) => (
-                            <div
-                              key={task.id}
-                              className="rounded-xl border border-border/40 bg-background/90 px-4 py-3 text-sm shadow-[0_20px_50px_-45px_rgba(0,0,0,0.8)]"
+                    <div className="flex flex-1 flex-col gap-1">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {phase.name}
+                      </h3>
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                        Phase
+                      </p>
+                    </div>
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border border-border/70 text-xs text-muted-foreground transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    >
+                      ▾
+                    </div>
+                  </button>
+                  {phase.tasks && isOpen && (
+                    <div className="space-y-3 border-t border-border/40 px-4 pb-4 pt-3">
+                      {phase.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-xs shadow-[0_15px_50px_-45px_rgba(0,0,0,0.8)]"
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className=" text-sm leading-relaxed">
+                              {task.id}. {task.name}
+                            </p>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px]"
                             >
-                              <div className="mb-2 flex items-start justify-between gap-3">
-                                <p className="text-foreground/90 leading-relaxed">
-                                  {task.id}. {task.name}
-                                </p>
-                                <Badge
-                                  variant="secondary"
-                                  className="flex-shrink-0 text-[10px]"
-                                >
-                                  Pending
-                                </Badge>
-                              </div>
-                              <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                Due: {task.due}
-                              </p>
-                            </div>
-                          ))}
+                              Pending
+                            </Badge>
+                          </div>
+                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            Due: {task.due}
+                          </p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )
+            })}
           </aside>
 
           <main className="space-y-6 lg:col-span-6">

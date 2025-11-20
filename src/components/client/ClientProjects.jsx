@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Link } from "react-router-dom"
 import {
   ArrowRight,
   CheckCircle2,
@@ -152,17 +153,20 @@ const ProjectCard = ({ project }) => {
             </div>
           </div>
 
-          <Button
-            className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}
-          >
-            View details
-            <motion.div
-              animate={{ x: [0, 6, 0] }}
-              transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-            >
-              <ArrowRight className="h-4 w-4" />
-            </motion.div>
-          </Button>
+                <Button
+                  asChild
+                  className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}
+                >
+                  <Link to={`/client/project/${project.id}`}>
+                    View details
+                    <motion.div
+                      animate={{ x: [0, 6, 0] }}
+                      transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </motion.div>
+                  </Link>
+                </Button>
         </CardContent>
       </Card>
     </motion.div>

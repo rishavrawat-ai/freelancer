@@ -8,12 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ClientTopBar } from "@/components/client/ClientTopBar"
-import {
-  SendHorizontal,
-  Paperclip,
-  MessageSquare,
-  CheckCircle2,
-} from "lucide-react"
+import { SendHorizontal, Paperclip, CheckCircle2 } from "lucide-react"
 
 const conversations = [
   {
