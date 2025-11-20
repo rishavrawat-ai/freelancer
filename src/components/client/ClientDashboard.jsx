@@ -1,29 +1,22 @@
-"use client"
-
-import React, { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
-  CheckCircle2,
-  ChevronRight,
+  CalendarRange,
   Clock,
+  Copy,
+  MessageSquare,
   PanelLeftClose,
-  PanelLeftOpen,
   Sparkles,
-  Sun,
-  Moon,
   Banknote,
-  Send,
   Save,
-  Users,
-} from "lucide-react"
-import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar"
-import { useSidebar } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { useTheme } from "@/components/theme-provider"
-import { getSession } from "@/lib/auth-storage"
+  Send,
+} from "lucide-react";
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { getSession } from "@/lib/auth-storage";
+import { ClientTopBar } from "@/components/client/ClientTopBar";
 
 const dashboardTemplate = {
   heroSubtitle: "Review proposals, unlock talent, and keep budgets on track.",
@@ -109,169 +102,140 @@ const dashboardTemplate = {
       subtitle: "Legal feedback ready",
     },
   ],
-}
+};
 
-const PROPOSAL_STORAGE_KEYS = ["markify:savedProposal", "markify:pendingProposal", "pendingProposal", "savedProposal"]
+const PROPOSAL_STORAGE_KEYS = [
+  "markify:savedProposal",
+  "markify:pendingProposal",
+  "pendingProposal",
+  "savedProposal",
+];
 
-const PRIMARY_PROPOSAL_STORAGE_KEY = PROPOSAL_STORAGE_KEYS[0]
+const PRIMARY_PROPOSAL_STORAGE_KEY = PROPOSAL_STORAGE_KEYS[0];
 
 const loadSavedProposalFromStorage = () => {
   if (typeof window === "undefined") {
-    return null
+    return null;
   }
 
   for (const storageKey of PROPOSAL_STORAGE_KEYS) {
-    const rawValue = window.localStorage.getItem(storageKey)
-    if (!rawValue) continue
+    const rawValue = window.localStorage.getItem(storageKey);
+    if (!rawValue) continue;
     try {
-      return JSON.parse(rawValue)
+      return JSON.parse(rawValue);
     } catch {
-      return { content: rawValue }
+      return { content: rawValue };
     }
   }
 
-  return null
-}
+  return null;
+};
 
 const persistSavedProposalToStorage = (proposal) => {
   if (typeof window === "undefined" || !proposal) {
-    return
+    return;
   }
 
-  window.localStorage.setItem(PRIMARY_PROPOSAL_STORAGE_KEY, JSON.stringify(proposal))
-}
+  window.localStorage.setItem(
+    PRIMARY_PROPOSAL_STORAGE_KEY,
+    JSON.stringify(proposal)
+  );
+};
 
 const clearSavedProposalFromStorage = () => {
   if (typeof window === "undefined") {
-    return
+    return;
   }
 
-  PROPOSAL_STORAGE_KEYS.forEach((storageKey) => window.localStorage.removeItem(storageKey))
-}
+  PROPOSAL_STORAGE_KEYS.forEach((storageKey) =>
+    window.localStorage.removeItem(storageKey)
+  );
+};
 
 const ClientDashboardContent = () => {
-  const { state, toggleSidebar } = useSidebar()
-  const navigate = useNavigate()
-  const [sessionUser, setSessionUser] = useState(null)
-  const [showBriefPrompt, setShowBriefPrompt] = useState(false)
-  const [briefPromptDismissed, setBriefPromptDismissed] = useState(false)
-  const [savedProposal, setSavedProposal] = useState(null)
-  const [proposalDeliveryState, setProposalDeliveryState] = useState("idle")
+  const [sessionUser, setSessionUser] = useState(null);
+  const [savedProposal, setSavedProposal] = useState(null);
+  const [proposalDeliveryState, setProposalDeliveryState] = useState("idle");
 
   useEffect(() => {
-    const session = getSession()
-    setSessionUser(session?.user ?? null)
-  }, [])
+    const session = getSession();
+    setSessionUser(session?.user ?? null);
+  }, []);
 
   useEffect(() => {
-    if (!sessionUser || briefPromptDismissed) {
-      setShowBriefPrompt(false)
-      return
-    }
-    setShowBriefPrompt(true)
-  }, [sessionUser, briefPromptDismissed])
-
-  useEffect(() => {
-    setSavedProposal(loadSavedProposalFromStorage())
-  }, [])
+    setSavedProposal(loadSavedProposalFromStorage());
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
-      return undefined
+      return undefined;
     }
 
     const handleStorageChange = (event) => {
       if (event?.key && !PROPOSAL_STORAGE_KEYS.includes(event.key)) {
-        return
+        return;
       }
-      setSavedProposal(loadSavedProposalFromStorage())
-    }
+      setSavedProposal(loadSavedProposalFromStorage());
+    };
 
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (savedProposal && proposalDeliveryState === "idle") {
-      setProposalDeliveryState("pending")
-      return
+      setProposalDeliveryState("pending");
+      return;
     }
 
     if (!savedProposal && proposalDeliveryState === "pending") {
-      setProposalDeliveryState("idle")
+      setProposalDeliveryState("idle");
     }
-  }, [savedProposal, proposalDeliveryState])
+  }, [savedProposal, proposalDeliveryState]);
 
   const roleLabel = useMemo(() => {
-    const baseRole = sessionUser?.role ?? "CLIENT"
-    const normalized = baseRole.toLowerCase()
-    return normalized.charAt(0).toUpperCase() + normalized.slice(1)
-  }, [sessionUser])
+    const baseRole = sessionUser?.role ?? "CLIENT";
+    const normalized = baseRole.toLowerCase();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  }, [sessionUser]);
 
   const dashboardLabel = sessionUser?.fullName?.trim()
     ? `${sessionUser.fullName.trim()}'s dashboard`
-    : `${roleLabel} dashboard`
+    : `${roleLabel} dashboard`;
 
-  const avatarInitials = useMemo(() => {
-    if (sessionUser?.fullName) {
-      const parts = sessionUser.fullName.trim().split(/\s+/)
-      return (
-        parts
-          .slice(0, 2)
-          .map((part) => part[0]?.toUpperCase() ?? "")
-          .join("") || "CL"
-      )
-    }
-    return "CL"
-  }, [sessionUser])
-
-  const template = useMemo(() => dashboardTemplate, [])
+  const template = useMemo(() => dashboardTemplate, []);
 
   const {
     heroSubtitle,
-    completion: templateCompletion = 68,
     metrics = [],
-    pipeline = [],
-    pipelineTitle,
-    pipelineDescription,
-    availability = [],
-    availabilityTitle,
-    availabilityDescription,
-    messages = [],
-    messagesTitle,
-    messagesDescription,
-    reminders = [],
-    remindersTitle,
-    remindersDescription,
-  } = template
-
-  const [messagesFeed, setMessagesFeed] = useState(messages)
-
-  useEffect(() => {
-    setMessagesFeed(messages)
-  }, [messages])
+  } = template;
 
   const heroTitle = sessionUser?.fullName?.trim()
     ? `${sessionUser.fullName.split(" ")[0]}'s control room`
-    : `${roleLabel} control room`
-  const heroName = sessionUser?.fullName?.split(" ")[0] ?? roleLabel
+    : `${roleLabel} control room`;
 
   const savedProposalDetails = useMemo(() => {
     if (!savedProposal) {
-      return null
+      return null;
     }
 
     const baseProposal =
-      typeof savedProposal === "object" && savedProposal !== null ? savedProposal : { content: savedProposal }
+      typeof savedProposal === "object" && savedProposal !== null
+        ? savedProposal
+        : { content: savedProposal };
 
-    const projectTitle = baseProposal.projectTitle || baseProposal.title || baseProposal.project || "Untitled project"
+    const projectTitle =
+      baseProposal.projectTitle ||
+      baseProposal.title ||
+      baseProposal.project ||
+      "Untitled project";
 
     const service =
       baseProposal.service ||
       baseProposal.category ||
       baseProposal.professionalField ||
       baseProposal.serviceType ||
-      "General services"
+      "General services";
 
     const summary =
       baseProposal.summary ||
@@ -279,24 +243,31 @@ const ClientDashboardContent = () => {
       baseProposal.description ||
       baseProposal.notes ||
       baseProposal.content ||
-      ""
+      "";
 
-    const budgetValue = baseProposal.budget || baseProposal.budgetRange || baseProposal.estimate
+    const budgetValue =
+      baseProposal.budget || baseProposal.budgetRange || baseProposal.estimate;
 
     const preparedFor =
-      baseProposal.preparedFor || baseProposal.client || baseProposal.clientName || sessionUser?.fullName || "Client"
+      baseProposal.preparedFor ||
+      baseProposal.client ||
+      baseProposal.clientName ||
+      sessionUser?.fullName ||
+      "Client";
 
     const createdAtValue =
       baseProposal.createdAt ||
       baseProposal.savedAt ||
       baseProposal.timestamp ||
       baseProposal.created_on ||
-      baseProposal.created
+      baseProposal.created;
 
-    let createdAtDisplay = null
+    let createdAtDisplay = null;
     if (createdAtValue) {
-      const parsed = new Date(createdAtValue)
-      createdAtDisplay = Number.isNaN(parsed.getTime()) ? String(createdAtValue) : parsed.toLocaleString()
+      const parsed = new Date(createdAtValue);
+      createdAtDisplay = Number.isNaN(parsed.getTime())
+        ? String(createdAtValue)
+        : parsed.toLocaleString();
     }
 
     const freelancerName =
@@ -304,333 +275,241 @@ const ClientDashboardContent = () => {
       baseProposal.targetFreelancer ||
       baseProposal.vendor ||
       baseProposal.recipient ||
-      "Freelancer"
+      "Freelancer";
 
     return {
       projectTitle,
       service,
       preparedFor,
       summary,
-      budget: typeof budgetValue === "number" ? `$${budgetValue.toLocaleString()}` : budgetValue,
+      budget:
+        typeof budgetValue === "number"
+          ? `$${budgetValue.toLocaleString()}`
+          : budgetValue,
       createdAtDisplay: createdAtDisplay ?? new Date().toLocaleString(),
       freelancerName,
       raw: baseProposal,
-    }
-  }, [savedProposal, sessionUser])
+    };
+  }, [savedProposal, sessionUser]);
 
-  const hasSavedProposal = Boolean(savedProposalDetails)
-
-  const proposalStatusCopy = useMemo(() => {
-    switch (proposalDeliveryState) {
-      case "sent":
-        return {
-          title: "Proposal sent",
-          body: "We added it to your vendor updates so you can track replies.",
-        }
-      case "cleared":
-        return {
-          title: "Proposal dismissed",
-          body: "You cleared the saved content from this dashboard view.",
-        }
-      case "saved":
-        return {
-          title: "Saved to dashboard",
-          body: "We'll keep it handy here until you decide to send it.",
-        }
-      case "pending":
-        return {
-          title: "Pending proposal",
-          body: "Found a proposal you created before logging in.",
-        }
-      default:
-        return {
-          title: "No saved proposals",
-          body: "Create a proposal and save it to find it here later.",
-        }
-    }
-  }, [proposalDeliveryState])
-
-  const { theme, setTheme } = useTheme()
-  const isDarkMode = theme === "dark"
-  const themeIcon = isDarkMode ? Sun : Moon
-  const toggleTheme = () => setTheme(isDarkMode ? "light" : "dark")
-  const sidebarClosed = state === "collapsed"
-  const SidebarToggleIcon = sidebarClosed ? PanelLeftOpen : PanelLeftClose
-  const completionValue = Math.min(Math.max(templateCompletion || 0, 0), 100)
-
-  const handleBriefRedirect = () => {
-    setShowBriefPrompt(false)
-    navigate("/client/briefs")
-  }
-
-  const handleBriefDismiss = () => {
-    setBriefPromptDismissed(true)
-    setShowBriefPrompt(false)
-  }
+  const hasSavedProposal = Boolean(savedProposalDetails);
 
   const handleClearSavedProposal = () => {
-    clearSavedProposalFromStorage()
-    setSavedProposal(null)
-    setProposalDeliveryState("cleared")
-  }
-
-  const handleExploreFreelancers = () => {
-    navigate("/service")
-  }
+    clearSavedProposalFromStorage();
+    setSavedProposal(null);
+    setProposalDeliveryState("cleared");
+  };
 
   const handleSaveProposalToDashboard = () => {
     if (!savedProposal) {
-      return
+      return;
     }
-    persistSavedProposalToStorage(savedProposal)
-    setProposalDeliveryState("saved")
-  }
+    persistSavedProposalToStorage(savedProposal);
+    setProposalDeliveryState("saved");
+  };
 
   const handleSendProposal = () => {
     if (!savedProposalDetails) {
-      return
+      return;
     }
 
-    setMessagesFeed((prev) => [
-      {
-        from: savedProposalDetails.freelancerName,
-        company: savedProposalDetails.service,
-        excerpt: savedProposalDetails.summary?.slice(0, 160) || "Proposal shared from dashboard.",
-        time: "Just now",
-      },
-      ...prev,
-    ])
-    setProposalDeliveryState("sent")
-  }
+    setProposalDeliveryState("sent");
+  };
+
+  const handleDuplicateProposal = () => {
+    if (!savedProposal) {
+      return;
+    }
+    const duplicatedProposal = {
+      ...savedProposal,
+      duplicatedAt: new Date().toISOString(),
+    };
+    persistSavedProposalToStorage(duplicatedProposal);
+    setSavedProposal(duplicatedProposal);
+    setProposalDeliveryState("saved");
+  };
 
   return (
     <>
-      <div className="relative flex flex-col gap-6 p-6">
-        <div className="absolute left-6 top-4 flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full border border-border text-muted-foreground hover:text-foreground"
-            onClick={toggleSidebar}
-          >
-            <SidebarToggleIcon className="size-4" />
-            <span className="sr-only">{sidebarClosed ? "Open navigation" : "Close navigation"}</span>
-          </Button>
-          <div className="flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium text-muted-foreground">
-            <span className="truncate">{dashboardLabel}</span>
-            <ChevronRight className="size-3.5" />
+      <div className="flex flex-col gap-6 p-6">
+        <ClientTopBar label={dashboardLabel} />
+        <header className="flex flex-col gap-4 pt-12 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Today</p>
+            <h1 className="text-2xl font-semibold leading-tight">
+              {heroTitle}
+            </h1>
+            <p className="text-muted-foreground">{heroSubtitle}</p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="rounded-full border border-border text-muted-foreground hover:text-foreground"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {React.createElement(themeIcon, { className: "size-4" })}
-          </Button>
-        </div>
-        <header className="relative overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white shadow-[0_35px_120px_-40px_rgba(0,0,0,0.8)]">
-          <div className="relative z-10 flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-5">
-              <Badge className="w-fit border border-white/10 bg-white/5 text-xs uppercase tracking-[0.4em] text-white/70">
-                {heroTitle}
-              </Badge>
-              <div>
-                <p className="text-sm uppercase tracking-[0.4em] text-primary/80">Client control</p>
-                <h1 className="text-3xl font-semibold leading-tight text-white sm:text-4xl">
-                  Welcome back, <span className="text-primary">{heroName}</span>
-                </h1>
-                <p className="mt-3 max-w-2xl text-base text-white/70">{heroSubtitle}</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button
-                variant="secondary"
-                size="lg"
-                className="h-12 gap-2 rounded-full border border-white/10 bg-white/10 text-white hover:bg-white/20"
-                onClick={handleSaveProposalToDashboard}
-                disabled={!hasSavedProposal}
-              >
-                <Save className="h-4 w-4" />
-                Save proposal
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+            <div className="flex shrink-0 items-center gap-3">
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarRange className="size-4" />
+                Sync calendar
               </Button>
-              <Button
-                size="lg"
-                className="h-12 gap-2 rounded-full bg-primary text-black hover:bg-primary/90"
-                onClick={handleExploreFreelancers}
-              >
-                <Sparkles className="h-4 w-4" />
-                Find freelancers
+              <Button size="sm" className="gap-2">
+                <MessageSquare className="size-4" />
+                Quick reply
               </Button>
             </div>
           </div>
-          <div className="pointer-events-none absolute inset-0 opacity-50 [background:radial-gradient(circle_at_top,_rgba(253,200,0,0.25),_transparent_55%)]" />
         </header>
 
-        <section className="grid gap-4 pt-6 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => {
-            const Icon = metric.icon
+            const Icon = metric.icon;
             return (
-              <Card
-                key={metric.label}
-                className="border border-white/5 bg-gradient-to-br from-slate-950 to-slate-900 text-white shadow-[0_30px_80px_-45px_rgba(0,0,0,0.9)] dark:border-white/10"
-              >
-                <CardContent className="flex flex-col gap-4 p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-primary">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm uppercase tracking-[0.35em] text-white/50">{metric.label}</p>
-                    </div>
-                    <Badge className="border-none bg-white/10 text-xs text-white/70">{dashboardLabel}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold">{metric.value}</p>
-                    <p className="text-sm text-white/70">{metric.trend}</p>
-                  </div>
+              <Card key={metric.label} className="border-dashed">
+                <CardHeader className="flex-row items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Icon className="size-4 text-primary" />
+                    {metric.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-3xl font-semibold">{metric.value}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {metric.trend}
+                  </p>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <Card className="overflow-hidden border border-primary/30 bg-gradient-to-b from-[#120c04] via-[#050505] to-[#050505] text-white shadow-[0_45px_120px_-60px_rgba(253,200,0,0.45)]">
-            <CardHeader className="space-y-4 border-b border-white/5 bg-black/20">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.4em] text-primary/70">Saved proposal</p>
-                  <CardTitle className="text-2xl font-semibold text-white">Saved proposal</CardTitle>
-                  <CardDescription className="text-xs text-white/60">
-                    {hasSavedProposal
-                      ? `Service: ${savedProposalDetails.service} • Created: ${savedProposalDetails.createdAtDisplay}`
-                      : "Save a proposal before logging in and it will appear here."}
-                  </CardDescription>
+        <section className="grid gap-6">
+          <Card className="overflow-hidden border border-primary/40 bg-gradient-to-b from-[#1a0d04] via-[#070402] to-[#050404] text-white shadow-[0_50px_120px_-60px_rgba(253,200,0,0.55)]">
+            <CardHeader className="space-y-1 border-b border-white/5 bg-black/30">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary">
+                    <Briefcase className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl font-semibold text-white">
+                      Saved Proposal
+                    </CardTitle>
+                    <p className="text-xs text-white/70">
+                      {hasSavedProposal
+                        ? `${savedProposalDetails.service} • Created ${savedProposalDetails.createdAtDisplay}`
+                        : "Save a proposal before logging in and it will appear here."}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="border border-primary/50 bg-primary/20 text-primary">Ready to send</Badge>
+                <div className="flex items-center gap-3">
+                  <Badge className="border border-primary/50 bg-primary/20 text-primary">
+                    Ready to Send
+                  </Badge>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="text-white/70 hover:text-white"
                     onClick={handleClearSavedProposal}
                     disabled={!hasSavedProposal}
-                    aria-label="Clear saved proposal"
-                  >
+                    aria-label="Clear saved proposal">
                     <PanelLeftClose className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              <div className="rounded-2xl border border-primary/20 bg-black/30 p-5 font-mono text-sm text-primary/80">
-                <p className="text-[11px] uppercase tracking-[0.6em] text-primary/60">--- Project proposal ---</p>
-                {hasSavedProposal ? (
-                  <div className="mt-4 space-y-3 text-white">
-                    <div>
-                      <p className="text-lg font-semibold">{savedProposalDetails.projectTitle}</p>
-                      <p className="text-xs text-white/60">Development & Tech</p>
-                    </div>
-                    <div className="grid gap-2 text-sm text-white/80 sm:grid-cols-2">
-                      <div>
-                        <span className="text-white/50">Prepared for:</span>{" "}
-                        <span className="font-semibold text-white">{savedProposalDetails.preparedFor}</span>
-                      </div>
-                      {savedProposalDetails.budget ? (
-                        <div>
-                          <span className="text-white/50">Budget:</span>{" "}
-                          <span className="font-semibold">{savedProposalDetails.budget}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 rounded-xl bg-black/50 p-4 text-sm leading-relaxed text-white/70">
-                      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
-                        Executive summary
-                      </p>
-                      <p className="max-h-48 overflow-y-auto pr-2 text-white/80 scrollbar-thin">
-                        {savedProposalDetails.summary || "Proposal details recovered from your previous session."}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-white/70">
-                    Draft a proposal from the services page and we'll keep a copy here so you can send it once you sign in.
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
+                  Project details
+                </p>
+                <div className="mt-4 rounded-2xl border border-primary/25 bg-black/60 p-5 font-mono text-sm text-primary/80">
+                  <p className="text-[11px] uppercase tracking-[0.5em] text-primary/60">
+                    --- Project Proposal ---
                   </p>
-                )}
+                  {hasSavedProposal ? (
+                    <div className="mt-4 space-y-4 text-white">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold uppercase text-white/60">
+                          Project Title:
+                        </p>
+                        <p className="text-lg font-semibold text-primary">
+                          {savedProposalDetails.projectTitle}
+                        </p>
+                      </div>
+                      <div className="grid gap-2 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-primary/70">
+                            Prepared for
+                          </p>
+                          <p className="text-white/80">
+                            {savedProposalDetails.preparedFor}
+                          </p>
+                        </div>
+                        {savedProposalDetails.budget ? (
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-primary/70">
+                              Budget
+                            </p>
+                            <p className="text-white/80">
+                              {savedProposalDetails.budget}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="space-y-1 rounded-xl bg-black/50 p-4 text-sm leading-relaxed text-white/70 scrollbar-thin">
+                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
+                          Executive summary
+                        </p>
+                        <p className="max-h-48 overflow-y-auto pr-2">
+                          {savedProposalDetails.summary ||
+                            "Proposal details recovered from your previous session."}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-white/60">
+                      Draft a proposal from the services page and we&apos;ll keep a copy here so you can send it once you sign in.
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button
                   variant="outline"
                   size="lg"
                   className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10"
-                  onClick={handleExploreFreelancers}
-                >
-                  <Users className="h-4 w-4" />
-                  Find talent
+                  onClick={handleDuplicateProposal}
+                  disabled={!hasSavedProposal}>
+                  <Copy className="h-4 w-4" />
+                  Duplicate
                 </Button>
                 <Button
                   size="lg"
-                  className="h-11 flex-1 min-w-[140px] gap-2 rounded-full bg-primary text-black hover:bg-primary/90 disabled:opacity-30"
+                  className="h-11 flex-1 min-w-[160px] gap-2 rounded-full bg-primary text-black hover:bg-primary/90 disabled:opacity-30"
                   onClick={handleSendProposal}
-                  disabled={!hasSavedProposal}
-                >
+                  disabled={!hasSavedProposal}>
                   <Send className="h-4 w-4" />
-                  Send to freelancer
+                  Send to Freelancer
                 </Button>
                 <Button
                   size="lg"
                   variant="secondary"
                   className="h-11 flex-1 min-w-[120px] gap-2 rounded-full border border-white/10 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30"
                   onClick={handleSaveProposalToDashboard}
-                  disabled={!hasSavedProposal}
-                >
+                  disabled={!hasSavedProposal}>
                   <Save className="h-4 w-4" />
-                  Save draft
+                  Save
                 </Button>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="flex flex-col border border-primary/20 bg-gradient-to-b from-[#1b1206] via-[#0b0905] to-[#050505] text-white">
-            <CardContent className="flex flex-1 flex-col justify-center gap-4 p-6">
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Status</p>
-                <p className="text-xl font-semibold">{proposalStatusCopy.title}</p>
-              </div>
-              <p className="text-sm text-white/70">{proposalStatusCopy.body}</p>
-              {hasSavedProposal ? (
-                <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/80">
-                  <div className="flex items-center gap-2 text-primary">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Pending proposal detected</span>
-                  </div>
-                  <p className="text-xs text-white/60">
-                    Ready to send to <span className="text-white">{savedProposalDetails.freelancerName}</span>.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-white/20 p-4 text-xs text-white/60">
-                  You have no saved proposals yet. Draft one to unlock quick send actions.
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </section>
-
       </div>
     </>
-  )
-}
+  );
+};
 
 const ClientDashboard = () => {
   return (
     <RoleAwareSidebar>
       <ClientDashboardContent />
     </RoleAwareSidebar>
-  )
-}
+  );
+};
 
-export default ClientDashboard
+export default ClientDashboard;
