@@ -12,7 +12,9 @@ import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
+import FreelancerProposal from "@/components/freelancer/FreelancerProposal";
 import FreelancerProfile from "@/components/freelancer/FreelancerProfile";
+import FreelancerProjectDetail from "@/components/freelancer/FreelancerProjectDetail";
 import { useAuth } from "@/context/AuthContext";
 import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
 
@@ -96,6 +98,46 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <FreelancerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/proposals"
+            element={
+              <ProtectedRoute>
+                <FreelancerProposal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/proposals/drafts"
+            element={
+              <ProtectedRoute>
+                <FreelancerProposal filter="draft" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/proposals/received"
+            element={
+              <ProtectedRoute>
+                <FreelancerProposal filter="received" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/proposals/accepted"
+            element={
+              <ProtectedRoute>
+                <FreelancerProposal filter="accepted" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/project/:projectId?"
+            element={
+              <ProtectedRoute>
+                <FreelancerProjectDetail />
               </ProtectedRoute>
             }
           />
