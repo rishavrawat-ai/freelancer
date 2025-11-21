@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth-storage";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 
 const serviceOptions = [
   "Web development",
@@ -230,7 +231,8 @@ const FreelancerProfile = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-16">
+      <main className="max-w-6xl mx-auto px-6 py-16 space-y-10">
+        <FreelancerTopBar label={`${personal.name || "Freelancer"}'s profile`} />
         {/* Header Section with Profile Picture */}
         <section className="mb-20">
           <div className="flex flex-col md:flex-row items-start md:items-end gap-8 mb-8">

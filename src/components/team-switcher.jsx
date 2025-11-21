@@ -10,8 +10,8 @@ const BRAND_INFO = {
   logoText: "FR"
 };
 
-export function TeamSwitcher({ brand }) {
-  const activeBrand = brand ?? BRAND_INFO;
+export function TeamSwitcher({ brand = BRAND_INFO }) {
+  const activeBrand = brand;
 
   return (
     <SidebarMenu>
@@ -42,8 +42,4 @@ TeamSwitcher.propTypes = {
     plan: PropTypes.string,
     logoText: PropTypes.string
   })
-};
-
-TeamSwitcher.defaultProps = {
-  brand: BRAND_INFO
 };

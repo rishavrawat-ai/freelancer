@@ -60,24 +60,22 @@ const navConfigs = {
       ],
     },
     {
+      title: "Project",
+      url: "/freelancer/project",
+      icon: BarChart,
+      isActive: true,
+    },
+    {
       title: "Messages",
       url: "/freelancer/messages",
       icon: MessageSquare,
-      items: [
-        { title: "Inbox", url: "/freelancer/messages/inbox" },
-        { title: "Archive", url: "/freelancer/messages/archive" },
-        { title: "Templates", url: "/freelancer/messages/templates" },
-      ],
+      isActive: true,
     },
     {
       title: "Payments",
       url: "/freelancer/payments",
       icon: CreditCard,
-      items: [
-        { title: "Invoices", url: "/freelancer/payments/invoices" },
-        { title: "Payouts", url: "/freelancer/payments/payouts" },
-        { title: "Taxes", url: "/freelancer/payments/taxes" },
-      ],
+      isActive: true,
     },
   ],
   CLIENT: [

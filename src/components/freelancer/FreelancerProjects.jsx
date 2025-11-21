@@ -1,0 +1,214 @@
+"use client";
+
+import React from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  Zap,
+} from "lucide-react";
+import { motion } from "framer-motion";
+
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
+
+const statusConfig = {
+  "in-progress": {
+    label: "In Progress",
+    icon: Clock,
+    gradient: "from-primary to-yellow-400",
+    badgeClass:
+      "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800",
+  },
+  completed: {
+    label: "Completed",
+    icon: CheckCircle2,
+    gradient: "from-emerald-500 to-teal-500",
+    badgeClass:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
+  },
+  pending: {
+    label: "Pending",
+    icon: AlertCircle,
+    gradient: "from-orange-500 to-red-500",
+    badgeClass:
+      "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800",
+  },
+};
+
+const mockProjects = [
+  {
+    id: "launch",
+    title: "Product Launch Microsite",
+    client: "Arcadia Systems",
+    status: "in-progress",
+    budget: 18500,
+    deadline: "Dec 02, 2025",
+    progress: 72,
+  },
+  {
+    id: "email-suite",
+    title: "Lifecycle Email Automation",
+    client: "Tempo.fm",
+    status: "pending",
+    budget: 9400,
+    deadline: "Dec 14, 2025",
+    progress: 18,
+  },
+  {
+    id: "portal",
+    title: "Investor Portal Refresh",
+    client: "Beacon Ventures",
+    status: "completed",
+    budget: 22600,
+    deadline: "Nov 11, 2025",
+    progress: 100,
+  },
+];
+
+const ProjectCard = ({ project }) => {
+  const config = statusConfig[project.status];
+  const StatusIcon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      whileHover={{ y: -6 }}
+      className="h-full"
+    >
+      <Card className="group relative h-full overflow-hidden border border-border/50 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:shadow-[0_25px_80px_-50px_rgba(253,200,0,0.65)]">
+        <div
+          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${config.gradient}`}
+        />
+        <CardContent className="relative z-10 flex h-full flex-col gap-6 p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs uppercase tracking-[0.35em] text-primary/70">
+                Active project
+              </p>
+              <h3 className="line-clamp-2 text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
+                {project.title}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                for{" "}
+                <span className="font-medium text-foreground">
+                  {project.client}
+                </span>
+              </p>
+            </div>
+            <motion.div whileHover={{ scale: 1.05 }}>
+              <Badge
+                variant="outline"
+                className={`flex items-center gap-1.5 border px-3 py-1 text-xs font-medium ${config.badgeClass}`}
+              >
+                <StatusIcon className="h-3.5 w-3.5" />
+                {config.label}
+              </Badge>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 text-sm">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+                Budget
+              </p>
+              <p className="text-2xl font-semibold text-foreground">
+                ${project.budget.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+                Deadline
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {project.deadline}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+                Progress
+              </p>
+              <span className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Zap className="h-4 w-4" />
+                {project.progress}%
+              </span>
+            </div>
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+              <motion.div
+                className={`h-full rounded-full bg-gradient-to-r ${config.gradient}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${project.progress}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+          </div>
+
+          <Button
+            asChild
+            className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}
+          >
+            <Link to={`/freelancer/project/${project.id}`}>
+              View details
+              <motion.div
+                animate={{ x: [0, 6, 0] }}
+                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </motion.div>
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
+const FreelancerProjectsContent = () => {
+  return (
+    <div className="space-y-6 p-6">
+      <FreelancerTopBar />
+      <header className="space-y-3">
+        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
+          Freelancer projects
+        </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold">Project tracker</h1>
+            <p className="text-muted-foreground">
+              Monitor client work, budgets, and deadlines in one place.
+            </p>
+          </div>
+          <Button className="rounded-full" size="lg">
+            New project
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {mockProjects.map((project) => (
+          <ProjectCard key={project.id} project={project} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const FreelancerProjects = () => {
+  return (
+    <RoleAwareSidebar>
+      <FreelancerProjectsContent />
+    </RoleAwareSidebar>
+  );
+};
+
+export default FreelancerProjects;

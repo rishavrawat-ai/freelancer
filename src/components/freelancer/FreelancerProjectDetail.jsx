@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import React, { useMemo, useState } from "react"
-import { useParams } from "react-router-dom"
+import React, { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   AlertCircle,
   Calendar,
@@ -11,15 +11,15 @@ import {
   Target,
   TrendingUp,
   Clock,
-} from "lucide-react"
+} from "lucide-react";
 
-import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
-import { ClientTopBar } from "@/components/client/ClientTopBar"
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 
 const phases = [
   {
@@ -62,27 +62,27 @@ const phases = [
     name: "Final Handover",
     status: "queued",
   },
-]
+];
 
 const activities = [
   { title: "Requirements finalized", time: "3 days ago" },
   { title: "Client approved wireframes", time: "1 day ago" },
   { title: "Prototype 75% complete", time: "5 hours ago" },
   { title: "Design submitted for review", time: "2 hours ago" },
-]
+];
 
 const todoItems = [
   { id: "req", label: "Requirement Gathering" },
   { id: "plan", label: "Planning & Design" },
   { id: "dev", label: "Development & Testing" },
   { id: "handover", label: "Final Handover" },
-]
+];
 
 const projectMeta = [
   {
     id: "launch",
     title: "Development & Tech",
-    freelancer: "Aniket Thakur",
+    client: "Arcadia Systems",
     progress: 0,
     eta: "Dec 30, 2025",
     milestones: "0/12",
@@ -91,7 +91,7 @@ const projectMeta = [
   {
     id: "email-suite",
     title: "Lifecycle Email Automation",
-    freelancer: "Nova Growth Lab",
+    client: "Atlas Collective",
     progress: 18,
     eta: "Jan 10, 2026",
     milestones: "3/10",
@@ -100,51 +100,66 @@ const projectMeta = [
   {
     id: "portal",
     title: "Investor Portal Refresh",
-    freelancer: "Beacon Ventures",
+    client: "Beacon Ventures",
     progress: 100,
     eta: "Nov 11, 2025",
     milestones: "12/12",
     issues: 0,
   },
-]
+];
 
 const hoverPalette = [
   "rgba(253,200,0,0.25)",
   "rgba(99,102,241,0.25)",
   "rgba(16,185,129,0.25)",
   "rgba(244,114,182,0.25)",
-]
+];
 
-const ClientProjectDetailContent = () => {
-  const { projectId } = useParams()
-  const [checkedTasks, setCheckedTasks] = useState({})
-  const [expandedPhase, setExpandedPhase] = useState(1)
-  const [hoveredPhase, setHoveredPhase] = useState(null)
+const FreelancerProjectDetailContent = () => {
+  const { projectId } = useParams();
+  const [checkedTasks, setCheckedTasks] = useState({});
+  const [expandedPhase, setExpandedPhase] = useState(1);
+  const [hoveredPhase, setHoveredPhase] = useState(null);
 
   const project = useMemo(() => {
-    return projectMeta.find((meta) => meta.id === projectId) ?? projectMeta[0]
-  }, [projectId])
+    return projectMeta.find((meta) => meta.id === projectId) ?? projectMeta[0];
+  }, [projectId]);
 
   const backgroundStyle = useMemo(() => {
     if (hoveredPhase === null) {
-      return { transition: "background 500ms ease" }
+      return { transition: "background 500ms ease" };
     }
-    const color = hoverPalette[hoveredPhase % hoverPalette.length]
+    const color = hoverPalette[hoveredPhase % hoverPalette.length];
     return {
       background: `radial-gradient(circle at center, ${color} 0%, transparent 60%)`,
       transition: "background 500ms ease",
-    }
-  }, [hoveredPhase])
+    };
+  }, [hoveredPhase]);
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={backgroundStyle}>
       <div className="space-y-6 p-6">
-        <ClientTopBar label={`${project.title} detail`} />
+        <FreelancerTopBar label={`${project.title} overview`} />
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
+              Freelancer project
+            </p>
+            <h1 className="text-3xl font-semibold">
+              {project.title} overview
+            </h1>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Message client
+          </Button>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-12">
           <aside className="space-y-4 lg:col-span-3">
             {phases.map((phase) => {
-              const isOpen = expandedPhase === phase.id
+              const isOpen = expandedPhase === phase.id;
               return (
                 <Card
                   key={phase.id}
@@ -156,9 +171,7 @@ const ClientProjectDetailContent = () => {
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      setExpandedPhase(isOpen ? 0 : phase.id)
-                    }
+                    onClick={() => setExpandedPhase(isOpen ? 0 : phase.id)}
                     onMouseEnter={() => setHoveredPhase(phase.id)}
                     onMouseLeave={() => setHoveredPhase(null)}
                     className="flex w-full items-center gap-3 rounded-2xl px-4 py-4 text-left"
@@ -199,10 +212,7 @@ const ClientProjectDetailContent = () => {
                             <p className=" text-sm leading-relaxed">
                               {task.id}. {task.name}
                             </p>
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px]"
-                            >
+                            <Badge variant="secondary" className="text-[10px]">
                               Pending
                             </Badge>
                           </div>
@@ -215,7 +225,7 @@ const ClientProjectDetailContent = () => {
                     </div>
                   )}
                 </Card>
-              )
+              );
             })}
           </aside>
 
@@ -225,9 +235,9 @@ const ClientProjectDetailContent = () => {
                 <div>
                   <h1 className="text-3xl font-semibold">{project.title}</h1>
                   <p className="text-sm text-muted-foreground">
-                    Freelancer:{" "}
+                    Client:{" "}
                     <span className="text-foreground font-medium">
-                      {project.freelancer}
+                      {project.client}
                     </span>
                     , started: Dec 1, 2025
                   </p>
@@ -422,15 +432,15 @@ const ClientProjectDetailContent = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-const ClientProjectDetail = () => {
+const FreelancerProjectDetail = () => {
   return (
     <RoleAwareSidebar>
-      <ClientProjectDetailContent />
+      <FreelancerProjectDetailContent />
     </RoleAwareSidebar>
-  )
-}
+  );
+};
 
-export default ClientProjectDetail
+export default FreelancerProjectDetail;
