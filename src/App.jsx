@@ -14,7 +14,9 @@ import LoginPage from "./components/forms/Login";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
 import FreelancerProposal from "@/components/freelancer/FreelancerProposal";
 import FreelancerProfile from "@/components/freelancer/FreelancerProfile";
+import FreelancerProjects from "@/components/freelancer/FreelancerProjects";
 import FreelancerProjectDetail from "@/components/freelancer/FreelancerProjectDetail";
+import FreelancerChat from "@/components/freelancer/FreelancerChat";
 import { useAuth } from "@/context/AuthContext";
 import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
 
@@ -134,10 +136,26 @@ const App = () => {
             }
           />
           <Route
-            path="/freelancer/project/:projectId?"
+            path="/freelancer/project"
+            element={
+              <ProtectedRoute>
+                <FreelancerProjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/project/:projectId"
             element={
               <ProtectedRoute>
                 <FreelancerProjectDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/freelancer/messages"
+            element={
+              <ProtectedRoute>
+                <FreelancerChat />
               </ProtectedRoute>
             }
           />

@@ -165,11 +165,6 @@ export const DashboardContent = ({ roleOverride }) => {
       <div className="relative flex flex-col gap-6 p-6">
         <FreelancerTopBar label={dashboardLabel} />
 
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold leading-tight">{heroTitle}</h1>
-          <p className="text-muted-foreground">{heroSubtitle}</p>
-        </header>
-
         <section className="grid gap-4 md:grid-cols-4">
           {metrics.map((metric) => {
             const Icon = metric.icon;

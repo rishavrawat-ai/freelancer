@@ -47,7 +47,7 @@ export const FreelancerTopBar = ({ label }) => {
   const handleProfileNavigate = () => navigate("/freelancer/profile");
 
   return (
-    <div className="flex w-full items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-2">
+    <div className="flex w-full items-center gap-2">
       <Button
         variant="ghost"
         size="icon"

@@ -48,7 +48,7 @@ const getInitials = (value) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-export function NavUser({ user }) {
+export function NavUser({ user = null }) {
   const { isMobile } = useSidebar();
   const [sessionUser, setSessionUser] = useState(null);
   const navigate = useNavigate();
@@ -140,8 +140,4 @@ NavUser.propTypes = {
     email: PropTypes.string,
     avatar: PropTypes.string
   })
-};
-
-NavUser.defaultProps = {
-  user: null
 };
