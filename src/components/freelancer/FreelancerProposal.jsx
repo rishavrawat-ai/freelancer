@@ -37,12 +37,12 @@ const statusConfig = {
       "bg-green-500/15 text-green-700 border-green-200 dark:text-green-400 dark:border-green-500/30",
     dotColor: "bg-green-500",
   },
-  draft: {
-    label: "Draft",
+  rejected: {
+    label: "Rejected",
     icon: XCircle,
     className:
-      "bg-slate-500/15 text-slate-700 border-slate-200 dark:text-slate-300 dark:border-slate-500/30",
-    dotColor: "bg-slate-500",
+      "bg-red-500/15 text-red-700 border-red-200 dark:text-red-400 dark:border-red-500/30",
+    dotColor: "bg-red-500",
   },
 };
 
@@ -82,18 +82,6 @@ const initialProposals = [
     proposalId: "PRP-7791",
     avatar:
       "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=256&q=80",
-  },
-  {
-    id: "draft-rebrand",
-    title: "Brand System Refresh",
-    category: "Design",
-    status: "draft",
-    recipientName: "Aether Labs",
-    recipientId: "ORG-2077",
-    submittedDate: "Oct 28, 2025",
-    proposalId: "PRP-7601",
-    avatar:
-      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=256&q=80",
   },
 ];
 
@@ -175,24 +163,14 @@ const ProposalCard = ({ proposal, onStatusChange }) => {
               <Link to={`/freelancer/proposals/${proposal.id}`}>Open</Link>
             </Button>
             {proposal.status === "pending" && (
-              <>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="border-border"
-                  onClick={() => handleMove("received")}
-                >
-                  Mark received
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-border"
-                  onClick={() => handleMove("draft")}
-                >
-                  Reject to draft
-                </Button>
-              </>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="border-border"
+                onClick={() => handleMove("received")}
+              >
+                Mark received
+              </Button>
             )}
             {proposal.status === "received" && (
               <>
@@ -207,21 +185,11 @@ const ProposalCard = ({ proposal, onStatusChange }) => {
                   size="sm"
                   variant="outline"
                   className="border-border"
-                  onClick={() => handleMove("draft")}
+                  onClick={() => handleMove("rejected")}
                 >
-                  Reject to draft
+                  Reject
                 </Button>
               </>
-            )}
-            {proposal.status === "draft" && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="border-border"
-                onClick={() => handleMove("pending")}
-              >
-                Resubmit
-              </Button>
             )}
             <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden">
               <MoreVertical className="h-4 w-4" />
@@ -266,7 +234,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         acc[proposal.status] = [...(acc[proposal.status] || []), proposal];
         return acc;
       },
-      { pending: [], received: [], accepted: [], draft: [] }
+      { pending: [], received: [], accepted: [], rejected: [] }
     );
   }, [proposals]);
 
@@ -278,31 +246,15 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     );
   };
 
+  const allowedFilters = ["pending", "received", "accepted", "rejected"];
   const sectionsToRender =
-    filter === "all"
-      ? ["pending", "received", "accepted", "draft"]
+    filter === "all" || !allowedFilters.includes(filter)
+      ? ["pending", "received", "accepted", "rejected"]
       : [filter];
 
   return (
     <div className="space-y-6 p-6">
       <FreelancerTopBar />
-      <div className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
-          Freelancer proposals
-        </p>
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold">Proposals board</h1>
-            <p className="text-muted-foreground">
-              Move proposals from pending to received, accept them, or send back
-              to drafts.
-            </p>
-          </div>
-          <Button asChild size="lg" className="rounded-full">
-            <Link to="/freelancer">Back to dashboard</Link>
-          </Button>
-        </div>
-      </div>
 
       <div className="space-y-8">
         {sectionsToRender.includes("pending") && (
@@ -329,12 +281,12 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
             empty="Accepted proposals will appear here."
           />
         )}
-        {sectionsToRender.includes("draft") && (
+        {sectionsToRender.includes("rejected") && (
           <Section
-            title="Drafts"
-            items={grouped.draft}
+            title="Rejected"
+            items={grouped.rejected}
             onStatusChange={handleStatusChange}
-            empty="Rejected items move to drafts for edits."
+            empty="Rejected items will show here."
           />
         )}
       </div>

@@ -2,7 +2,15 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
+import {
+  Bell,
+  ChevronRight,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  Moon,
+} from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -45,6 +53,8 @@ export const FreelancerTopBar = ({ label }) => {
   const initials = getInitials(sessionUser?.fullName);
 
   const handleProfileNavigate = () => navigate("/freelancer/profile");
+  const handleChatNavigate = () => navigate("/freelancer/messages");
+  const handleNotificationsClick = () => {};
 
   return (
     <div className="flex w-full items-center gap-2">
@@ -62,7 +72,7 @@ export const FreelancerTopBar = ({ label }) => {
       <button
         type="button"
         onClick={handleProfileNavigate}
-        className="flex items-center gap-2 rounded-full px-2 py-1 text-left transition hover:bg-muted/60">
+        className="flex items-center gap-2 rounded-full px-2 py-1 text-left transition">
         <Avatar className="h-8 w-8">
           <AvatarFallback className="text-xs font-semibold uppercase">
             {initials}
@@ -74,15 +84,36 @@ export const FreelancerTopBar = ({ label }) => {
         </div>
       </button>
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="ml-auto rounded-full border border-border text-muted-foreground hover:text-foreground"
-        onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-        aria-label="Toggle theme">
-        <ThemeIcon className="size-4" />
-      </Button>
+      <div className="ml-auto flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2 rounded-full border border-primary/60 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+          onClick={handleChatNavigate}
+          aria-label="Quick chat">
+          <MessageSquare className="size-4 text-primary" />
+          <span className="text-xs font-semibold text-primary">Quick chat</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full border border-border text-muted-foreground hover:text-foreground"
+          onClick={handleNotificationsClick}
+          aria-label="Notifications">
+          <Bell className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full border border-border text-muted-foreground hover:text-foreground"
+          onClick={() => setTheme(isDarkMode ? "light" : "dark")}
+          aria-label="Toggle theme">
+          <ThemeIcon className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 };

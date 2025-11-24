@@ -54,7 +54,6 @@ const navConfigs = {
       url: "/freelancer/proposals",
       icon: FileText,
       items: [
-        { title: "Drafts", url: "/freelancer/proposals/drafts" },
         { title: "Received", url: "/freelancer/proposals/received" },
         { title: "Accepted", url: "/freelancer/proposals/accepted" },
       ],

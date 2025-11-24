@@ -173,22 +173,6 @@ const ClientProposalContent = () => {
   return (
     <div className="space-y-6 p-6">
       <ClientTopBar />
-      <div className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
-          Client proposals
-        </p>
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold">Proposals overview</h1>
-            <p className="text-muted-foreground">
-              Track what&apos;s pending, sent, and accepted across teams.
-            </p>
-          </div>
-          <Button asChild size="lg" className="rounded-full">
-            <Link to="/client">Back to dashboard</Link>
-          </Button>
-        </div>
-      </div>
 
       <div className="space-y-4">
         {mockProposals.map((proposal) => (

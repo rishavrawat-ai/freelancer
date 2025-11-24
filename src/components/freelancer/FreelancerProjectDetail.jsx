@@ -19,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 
 const phases = [
   {
@@ -137,18 +136,16 @@ const FreelancerProjectDetailContent = () => {
   }, [hoveredPhase]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={backgroundStyle}>
+    <div
+      className="min-h-screen bg-background text-foreground"
+      style={backgroundStyle}>
       <div className="space-y-6 p-6">
-        <FreelancerTopBar label={`${project.title} overview`} />
-
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
               Freelancer project
             </p>
-            <h1 className="text-3xl font-semibold">
-              {project.title} overview
-            </h1>
+            <h1 className="text-3xl font-semibold">{project.title} overview</h1>
           </div>
           <Button variant="outline" size="sm" className="gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -167,22 +164,19 @@ const FreelancerProjectDetailContent = () => {
                     phase.status === "active"
                       ? "border-primary/40 bg-card/80 shadow-[0_20px_80px_-60px_rgba(0,0,0,0.6)]"
                       : "border-border/50 bg-card/80 hover:border-border/70"
-                  }`}
-                >
+                  }`}>
                   <button
                     type="button"
                     onClick={() => setExpandedPhase(isOpen ? 0 : phase.id)}
                     onMouseEnter={() => setHoveredPhase(phase.id)}
                     onMouseLeave={() => setHoveredPhase(null)}
-                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-4 text-left"
-                  >
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-4 text-left">
                     <div
                       className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                         phase.status === "active"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
-                      }`}
-                    >
+                      }`}>
                       {phase.id}
                     </div>
                     <div className="flex flex-1 flex-col gap-1">
@@ -196,8 +190,7 @@ const FreelancerProjectDetailContent = () => {
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-full border border-border/70 text-xs text-muted-foreground transition-transform ${
                         isOpen ? "rotate-180" : ""
-                      }`}
-                    >
+                      }`}>
                       ▾
                     </div>
                   </button>
@@ -206,8 +199,7 @@ const FreelancerProjectDetailContent = () => {
                       {phase.tasks.map((task) => (
                         <div
                           key={task.id}
-                          className="rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-xs shadow-[0_15px_50px_-45px_rgba(0,0,0,0.8)]"
-                        >
+                          className="rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-xs shadow-[0_15px_50px_-45px_rgba(0,0,0,0.8)]">
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <p className=" text-sm leading-relaxed">
                               {task.id}. {task.name}
@@ -328,8 +320,7 @@ const FreelancerProjectDetailContent = () => {
                 {todoItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between rounded-2xl border border-border/50 bg-card/60 p-4"
-                  >
+                    className="flex items-center justify-between rounded-2xl border border-border/50 bg-card/60 p-4">
                     <div className="flex items-center gap-3">
                       <Checkbox
                         id={item.id}
@@ -343,8 +334,7 @@ const FreelancerProjectDetailContent = () => {
                       />
                       <label
                         htmlFor={item.id}
-                        className="cursor-pointer text-sm font-medium text-foreground"
-                      >
+                        className="cursor-pointer text-sm font-medium text-foreground">
                         {item.label}
                       </label>
                     </div>

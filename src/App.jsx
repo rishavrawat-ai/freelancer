@@ -112,14 +112,6 @@ const App = () => {
             }
           />
           <Route
-            path="/freelancer/proposals/drafts"
-            element={
-              <ProtectedRoute>
-                <FreelancerProposal filter="draft" />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/freelancer/proposals/received"
             element={
               <ProtectedRoute>
