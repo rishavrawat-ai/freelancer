@@ -44,7 +44,7 @@ export const EvervaultCard = ({
   return (
     <div
       className={cn(
-        "p-[2px] rounded-[30px] bg-gradient-to-br from-yellow-400/50 via-amber-500/40 to-orange-500/50 relative w-full h-full",
+        "p-[2px] rounded-[28px] bg-gradient-to-br from-yellow-400/50 via-amber-500/40 to-orange-500/50 relative w-full h-full",
         className
       )}>
       <div

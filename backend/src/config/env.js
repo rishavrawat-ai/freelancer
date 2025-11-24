@@ -10,8 +10,10 @@ const envFileName = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
 const candidatePath = resolve(projectRoot, envFileName);
 
 if (existsSync(candidatePath)) {
+  console.log("Loading .env from:", candidatePath);
   config({ path: candidatePath });
 } else {
+  console.log("Loading default .env");
   config();
 }
 
@@ -33,7 +35,10 @@ const envSchema = z.object({
     .int()
     .min(8, "Use at least 8 bcrypt salt rounds")
     .max(15, "Avoid extremely high salt rounds in this starter")
-    .default(12)
+    .default(12),
+  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_MODEL: z.string().default("openai/gpt-oss-20b:free"),
+  OPENROUTER_MODEL_FALLBACK: z.string().default("meta-llama/llama-3.2-3b-instruct:free")
 });
 
 let env;
@@ -73,7 +78,10 @@ try {
     JWT_SECRET: process.env.JWT_SECRET || "",
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
     PASSWORD_PEPPER: process.env.PASSWORD_PEPPER || "",
-    PASSWORD_SALT_ROUNDS: Number(process.env.PASSWORD_SALT_ROUNDS) || 12
+    PASSWORD_SALT_ROUNDS: Number(process.env.PASSWORD_SALT_ROUNDS) || 12,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    OPENROUTER_MODEL: process.env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free",
+    OPENROUTER_MODEL_FALLBACK: process.env.OPENROUTER_MODEL_FALLBACK || "meta-llama/llama-3.2-3b-instruct:free"
   };
 
   env = fallbackEnv;
