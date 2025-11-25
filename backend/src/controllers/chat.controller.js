@@ -128,6 +128,10 @@ Response rules:
 - Use bullet points for lists
 - Be direct, professional, and friendly
 - Respond fast and move to the next question quickly.
+- Ask the most important items first: 1) project summary, 2) budget (remind floor ${MIN_WEBSITE_PRICE_DISPLAY} if web), 3) timeline, 4) must-have features, 5) tech/design constraints.
+- If an answer is blank, off-topic, contradictory, or clearly unrealistic (e.g., budget below floor, impossible timeline), ask for a correction briefly and give a 1-line example to guide them.
+- If the budget is below ${MIN_WEBSITE_PRICE_DISPLAY} for a website, restate the minimum and ask them to confirm/adjust the budget or scope.
+- Confirm unclear answers once, then continue to the next critical question.
 
 Service Info: ${service}
 ${getServiceDetails(service)}

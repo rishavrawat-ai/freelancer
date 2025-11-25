@@ -3,17 +3,25 @@ const normalizeBaseUrl = (url) => {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
-// When running the frontend on localhost:5173 (Vite dev),
-// default API calls to the local backend on port 5000 so
-// onboarding can be tested entirely on localhost.
+// Prefer explicit env, then same-origin (for deployed frontends),
+// then local dev fallback.
 const safeWindow = typeof window === "undefined" ? null : window;
+const envBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+
+const sameOriginBaseUrl =
+  safeWindow && safeWindow.location.origin && safeWindow.location.origin !== "http://localhost:5173"
+    ? `${safeWindow.location.origin}/api`
+    : null;
+
 const localDevBaseUrl =
   safeWindow && safeWindow.location.origin === "http://localhost:5173"
     ? "http://localhost:5000/api"
     : null;
 
 export const API_BASE_URL =
-  normalizeBaseUrl(localDevBaseUrl || import.meta.env.VITE_API_BASE_URL) ||
+  envBaseUrl ||
+  normalizeBaseUrl(sameOriginBaseUrl) ||
+  normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
 
 const defaultHeaders = {
