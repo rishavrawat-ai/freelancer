@@ -4,6 +4,24 @@ import { env } from "../config/env.js";
 const MIN_WEBSITE_PRICE = 120000;
 const MIN_WEBSITE_PRICE_DISPLAY = "INR 120,000";
 
+const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
+const parseOrigins = (value = "") =>
+    value
+        .split(",")
+        .map(normalizeOrigin)
+        .filter(Boolean);
+
+const allowedOrigins = [
+    ...parseOrigins(env.CORS_ORIGIN || ""),
+    normalizeOrigin(env.LOCAL_CORS_ORIGIN || ""),
+    normalizeOrigin(env.VERCEL_CORS_ORIGIN || "")
+].filter(Boolean);
+
+const defaultReferer =
+    allowedOrigins[0] ||
+    normalizeOrigin(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:5173";
+
 // Helper function to get service details
 const getServiceDetails = (service) => {
     const services = {
@@ -136,33 +154,30 @@ export const chatController = async (req, res) => {
     try {
         const { message, service, history } = req.body;
 
-        console.log("Request received in chatController");
-        console.log("Service:", service);
-        console.log("Message:", message);
-
         if (!message) {
             return res.status(400).json({ error: "Message is required" });
         }
 
-        const apiKey = process.env.OPENROUTER_API_KEY;
-        console.log("API Key configured:", !!apiKey);
+        const apiKey = env.OPENROUTER_API_KEY?.trim();
 
         if (!apiKey) {
             console.error("API Key is missing");
-            return res.status(500).json({ error: "LLM API key not configured" });
+            return res.status(500).json({
+                error: "LLM API key not configured. Set OPENROUTER_API_KEY in backend/.env."
+            });
         }
 
         const openai = new OpenAI({
             baseURL: "https://openrouter.ai/api/v1",
             apiKey: apiKey,
             defaultHeaders: {
-                "HTTP-Referer": "http://localhost:5173", // Update with your actual site URL
-                "X-Title": "Freelancer Platform", // Update with your actual site name
-            },
+                "HTTP-Referer": defaultReferer,
+                "X-Title": "Freelancer Platform"
+            }
         });
 
         const systemContent = buildSystemPrompt(service || "");
-        const safeHistory = Array.isArray(history) ? history : [];
+        const safeHistory = Array.isArray(history) ? history.slice(-8) : [];
 
         // Construct messages array from history and current message
         const messages = [
@@ -181,7 +196,7 @@ export const chatController = async (req, res) => {
                 temperature: 0.2,
             });
         } catch (error) {
-            if (error.status === 429 && env.OPENROUTER_MODEL_FALLBACK) {
+            if (error?.status === 429 && env.OPENROUTER_MODEL_FALLBACK) {
                 console.warn(`Primary model ${env.OPENROUTER_MODEL} rate limited. Switching to fallback model ${env.OPENROUTER_MODEL_FALLBACK}...`);
                 completion = await openai.chat.completions.create({
                     model: env.OPENROUTER_MODEL_FALLBACK,
@@ -194,17 +209,16 @@ export const chatController = async (req, res) => {
                 throw error;
             }
         }
-        console.log("Received response from OpenRouter");
 
         const botResponse = completion.choices[0].message.content;
         res.json({ response: botResponse });
 
     } catch (error) {
         console.error("Chat error:", error);
-        if (error.response) {
+        if (error?.response) {
             console.error("OpenAI API Error Data:", error.response.data);
             console.error("OpenAI API Error Status:", error.response.status);
         }
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: "Unable to generate a response right now. Please try again." });
     }
 };

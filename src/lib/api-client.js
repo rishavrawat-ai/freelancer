@@ -29,12 +29,9 @@ const request = async (path, options = {}) => {
     }
   });
 
-  let payload = null;
-  try {
-    payload = await response.json();
-  } catch {
-    payload = null;
-  }
+  const contentType = response.headers.get("content-type") || "";
+  const isJsonResponse = contentType.includes("application/json");
+  const payload = isJsonResponse ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
     const message =
@@ -45,7 +42,17 @@ const request = async (path, options = {}) => {
     throw new Error(message);
   }
 
-  return payload?.data ?? payload;
+  if (!isJsonResponse) {
+    throw new Error(
+      `Unexpected response from API (status ${response.status}). Verify VITE_API_BASE_URL points to the backend.`
+    );
+  }
+
+  if (payload === null) {
+    throw new Error("Received an empty response from the API. Please try again.");
+  }
+
+  return payload?.data ?? payload ?? {};
 };
 
 export const signup = ({
@@ -96,7 +103,15 @@ export const login = ({ email, password }) => {
   });
 };
 
+export const chat = ({ message, service, history = [] }) => {
+  return request("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, service, history })
+  });
+};
+
 export const apiClient = {
   signup,
-  login
+  login,
+  chat
 };

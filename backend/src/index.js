@@ -12,12 +12,50 @@ const runningInVercel = process.env.VERCEL === "1";
 export const createApp = () => {
   const app = express();
 
-  // Allow all origins so both local dev (http://localhost:5173)
-  // and the deployed frontend can call this API. Also handle
-  // CORS preflight (OPTIONS) explicitly so Vercel returns a
+  const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
+  const splitOrigins = (value = "") =>
+    value
+      .split(",")
+      .map(normalizeOrigin)
+      .filter(Boolean);
+
+  const configuredOrigins = [
+    ...splitOrigins(env.CORS_ORIGIN || ""),
+    normalizeOrigin(env.LOCAL_CORS_ORIGIN || ""),
+    normalizeOrigin(env.VERCEL_CORS_ORIGIN || "")
+  ].filter(Boolean);
+
+  const allowAllOrigins =
+    configuredOrigins.length === 0 || configuredOrigins.includes("*");
+
+  const corsOptions = allowAllOrigins
+    ? {
+        origin: true
+      }
+    : {
+        origin: (origin, callback) => {
+          if (!origin) {
+            return callback(null, true);
+          }
+
+          const normalized = normalizeOrigin(origin);
+          const isAllowed = configuredOrigins.includes(normalized);
+
+          if (isAllowed) {
+            return callback(null, true);
+          }
+
+          return callback(
+            new Error(`Origin ${origin} is not allowed by CORS policy.`),
+            false
+          );
+        }
+      };
+
+  // Handle CORS preflight (OPTIONS) explicitly so Vercel returns a
   // 204 with the correct headers instead of a 404.
-  app.use(cors());
-  app.options("*", cors());
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
   app.use(helmet());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

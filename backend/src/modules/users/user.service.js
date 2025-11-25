@@ -65,6 +65,18 @@ export const authenticateUser = async ({ email, password }) => {
   };
 };
 
+export const getUserById = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: { id }
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  return sanitizeUser(user);
+};
+
 const createUserRecord = async (payload) => {
   try {
     const user = await prisma.user.create({
@@ -120,7 +132,7 @@ const maybeSendWelcomeEmail = async (user) => {
   }
 };
 
-const sanitizeUser = (user) => {
+export const sanitizeUser = (user) => {
   if (!user) {
     return user;
   }
