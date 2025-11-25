@@ -3,7 +3,7 @@ const normalizeBaseUrl = (url) => {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
-// Prefer explicit env, then same-origin (for deployed frontends),
+// Prefer local dev when on localhost, then explicit env, then same-origin (for deployed frontends),
 // then local dev fallback.
 const safeWindow = typeof window === "undefined" ? null : window;
 const envBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
@@ -19,6 +19,9 @@ const localDevBaseUrl =
     : null;
 
 export const API_BASE_URL =
+  (safeWindow && safeWindow.location.origin === "http://localhost:5173"
+    ? normalizeBaseUrl(localDevBaseUrl)
+    : null) ||
   envBaseUrl ||
   normalizeBaseUrl(sameOriginBaseUrl) ||
   normalizeBaseUrl(localDevBaseUrl) ||
