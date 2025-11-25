@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 
 const ChatDialog = ({ isOpen, onClose, service }) => {
   const [messages, setMessages] = useState([]);
@@ -37,41 +37,29 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
-        setIsLoading(true);
+    setIsLoading(true);
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/chat`, {
-                method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: input,
-          service: service.title,
-                    history: nextMessages,
-                }),
-            });
+    try {
+      const data = await apiClient.chat({
+        message: input,
+        service: service.title,
+        history: nextMessages,
+      });
 
-            let data = null;
-            try {
-                data = await response.json();
-            } catch {
-                data = null;
-            }
+      const safeData = data || {};
+      if (safeData.error) {
+        throw new Error(safeData.error);
+      }
 
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            const botMessage = {
-                role: "assistant",
-                content: data?.response || "Sorry, I couldn't parse the response.",
-            };
-            setMessages((prev) => [...prev, botMessage]);
-        } catch (error) {
-            console.error("Failed to send message:", error);
-            setMessages((prev) => [
-                ...prev,
+      const botMessage = {
+        role: "assistant",
+        content: safeData.response || "Sorry, I couldn't parse the response.",
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      setMessages((prev) => [
+        ...prev,
         {
           role: "assistant",
           content: "Sorry, I encountered an error. Please try again.",
