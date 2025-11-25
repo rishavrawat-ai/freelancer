@@ -37,33 +37,41 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
-    setIsLoading(true);
+        setIsLoading(true);
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat`, {
-        method: "POST",
+        try {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
+                method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           message: input,
           service: service.title,
-          history: nextMessages,
-        }),
-      });
+                    history: nextMessages,
+                }),
+            });
 
-      const data = await response.json();
+            let data = null;
+            try {
+                data = await response.json();
+            } catch {
+                data = null;
+            }
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
+            if (data.error) {
+                throw new Error(data.error);
+            }
 
-      const botMessage = { role: "assistant", content: data.response };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      setMessages((prev) => [
-        ...prev,
+            const botMessage = {
+                role: "assistant",
+                content: data?.response || "Sorry, I couldn't parse the response.",
+            };
+            setMessages((prev) => [...prev, botMessage]);
+        } catch (error) {
+            console.error("Failed to send message:", error);
+            setMessages((prev) => [
+                ...prev,
         {
           role: "assistant",
           content: "Sorry, I encountered an error. Please try again.",
