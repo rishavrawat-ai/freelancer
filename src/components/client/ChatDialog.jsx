@@ -53,7 +53,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
       const botMessage = {
         role: "assistant",
-        content: safeData.response || "Sorry, I couldn't parse the response.",
+        content: safeData.response || "I'm here—please share a bit more so I can prepare your proposal.",
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
@@ -62,7 +62,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
+          content: "Sorry, I encountered an error reaching the assistant. Please try again in a moment.",
         },
       ]);
     } finally {

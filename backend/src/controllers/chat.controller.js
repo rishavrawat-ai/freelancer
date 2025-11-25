@@ -132,6 +132,7 @@ Response rules:
 - If an answer is blank, off-topic, contradictory, or clearly unrealistic (e.g., budget below floor, impossible timeline), ask for a correction briefly and give a 1-line example to guide them.
 - If the budget is below ${MIN_WEBSITE_PRICE_DISPLAY} for a website, restate the minimum and ask them to confirm/adjust the budget or scope.
 - Confirm unclear answers once, then continue to the next critical question.
+- Do not repeat questions. Keep a mental checklist. Ask at most 10 questions total, then summarize and deliver the proposal and next steps.
 
 Service Info: ${service}
 ${getServiceDetails(service)}
@@ -181,7 +182,7 @@ export const chatController = async (req, res) => {
         });
 
         const systemContent = buildSystemPrompt(service || "");
-        const safeHistory = Array.isArray(history) ? history.slice(-8) : [];
+        const safeHistory = Array.isArray(history) ? history.slice(-20) : [];
 
         // Construct messages array from history and current message
         const messages = [
@@ -196,7 +197,7 @@ export const chatController = async (req, res) => {
             completion = await openai.chat.completions.create({
                 model: env.OPENROUTER_MODEL,
                 messages: messages,
-                max_tokens: 180, // Slightly higher to avoid premature cut-offs
+                max_tokens: 320, // allow fuller replies without cutting off
                 temperature: 0.2,
             });
         } catch (error) {
@@ -205,7 +206,7 @@ export const chatController = async (req, res) => {
                 completion = await openai.chat.completions.create({
                     model: env.OPENROUTER_MODEL_FALLBACK,
                     messages: messages,
-                    max_tokens: 180,
+                    max_tokens: 320,
                     temperature: 0.2,
                 });
             } else {
@@ -214,7 +215,9 @@ export const chatController = async (req, res) => {
             }
         }
 
-        const botResponse = completion.choices[0].message.content;
+        const botResponse =
+            completion?.choices?.[0]?.message?.content ||
+            "I'm here—please share a bit more so I can prepare your quick proposal.";
         res.json({ response: botResponse });
 
     } catch (error) {
