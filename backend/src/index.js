@@ -19,11 +19,19 @@ export const createApp = () => {
       .map(normalizeOrigin)
       .filter(Boolean);
 
+  const defaultOrigins = [
+    "http://localhost:5173",
+    "https://freelancer-self.vercel.app"
+  ];
+
   const configuredOrigins = [
     ...splitOrigins(env.CORS_ORIGIN || ""),
     normalizeOrigin(env.LOCAL_CORS_ORIGIN || ""),
-    normalizeOrigin(env.VERCEL_CORS_ORIGIN || "")
-  ].filter(Boolean);
+    normalizeOrigin(env.VERCEL_CORS_ORIGIN || ""),
+    ...defaultOrigins
+  ]
+    .filter(Boolean)
+    .filter((value, index, self) => self.indexOf(value) === index);
 
   const allowAllOrigins =
     configuredOrigins.length === 0 || configuredOrigins.includes("*");
