@@ -12,12 +12,35 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const ChatDialog = ({ isOpen, onClose, service }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [savedProposal, setSavedProposal] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const persistSavedProposalToStorage = (proposal) => {
+    if (typeof window === "undefined" || !proposal) return;
+    const payload = {
+      content: proposal.content || proposal,
+      service: proposal.service || service?.title || "Project",
+      createdAt: proposal.createdAt || new Date().toISOString(),
+      projectTitle: proposal.projectTitle || proposal.service || service?.title || "Proposal",
+      preparedFor: proposal.preparedFor || proposal.name || "Client",
+      budget: proposal.budget || null,
+      summary: proposal.summary || (typeof proposal === "string" ? proposal : proposal.content) || "",
+    };
+    window.localStorage.setItem("markify:savedProposal", JSON.stringify(payload));
+  };
 
   useEffect(() => {
     if (isOpen && service) {
@@ -27,6 +50,10 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
           content: `Hi! I see you're interested in ${service.title}. How can I help you with that?`,
         },
       ]);
+      // Focus the input when chat opens.
+      queueMicrotask(() => {
+        inputRef.current?.focus();
+      });
     }
   }, [isOpen, service]);
 
@@ -67,8 +94,68 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       ]);
     } finally {
       setIsLoading(false);
+      queueMicrotask(() => {
+        inputRef.current?.focus();
+      });
     }
   };
+
+  const latestProposalMessage =
+    messages
+      .slice()
+      .reverse()
+      .find(
+        (msg) =>
+          msg.role === "assistant" &&
+          (msg.content?.includes("Quick Proposal") ||
+            msg.content?.includes("PROJECT PROPOSAL") ||
+            msg.content?.includes("Scope") ||
+            msg.content?.includes("Budget"))
+      ) || null;
+
+  const handleEditProposal = () => {
+    if (latestProposalMessage?.content) {
+      setEditedText(latestProposalMessage.content);
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveProposal = () => {
+    if (latestProposalMessage?.content) {
+      const proposalPayload = {
+        content: latestProposalMessage.content,
+        service: service?.title || "Project",
+        createdAt: new Date().toISOString(),
+      };
+      setSavedProposal(latestProposalMessage.content);
+      persistSavedProposalToStorage(proposalPayload);
+      if (!isAuthenticated) {
+        navigate("/login");
+        return;
+      }
+      navigate("/client/proposal");
+    }
+  };
+
+  const applyEdit = () => {
+    if (!latestProposalMessage || !editedText.trim()) {
+      setIsEditing(false);
+      return;
+    }
+    const nextMessages = messages.map((msg) =>
+      msg === latestProposalMessage ? { ...msg, content: editedText } : msg
+    );
+    setMessages(nextMessages);
+    setSavedProposal(editedText);
+    setIsEditing(false);
+  };
+
+  useEffect(() => {
+    // Auto-scroll to the latest message/loading indicator.
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isLoading, latestProposalMessage]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -125,6 +212,29 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                 </div>
               </div>
             )}
+            {latestProposalMessage && (
+              <div className="rounded-lg bg-slate-900 text-slate-50 p-4 shadow-sm space-y-3 border border-slate-800">
+                <div className="text-xs uppercase tracking-wide text-slate-300">
+                  Proposal Ready
+                </div>
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed font-medium">
+                  {latestProposalMessage.content}
+                </pre>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={handleEditProposal}>
+                    Edit
+                  </Button>
+                  <Button size="sm" onClick={handleSaveProposal}>
+                    Save
+                  </Button>
+                </div>
+                {savedProposal && (
+                  <div className="text-xs text-slate-300">
+                    Saved for this session.
+                  </div>
+                )}
+              </div>
+            )}
             <div ref={scrollRef} />
           </div>
         </ScrollArea>
@@ -137,10 +247,10 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
             }}
             className="flex w-full items-center space-x-2">
             <Input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
-              disabled={isLoading}
             />
             <Button type="submit" size="icon" disabled={isLoading}>
               <Send className="w-4 h-4" />
@@ -148,6 +258,26 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
           </form>
         </DialogFooter>
       </DialogContent>
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit proposal</DialogTitle>
+            <DialogDescription>Adjust the text before saving.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            rows={8}
+            className="w-full"
+          />
+          <DialogFooter className="justify-end gap-2">
+            <Button variant="ghost" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+            <Button onClick={applyEdit}>Update</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
