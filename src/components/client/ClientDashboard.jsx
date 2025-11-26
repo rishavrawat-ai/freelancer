@@ -15,6 +15,14 @@ import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { getSession } from "@/lib/auth-storage";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
 
@@ -104,6 +112,13 @@ const dashboardTemplate = {
   ],
 };
 
+const recommendedFreelancers = [
+  { name: "Nova Stack", specialty: "Full-stack • Next.js, Node", rating: "4.9", projects: "48", availability: "2 slots", serviceMatch: "Development & Tech" },
+  { name: "Lumen Creative", specialty: "UI/UX • Figma, Framer", rating: "4.8", projects: "36", availability: "3 slots", serviceMatch: "Creative & Design" },
+  { name: "Growth Loop", specialty: "Performance Marketing • Meta/Google Ads", rating: "4.7", projects: "52", availability: "1 slot", serviceMatch: "Digital Marketing" },
+  { name: "Opsline", specialty: "DevOps • AWS, CI/CD", rating: "4.9", projects: "41", availability: "2 slots", serviceMatch: "Development & Tech" },
+];
+
 const PROPOSAL_STORAGE_KEYS = [
   "markify:savedProposal",
   "markify:pendingProposal",
@@ -156,6 +171,7 @@ const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const [savedProposal, setSavedProposal] = useState(null);
   const [proposalDeliveryState, setProposalDeliveryState] = useState("idle");
+  const [isFreelancerModalOpen, setIsFreelancerModalOpen] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -225,6 +241,20 @@ const ClientDashboardContent = () => {
     return cleaned.trim();
   };
 
+  const formatDateTime = (value) => {
+    if (!value) return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    }).format(parsed);
+  };
+
   const savedProposalDetails = useMemo(() => {
     if (!savedProposal) {
       return null;
@@ -284,13 +314,9 @@ const ClientDashboardContent = () => {
       baseProposal.created_on ||
       baseProposal.created;
 
-    let createdAtDisplay = null;
-    if (createdAtValue) {
-      const parsed = new Date(createdAtValue);
-      createdAtDisplay = Number.isNaN(parsed.getTime())
-        ? String(createdAtValue)
-        : parsed.toLocaleString();
-    }
+      const createdAtDisplay = formatDateTime(
+        createdAtValue || baseProposal.createdAt || new Date()
+      );
 
     const freelancerName =
       baseProposal.freelancerName ||
@@ -317,6 +343,15 @@ const ClientDashboardContent = () => {
 
   const hasSavedProposal = Boolean(savedProposalDetails);
 
+  const matchingFreelancers = useMemo(() => {
+    if (!savedProposalDetails?.service) return recommendedFreelancers;
+    return recommendedFreelancers.filter(
+      (f) =>
+        f.serviceMatch?.toLowerCase() === savedProposalDetails.service.toLowerCase() ||
+        f.specialty?.toLowerCase().includes(savedProposalDetails.service.toLowerCase())
+    );
+  }, [savedProposalDetails]);
+
   const handleClearSavedProposal = () => {
     clearSavedProposalFromStorage();
     setSavedProposal(null);
@@ -337,6 +372,7 @@ const ClientDashboardContent = () => {
     }
 
     setProposalDeliveryState("sent");
+    setIsFreelancerModalOpen(true);
   };
 
   const handleDuplicateProposal = () => {
@@ -401,8 +437,8 @@ const ClientDashboardContent = () => {
         </section>
 
         <section className="grid gap-6">
-          <Card className="overflow-hidden border border-primary/40 bg-gradient-to-b from-[#1a0d04] via-[#070402] to-[#050404] text-white shadow-[0_50px_120px_-60px_rgba(253,200,0,0.55)]">
-            <CardHeader className="space-y-1 border-b border-white/5 bg-black/30">
+          <Card className="overflow-hidden border border-border bg-card text-card-foreground shadow-lg">
+            <CardHeader className="space-y-1 border-b border-border bg-card">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary">
@@ -436,73 +472,88 @@ const ClientDashboardContent = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
-                  Project details
-                </p>
-                <div
-                  className="mt-4 rounded-2xl border border-primary/25 bg-gradient-to-b from-[#0b0702] via-[#0a0805] to-[#050302] p-5 font-mono text-sm text-primary/80 shadow-[0_40px_120px_-80px_rgba(253,200,0,0.5)]"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 20% 20%, rgba(253,200,0,0.05), transparent 30%), radial-gradient(circle at 80% 0%, rgba(253,200,0,0.08), transparent 25%), linear-gradient(to bottom, rgba(255,255,255,0.02), rgba(0,0,0,0.2))"
-                  }}>
-                  <p className="text-[11px] uppercase tracking-[0.5em] text-primary/60">
-                    --- Project Proposal ---
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
+                    Project details
                   </p>
-                  {hasSavedProposal ? (
-                    <div className="mt-4 space-y-4 text-white">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold uppercase text-white/60">
-                          Project Title:
-                        </p>
-                        <p className="text-lg font-semibold text-primary">
-                          {savedProposalDetails.projectTitle}
-                        </p>
-                        {savedProposalDetails.projectSubtype ? (
-                          <p className="text-xs uppercase tracking-[0.3em] text-primary/70">
-                            {savedProposalDetails.projectSubtype}
+                  <div
+                    className="mt-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-lg"
+                    style={{
+                      backgroundColor: "var(--card)",
+                      color: "var(--card-foreground)",
+                      backgroundImage:
+                        "linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.05))"
+                    }}>
+                    <p className="text-[11px] uppercase tracking-[0.5em] text-primary">
+                      --- Project Proposal ---
+                    </p>
+                    {hasSavedProposal ? (
+                      <div className="mt-4 space-y-5">
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">
+                            Project Title
                           </p>
-                        ) : null}
-                      </div>
-                      <div className="grid gap-2 text-sm sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-primary/70">
-                            Prepared for
-                          </p>
-                          <p className="text-white/80">
-                            {savedProposalDetails.preparedFor}
-                          </p>
-                        </div>
-                        {savedProposalDetails.budget ? (
-                          <div>
-                            <p className="text-xs font-semibold uppercase text-primary/70">
-                              Budget
+                          <div className="flex flex-col gap-1">
+                            <p className="text-xl font-semibold text-primary">
+                              {savedProposalDetails.projectTitle}
                             </p>
-                            <p className="text-white/80">
-                              {savedProposalDetails.budget}
+                            {savedProposalDetails.projectSubtype ? (
+                              <p className="text-xs uppercase tracking-[0.25em] text-primary/70">
+                                {savedProposalDetails.projectSubtype}
+                              </p>
+                            ) : null}
+                            <p className="text-xs text-muted-foreground">
+                              Service: {savedProposalDetails.service}
                             </p>
                           </div>
-                        ) : null}
-                      </div>
-                      <div className="space-y-2 rounded-xl bg-black/60 p-4 text-sm leading-relaxed text-white/80 border border-white/5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
-                          Proposal body
-                        </p>
-                        <div className="max-h-72 overflow-y-auto pr-2 scrollbar-thin">
-                          <pre className="whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-white/80">
-                            {savedProposalDetails.summary ||
-                              "Proposal details recovered from your previous session."}
-                          </pre>
+                        </div>
+                        <div className="grid gap-4 text-sm sm:grid-cols-3">
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold uppercase text-primary/70">
+                              Prepared for
+                            </p>
+                            <p className="text-foreground">
+                              {savedProposalDetails.preparedFor}
+                            </p>
+                          </div>
+                          {savedProposalDetails.budget ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold uppercase text-primary/70">
+                                Budget
+                              </p>
+                              <p className="text-foreground">
+                                {savedProposalDetails.budget}
+                              </p>
+                            </div>
+                          ) : null}
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold uppercase text-primary/70">
+                              Created
+                            </p>
+                            <p className="text-foreground">
+                              {savedProposalDetails.createdAtDisplay}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground">
+                          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                            Proposal Overview
+                          </p>
+                          <div className="max-h-80 overflow-y-auto pr-2 scrollbar-thin">
+                            <pre className="whitespace-pre-wrap font-sans text-[14px] leading-7 text-foreground">
+                              {savedProposalDetails.summary ||
+                                "Proposal details recovered from your previous session."}
+                            </pre>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="mt-4 text-sm text-white/60">
-                      Draft a proposal from the services page and we&apos;ll keep a copy here so you can send it once you sign in.
-                    </p>
-                  )}
+                    ) : (
+                      <p className="mt-4 text-sm text-muted-foreground">
+                        Draft a proposal from the services page and we&apos;ll keep a copy here so you can send it once you sign in.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
               <div className="flex flex-wrap gap-3">
                 <Button
                   variant="outline"
@@ -534,6 +585,54 @@ const ClientDashboardContent = () => {
             </CardContent>
           </Card>
         </section>
+
+        <Dialog open={isFreelancerModalOpen} onOpenChange={setIsFreelancerModalOpen}>
+          <DialogContent className="sm:max-w-[560px]">
+            <DialogHeader>
+              <DialogTitle>Send to a freelancer</DialogTitle>
+              <DialogDescription>
+                Based on this proposal, here are freelancers that fit. Pick one to send the proposal.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
+              {(matchingFreelancers.length ? matchingFreelancers : recommendedFreelancers).map(
+                (freelancer, idx) => (
+                  <div
+                    key={`${freelancer.name}-${idx}`}
+                    className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">{freelancer.name}</p>
+                      <p className="text-sm text-muted-foreground">{freelancer.specialty}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-primary">★ {freelancer.rating}</span>
+                        <span>•</span>
+                        <span>{freelancer.projects} projects</span>
+                        <span>•</span>
+                        <span>{freelancer.availability}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm">
+                        View profile
+                      </Button>
+                      <Button size="sm">Send</Button>
+                    </div>
+                  </div>
+                )
+              )}
+              {!matchingFreelancers.length && (
+                <p className="text-sm text-muted-foreground">
+                  Showing recommended freelancers across all services.
+                </p>
+              )}
+            </div>
+            <DialogFooter className="justify-end">
+              <Button variant="ghost" onClick={() => setIsFreelancerModalOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
