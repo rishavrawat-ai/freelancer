@@ -152,7 +152,7 @@ Response rules:
 - Do not repeat questions. Keep a mental checklist. Ask at most 10 questions total, then summarize and deliver the proposal and next steps.
 
 Service Info: ${service}
-${getServiceDetails(service)}
+${getServiceDetails(service)}   
 ${servicePolicy ? `\n${servicePolicy}\n` : ""}${counterQuestion}
 
 Use this question order for this service (ask top-down, skip if already answered):
