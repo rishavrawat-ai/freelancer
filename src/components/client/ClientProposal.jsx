@@ -129,20 +129,6 @@ const ProposalCard = ({ proposal }) => {
                 </p>
               </div>
               <div>
-                <p className="uppercase tracking-widest text-[10px]">ID</p>
-                <p className="font-medium text-foreground">
-                  {proposal.recipientId}
-                </p>
-              </div>
-              <div className="hidden lg:block">
-                <p className="uppercase tracking-widest text-[10px]">
-                  Proposal ID
-                </p>
-                <p className="font-mono text-foreground">
-                  {proposal.proposalId}
-                </p>
-              </div>
-              <div>
                 <p className="uppercase tracking-widest text-[10px]">
                   Submitted
                 </p>
@@ -153,7 +139,7 @@ const ProposalCard = ({ proposal }) => {
             </div>
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-2 self-start lg:self-auto">
+          <div className="flex flex-shrink-0 flex-col items-center gap-2 self-start lg:self-auto">
             <Button
               asChild
               size="sm"

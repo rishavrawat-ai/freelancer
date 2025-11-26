@@ -1,6 +1,6 @@
-"use client"
+  "use client"
 
-import React from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   ArrowRight,
@@ -71,9 +71,26 @@ const mockProjects = [
   },
 ]
 
+const loadProjects = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("client:projects") || "[]");
+  } catch {
+    return [];
+  }
+};
+
 const ProjectCard = ({ project }) => {
   const config = statusConfig[project.status]
   const StatusIcon = config.icon
+  const budgetValue =
+    typeof project.budget === "number"
+      ? project.budget
+      : Number(project.budget) || 0
+  const deadlineValue =
+    project.deadline && typeof project.deadline === "string"
+      ? project.deadline
+      : ""
 
   return (
     <motion.div
@@ -120,7 +137,7 @@ const ProjectCard = ({ project }) => {
                 Budget
               </p>
               <p className="text-2xl font-semibold text-foreground">
-                ${project.budget.toLocaleString()}
+                {budgetValue ? `$${budgetValue.toLocaleString()}` : "TBD"}
               </p>
             </div>
             <div>
@@ -128,7 +145,7 @@ const ProjectCard = ({ project }) => {
                 Deadline
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {project.deadline}
+                {deadlineValue || "TBD"}
               </p>
             </div>
           </div>
@@ -174,6 +191,39 @@ const ProjectCard = ({ project }) => {
 }
 
 const ClientProjectsContent = () => {
+  const [projects, setProjects] = useState(() => {
+    const base = [...mockProjects, ...loadProjects()];
+    const seen = new Set();
+    return base.filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  });
+
+  useEffect(() => {
+    const stored = loadProjects();
+    if (stored.length) {
+      setProjects((prev) => {
+        const ids = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        stored.forEach((p) => {
+          if (!ids.has(p.id)) merged.unshift(p);
+        });
+        return merged;
+      });
+    }
+  }, []);
+
+  const flatProjects = useMemo(() => {
+    const seen = new Set();
+    return projects.filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [projects]);
+
   return (
     <div className="space-y-6 p-6">
       <ClientTopBar />
@@ -195,9 +245,15 @@ const ClientProjectsContent = () => {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {mockProjects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
+        {flatProjects.length ? (
+          flatProjects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))
+        ) : (
+          <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
+            No projects yet.
+          </div>
+        )}
       </div>
     </div>
   )
