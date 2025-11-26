@@ -1,5 +1,9 @@
 ﻿import OpenAI from "openai";
 import { env } from "../config/env.js";
+import {
+    DEFAULT_QUESTIONS,
+    SERVICE_QUESTION_SETS
+} from "../constants/serviceQuestions.js";
 
 const MIN_WEBSITE_PRICE = 120000;
 const MIN_WEBSITE_PRICE_DISPLAY = "INR 120,000";
@@ -55,22 +59,22 @@ const getCounterQuestion = () => `Counter question (ask first):
 
 // Guided flow specifically for Development & Tech
 const devTechFlow = `Conversation format (Development & Tech):
-- Start with: "Hi! I'll help you create a proposal for your Development & Tech project. Let's start with a few questions."
+- No intros or preamble. Output only the next question (or brief confirmation + next question).
 - Ask one question at a time in this order and keep answers short:
-  1) Hi there! What's your first name?
+  1) What's your first name?
   2) What's your company or project name?
   3) Where are you based?
   4) What type of development or tech service are you looking for? (options: Website, Web App/SaaS, Mobile App, E-commerce, Other)
   5) Is this a new project or an existing one that needs updates?
-  6) Describe the project briefly (what it does, who uses it, 2–3 sentences).
+  6) Describe the project briefly (what it does, who uses it, 2-3 sentences).
   7) What are the must-have features or pages? (bullet list ok)
   8) Do you already have a design, wireframe, or concept ready? (Yes/No/Partial)
   9) Would you like us to handle the UI/UX design? (Yes/No/Partial)
   10) Do you have a preferred tech stack or platform? (e.g., React, Next.js, Node, Laravel, WordPress, Other)
   11) Do you require integrations? (payment, auth, CRM/API, analytics)
   12) Will you need ongoing maintenance or support after launch?
-  13) What’s your estimated budget range? (remind the minimum ${MIN_WEBSITE_PRICE_DISPLAY})
-  14) What’s your desired project timeline? (options: 2–4 weeks, 1–2 months, 2–3 months, Flexible)
+  13) What's your estimated budget range? (remind the minimum ${MIN_WEBSITE_PRICE_DISPLAY})
+  14) What's your desired project timeline? (options: 2-4 weeks, 1-2 months, 2-3 months, Flexible)
   15) Any SEO/analytics or marketing tools needed? (Yes/No/Maybe later)
   16) Any AI features, chatbots, or automation needed? (Yes/No/Interested)
   17) Any special requests or constraints?
@@ -116,9 +120,19 @@ Sign proposal & pay deposit (deposit amount depends on chosen package).
 Kickoff meeting to gather assets & finalize schedule.
 Generated from questionnaire answers — edit if you'd like to add more specifics before saving.`;
 
+const getQuestionsForService = (service = "") =>
+    SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS;
+
 const buildSystemPrompt = (service) => {
     const servicePolicy = getWebsitePolicy(service);
     const counterQuestion = getCounterQuestion();
+    const questions = getQuestionsForService(service);
+    const questionLines = questions
+        .map(
+            (q, idx) =>
+                `${idx + 1}) ${q.text}${q.suggestions ? ` (options: ${q.suggestions.join(", ")})` : ""}`
+        )
+        .join("\n");
 
     return `You are a professional consultant for FreelanceHub helping clients with "${service}" projects.
 
@@ -128,6 +142,9 @@ Response rules:
 - Use bullet points for lists
 - Be direct, professional, and friendly
 - Respond fast and move to the next question quickly.
+- No intros or repeated greetings; output only the next question (or brief confirmation + next question).
+- Keep a strict checklist: mark a question asked as "done" and never ask it again unless the answer was empty/unclear. If the user re-answers an earlier question, accept it and move to the next unanswered one—do not repeat it.
+- Once all checklist items are answered (or the user declines), immediately generate the proposal from what you have and stop asking questions. Do NOT ask any further questions after that.
 - Ask the most important items first: 1) project summary, 2) budget (remind floor ${MIN_WEBSITE_PRICE_DISPLAY} if web), 3) timeline, 4) must-have features, 5) tech/design constraints.
 - If an answer is blank, off-topic, contradictory, or clearly unrealistic (e.g., budget below floor, impossible timeline), ask for a correction briefly and give a 1-line example to guide them.
 - If the budget is below ${MIN_WEBSITE_PRICE_DISPLAY} for a website, restate the minimum and ask them to confirm/adjust the budget or scope.
@@ -137,6 +154,11 @@ Response rules:
 Service Info: ${service}
 ${getServiceDetails(service)}
 ${servicePolicy ? `\n${servicePolicy}\n` : ""}${counterQuestion}
+
+Use this question order for this service (ask top-down, skip if already answered):
+${questionLines}
+If a suggestion list exists, surface 3-6 short options inline.
+Keep phrasing concise and move fast.
 ${service === "Development & Tech" ? `\n${devTechFlow}\n` : ""}
 
 Proposal instructions:
