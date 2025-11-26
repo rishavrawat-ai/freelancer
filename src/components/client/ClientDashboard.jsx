@@ -389,7 +389,9 @@ const ClientDashboardContent = () => {
       avatar:
         freelancer.avatar ||
         "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
-      content: savedProposalDetails.summary
+      content: savedProposalDetails.summary,
+      clientName: savedProposalDetails.preparedFor || "Client",
+      budget: savedProposalDetails.budget || null
     };
     const updated = [newProposal, ...existing].slice(0, 50);
     if (typeof window !== "undefined") {

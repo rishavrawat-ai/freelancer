@@ -29,16 +29,6 @@ const PROFESSIONAL_FIELD_ICONS = {
   "Writing & Content": "✍️",
   "Lead Generation": "🎯",
   "Video Services": "🎬",
-  "Travel Services": "✈️",
-  "Event Management": "🎪",
-  "Visa & Passport": "📋",
-  "Insurance Services": "🛡️",
-  "Real Estate": "🏠",
-  "HR Services": "👥",
-  "Influencer Services": "⭐",
-  "Business & Finance": "💼",
-  "Legal & Compliance": "⚖️",
-  "Education & Training": "🎓",
   "Lifestyle & Personal": "💆",
   "Customer Support": "💬",
   "Administrative Services": "📊",
@@ -61,17 +51,7 @@ const PROFESSIONAL_FIELDS = [
   "Creative & Design",
   "Writing & Content",
   "Lead Generation",
-  "Video Services",
-  "Travel Services",
-  "Event Management",
-  "Visa & Passport",
-  "Insurance Services",
-  "Real Estate",
-  "HR Services",
-  "Influencer Services",
-  "Business & Finance",
-  "Legal & Compliance",
-  "Education & Training",
+  "Video Services",,
   "Lifestyle & Personal",
   "Customer Support",
   "Administrative Services",
@@ -786,6 +766,7 @@ const StepVisualPanel = ({ currentStep, formData }) => {
                   : "Pick a professional field that matches your expertise"}
               </p>
             </div>
+            
           </div>
         );
       case 2:
