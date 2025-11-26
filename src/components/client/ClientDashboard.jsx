@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { getSession } from "@/lib/auth-storage";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
+import { listFreelancers } from "@/lib/api-client";
+import { toast } from "sonner";
 
 const dashboardTemplate = {
   heroSubtitle: "Review proposals, unlock talent, and keep budgets on track.",
@@ -172,6 +174,17 @@ const ClientDashboardContent = () => {
   const [savedProposal, setSavedProposal] = useState(null);
   const [proposalDeliveryState, setProposalDeliveryState] = useState("idle");
   const [isFreelancerModalOpen, setIsFreelancerModalOpen] = useState(false);
+  const [freelancers, setFreelancers] = useState([]);
+  const [freelancersLoading, setFreelancersLoading] = useState(false);
+  const [sentProposals, setSentProposals] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("client:sentProposals") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [notificationsChecked, setNotificationsChecked] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -344,13 +357,65 @@ const ClientDashboardContent = () => {
   const hasSavedProposal = Boolean(savedProposalDetails);
 
   const matchingFreelancers = useMemo(() => {
-    if (!savedProposalDetails?.service) return recommendedFreelancers;
-    return recommendedFreelancers.filter(
-      (f) =>
-        f.serviceMatch?.toLowerCase() === savedProposalDetails.service.toLowerCase() ||
-        f.specialty?.toLowerCase().includes(savedProposalDetails.service.toLowerCase())
-    );
-  }, [savedProposalDetails]);
+    const source = freelancers.length ? freelancers : recommendedFreelancers;
+    if (!savedProposalDetails?.service) return source;
+    const term = savedProposalDetails.service.toLowerCase();
+    const filtered = source.filter((f) => {
+      const specialty = f.specialty?.toLowerCase() || "";
+      const match = f.serviceMatch?.toLowerCase() || "";
+      return match.includes(term) || specialty.includes(term);
+    });
+    return filtered.length ? filtered : source;
+  }, [savedProposalDetails, freelancers]);
+
+  const sendProposalToFreelancer = (freelancer) => {
+    if (!savedProposalDetails) return;
+    const existing =
+      typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("freelancer:receivedProposals") || "[]")
+        : [];
+    const uniqueId =
+      (typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID()) ||
+      `prp-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const newProposal = {
+      id: uniqueId,
+      title: savedProposalDetails.projectTitle,
+      category: savedProposalDetails.service,
+      status: "received",
+      recipientName: freelancer.name,
+      recipientId: freelancer.id || "CLIENT",
+      submittedDate: savedProposalDetails.createdAtDisplay,
+      proposalId: `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
+      avatar:
+        freelancer.avatar ||
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
+      content: savedProposalDetails.summary
+    };
+    const updated = [newProposal, ...existing].slice(0, 50);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("freelancer:receivedProposals", JSON.stringify(updated));
+    }
+    const clientSentEntry = {
+      id: newProposal.id,
+      title: savedProposalDetails.projectTitle,
+      service: savedProposalDetails.service,
+      status: "sent",
+      recipientName: freelancer.name,
+      recipientId: freelancer.id || "FREELANCER",
+      submittedDate: newProposal.submittedDate,
+      proposalId: newProposal.proposalId,
+      avatar:
+        freelancer.avatar ||
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80"
+    };
+    const nextSent = [clientSentEntry, ...sentProposals].slice(0, 10);
+    setSentProposals(nextSent);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("client:sentProposals", JSON.stringify(nextSent));
+    }
+    toast.success(`Proposal sent to ${freelancer.name}`);
+    setIsFreelancerModalOpen(false);
+  };
 
   const handleClearSavedProposal = () => {
     clearSavedProposalFromStorage();
@@ -374,6 +439,53 @@ const ClientDashboardContent = () => {
     setProposalDeliveryState("sent");
     setIsFreelancerModalOpen(true);
   };
+
+  useEffect(() => {
+    const fetchFreelancers = async () => {
+      try {
+        setFreelancersLoading(true);
+        const data = await listFreelancers();
+        const normalized = Array.isArray(data)
+          ? data.map((f) => {
+              const skillsText =
+                Array.isArray(f.skills) && f.skills.length
+                  ? f.skills.join(", ")
+                  : f.bio || "Freelancer";
+              return {
+                name: f.fullName || f.name || "Freelancer",
+                specialty: skillsText,
+                rating: f.rating || "4.7",
+                projects: f.projects || "—",
+                availability: f.availability || (f.hourlyRate ? `$${f.hourlyRate}/hr` : "Available"),
+                serviceMatch: skillsText || "Freelancer"
+              };
+            })
+          : [];
+        setFreelancers(normalized);
+      } catch (error) {
+        console.error("Failed to load freelancers", error);
+      } finally {
+        setFreelancersLoading(false);
+      }
+    };
+
+    if (isFreelancerModalOpen && freelancers.length === 0 && !freelancersLoading) {
+      fetchFreelancers();
+    }
+  }, [isFreelancerModalOpen, freelancers.length, freelancersLoading]);
+
+  useEffect(() => {
+    if (notificationsChecked) return;
+    if (typeof window === "undefined") return;
+    const stored = JSON.parse(localStorage.getItem("client:notifications") || "[]");
+    if (stored.length) {
+      stored.forEach((notif) => {
+        toast.success(notif.message);
+      });
+      localStorage.removeItem("client:notifications");
+    }
+    setNotificationsChecked(true);
+  }, [notificationsChecked]);
 
   const handleDuplicateProposal = () => {
     if (!savedProposal) {
@@ -585,6 +697,32 @@ const ClientDashboardContent = () => {
             </CardContent>
           </Card>
         </section>
+        {sentProposals.length > 0 && (
+          <section className="grid gap-3">
+            <Card className="border border-border bg-card/80 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base text-foreground">Recently sent proposals</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                {sentProposals.slice(0, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-foreground font-medium truncate">{item.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.service} • Sent to {item.freelancer}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                      {item.sentAt}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
         <Dialog open={isFreelancerModalOpen} onOpenChange={setIsFreelancerModalOpen}>
           <DialogContent className="sm:max-w-[560px]">
@@ -611,14 +749,19 @@ const ClientDashboardContent = () => {
                         <span>{freelancer.availability}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        View profile
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm">
+                          View profile
+                        </Button>
+                      <Button size="sm" onClick={() => sendProposalToFreelancer(freelancer)}>
+                        Send
                       </Button>
-                      <Button size="sm">Send</Button>
                     </div>
                   </div>
                 )
+              )}
+              {freelancersLoading && (
+                <p className="text-sm text-muted-foreground">Loading freelancers...</p>
               )}
               {!matchingFreelancers.length && (
                 <p className="text-sm text-muted-foreground">

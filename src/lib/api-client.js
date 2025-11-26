@@ -121,6 +121,13 @@ export const chat = ({ message, service, history = [] }) => {
   });
 };
 
+export const listFreelancers = (params = {}) => {
+  const query = new URLSearchParams({ role: "FREELANCER", ...params }).toString();
+  return request(`/users?${query}`, {
+    method: "GET"
+  });
+};
+
 export const apiClient = {
   signup,
   login,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2,
@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
+import { toast } from "sonner";
 
 const statusConfig = {
   pending: {
@@ -225,8 +226,40 @@ const Section = ({ title, items, onStatusChange, empty }) => (
   </div>
 );
 
+const loadStoredProposals = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("freelancer:receivedProposals") || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const saveStoredProposals = (proposals) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("freelancer:receivedProposals", JSON.stringify(proposals));
+};
+
 const FreelancerProposalContent = ({ filter = "all" }) => {
-  const [proposals, setProposals] = useState(initialProposals);
+  const [proposals, setProposals] = useState(() => [
+    ...initialProposals,
+    ...loadStoredProposals()
+  ]);
+
+  useEffect(() => {
+    const stored = loadStoredProposals();
+    if (stored.length) {
+      setProposals((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        stored.forEach((p) => {
+          if (!existingIds.has(p.id)) merged.unshift(p);
+        });
+        return merged;
+      });
+      toast.success(`You have ${stored.length} new proposal(s).`);
+    }
+  }, []);
 
   const grouped = useMemo(() => {
     return proposals.reduce(
@@ -238,12 +271,61 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     );
   }, [proposals]);
 
-  const handleStatusChange = (id, nextStatus) => {
-    setProposals((prev) =>
-      prev.map((proposal) =>
-        proposal.id === id ? { ...proposal, status: nextStatus } : proposal
-      )
+  const pushClientProject = (proposal) => {
+    if (typeof window === "undefined") return;
+    const existing = JSON.parse(localStorage.getItem("client:projects") || "[]");
+    const project = {
+      id: proposal.id,
+      title: proposal.title,
+      freelancer: proposal.recipientName,
+      status: "pending",
+      budget: proposal.budget || null,
+      deadline: proposal.submittedDate || new Date().toLocaleDateString(),
+      progress: 0
+    };
+    const updated = [project, ...existing].slice(0, 20);
+    localStorage.setItem("client:projects", JSON.stringify(updated));
+
+    const freelancerProjects = JSON.parse(localStorage.getItem("freelancer:projects") || "[]");
+    const newFreelancerProject = {
+      id: proposal.id,
+      title: proposal.title,
+      client: "Client",
+      status: "pending",
+      budget: proposal.budget || null,
+      deadline: proposal.submittedDate || new Date().toLocaleDateString(),
+      progress: 0
+    };
+    localStorage.setItem(
+      "freelancer:projects",
+      JSON.stringify([newFreelancerProject, ...freelancerProjects].slice(0, 20))
     );
+
+    const notifications = JSON.parse(localStorage.getItem("client:notifications") || "[]");
+    notifications.unshift({
+      id: `notif-${Date.now()}`,
+      message: `Your proposal "${proposal.title}" was accepted by ${proposal.recipientName}. A project has been created.`,
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem("client:notifications", JSON.stringify(notifications.slice(0, 20)));
+  };
+
+  const handleStatusChange = (id, nextStatus) => {
+    setProposals((prev) => {
+      const updated = prev.map((proposal) => {
+        if (proposal.id === id) {
+          const next = { ...proposal, status: nextStatus };
+          if (nextStatus === "accepted" && proposal.id.startsWith("prp-")) {
+            pushClientProject(next);
+          }
+          return next;
+        }
+        return proposal;
+      });
+      const received = updated.filter((p) => p.id.startsWith("prp-"));
+      saveStoredProposals(received);
+      return updated;
+    });
   };
 
   const allowedFilters = ["pending", "received", "accepted", "rejected"];
