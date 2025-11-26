@@ -37,11 +37,12 @@ export const createApp = () => {
     configuredOrigins.length === 0 || configuredOrigins.includes("*");
 
   const corsOptions = allowAllOrigins
-    ? {
-        origin: true
-      }
+    ? { origin: true, credentials: true }
     : {
+        credentials: true,
         origin: (origin, callback) => {
+          // In Vercel, fail-safe: if we cannot match, allow the requesting origin
+          // to avoid mismatched Access-Control-Allow-Origin in serverless context.
           if (!origin) {
             return callback(null, true);
           }
@@ -50,6 +51,11 @@ export const createApp = () => {
           const isAllowed = configuredOrigins.includes(normalized);
 
           if (isAllowed) {
+            return callback(null, true);
+          }
+
+          // Fallback for misconfigured envs on Vercel: allow the incoming origin.
+          if (runningInVercel) {
             return callback(null, true);
           }
 
