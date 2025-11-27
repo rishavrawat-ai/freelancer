@@ -4,6 +4,8 @@ import { userRouter } from "./user.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { profileRouter } from "./profile.route.js";
 import { chatRouter } from "./chat.routes.js";
+import { projectRouter } from "./project.routes.js";
+import { proposalRouter } from "./proposal.routes.js";
 
 export const apiRouter = Router();
 
@@ -12,3 +14,5 @@ apiRouter.use("/users", userRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/profile", profileRouter);
 apiRouter.use("/chat", chatRouter);
+apiRouter.use("/projects", projectRouter);
+apiRouter.use("/proposals", proposalRouter);
