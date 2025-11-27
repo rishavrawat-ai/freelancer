@@ -1,21 +1,16 @@
-  "use client"
+"use client";
 
-import React, { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Zap,
-} from "lucide-react"
-import { motion } from "framer-motion"
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, CheckCircle2, Clock, AlertCircle, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
-import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ClientTopBar } from "@/components/client/ClientTopBar"
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ClientTopBar } from "@/components/client/ClientTopBar";
+import { useAuth } from "@/context/AuthContext";
 
 const statusConfig = {
   "in-progress": {
@@ -39,58 +34,22 @@ const statusConfig = {
     badgeClass:
       "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800",
   },
-}
+};
 
-const mockProjects = [
-  {
-    id: "launch",
-    title: "Product Launch Microsite",
-    freelancer: "Nova Design Lab",
-    status: "in-progress",
-    budget: 18500,
-    deadline: "Dec 02, 2025",
-    progress: 72,
-  },
-  {
-    id: "email-suite",
-    title: "Lifecycle Email Automation",
-    freelancer: "Atlas Collective",
-    status: "pending",
-    budget: 9400,
-    deadline: "Dec 14, 2025",
-    progress: 18,
-  },
-  {
-    id: "portal",
-    title: "Investor Portal Refresh",
-    freelancer: "Beacon Ventures",
-    status: "completed",
-    budget: 22600,
-    deadline: "Nov 11, 2025",
-    progress: 100,
-  },
-]
-
-const loadProjects = () => {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("client:projects") || "[]");
-  } catch {
-    return [];
-  }
+const mapStatus = (status = "") => {
+  const normalized = status.toString().toUpperCase();
+  if (normalized === "COMPLETED") return "completed";
+  if (normalized === "IN_PROGRESS" || normalized === "OPEN") return "in-progress";
+  return "pending";
 };
 
 const ProjectCard = ({ project }) => {
-  const config = statusConfig[project.status]
-  const StatusIcon = config.icon
+  const config = statusConfig[project.status] || statusConfig.pending;
+  const StatusIcon = config.icon;
   const budgetValue =
-    typeof project.budget === "number"
-      ? project.budget
-      : Number(project.budget) || 0
+    typeof project.budget === "number" ? project.budget : Number(project.budget) || 0;
   const deadlineValue =
-    project.deadline && typeof project.deadline === "string"
-      ? project.deadline
-      : ""
+    project.deadline && typeof project.deadline === "string" ? project.deadline : "";
 
   return (
     <motion.div
@@ -98,23 +57,20 @@ const ProjectCard = ({ project }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
       whileHover={{ y: -6 }}
-      className="h-full"
-    >
+      className="h-full">
       <Card className="group relative h-full overflow-hidden border border-border/50 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:shadow-[0_25px_80px_-50px_rgba(253,200,0,0.65)]">
-        <div
-          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${config.gradient}`}
-        />
+        <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${config.gradient}`} />
         <CardContent className="relative z-10 flex h-full flex-col gap-6 p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
               <p className="text-xs uppercase tracking-[0.35em] text-primary/70">
-                Active brief
+                Active project
               </p>
               <h3 className="line-clamp-2 text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
                 {project.title}
               </h3>
               <p className="text-sm text-muted-foreground">
-                by{" "}
+                Freelancer{" "}
                 <span className="font-medium text-foreground">
                   {project.freelancer}
                 </span>
@@ -123,8 +79,7 @@ const ProjectCard = ({ project }) => {
             <motion.div whileHover={{ scale: 1.05 }}>
               <Badge
                 variant="outline"
-                className={`flex items-center gap-1.5 border px-3 py-1 text-xs font-medium ${config.badgeClass}`}
-              >
+                className={`flex items-center gap-1.5 border px-3 py-1 text-xs font-medium ${config.badgeClass}`}>
                 <StatusIcon className="h-3.5 w-3.5" />
                 {config.label}
               </Badge>
@@ -170,101 +125,102 @@ const ProjectCard = ({ project }) => {
             </div>
           </div>
 
-                <Button
-                  asChild
-                  className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}
-                >
-                  <Link to={`/client/project/${project.id}`}>
-                    View details
-                    <motion.div
-                      animate={{ x: [0, 6, 0] }}
-                      transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </motion.div>
-                  </Link>
-                </Button>
+          <Button
+            asChild
+            className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}>
+            <Link to={`/freelancer/project/${project.id}`}>
+              View details
+              <motion.div
+                animate={{ x: [0, 6, 0] }}
+                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}>
+                <ArrowRight className="h-4 w-4" />
+              </motion.div>
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </motion.div>
-  )
-}
+  );
+};
 
 const ClientProjectsContent = () => {
-  const [projects, setProjects] = useState(() => {
-    const base = [...mockProjects, ...loadProjects()];
-    const seen = new Set();
-    return base.filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-  });
+  const { authFetch, isAuthenticated } = useAuth();
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    const stored = loadProjects();
-    if (stored.length) {
-      setProjects((prev) => {
-        const ids = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        stored.forEach((p) => {
-          if (!ids.has(p.id)) merged.unshift(p);
-        });
-        return merged;
-      });
-    }
-  }, []);
+    if (!isAuthenticated) return;
 
-  const flatProjects = useMemo(() => {
-    const seen = new Set();
-    return projects.filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-  }, [projects]);
+    const fetchProjects = async () => {
+      try {
+        const response = await authFetch("/projects");
+        const payload = await response.json().catch(() => null);
+        const remote = Array.isArray(payload?.data) ? payload.data : [];
+        const normalized = remote
+          .map((p) => {
+            const accepted = (p.proposals || []).find(
+              (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+            );
+            if (!accepted) return null; // only surface projects with an accepted freelancer
+            return {
+              id: p.id,
+              title: p.title || "Project",
+              freelancer:
+                accepted.freelancer?.fullName ||
+                accepted.freelancer?.name ||
+                accepted.freelancer?.email ||
+                "Freelancer",
+              status: mapStatus(p.status || "IN_PROGRESS"),
+              budget: p.budget || 0,
+              deadline: p.deadline || "",
+              progress: 35,
+            };
+          })
+          .filter(Boolean);
+        setProjects(normalized);
+      } catch (error) {
+        console.error("Failed to load projects from API:", error);
+      }
+    };
+
+    fetchProjects();
+  }, [authFetch, isAuthenticated]);
 
   return (
     <div className="space-y-6 p-6">
       <ClientTopBar />
       <header className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
-          Client projects
-        </p>
+        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">Client projects</p>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-semibold">Project tracker</h1>
             <p className="text-muted-foreground">
-              Monitor the freelancers, budgets, and deadlines that matter most.
+              Monitor freelancer work, budgets, and deadlines in one place.
             </p>
           </div>
-          <Button className="rounded-full" size="lg">
-            Create new project
-          </Button>
         </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {flatProjects.length ? (
-          flatProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))
+        {projects.length ? (
+          projects.map((project) => <ProjectCard key={project.id} project={project} />)
         ) : (
-          <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
-            No projects yet.
-          </div>
+          <Card className="border-dashed">
+            <CardContent className="p-6 text-muted-foreground">
+              No projects yet. Accepted proposals will appear here.
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
 const ClientProjects = () => {
   return (
     <RoleAwareSidebar>
       <ClientProjectsContent />
     </RoleAwareSidebar>
-  )
-}
+  );
+};
 
-export default ClientProjects
+export default ClientProjects;

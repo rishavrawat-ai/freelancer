@@ -24,13 +24,15 @@ proposalRouter.post(
   createProposal
 );
 
+const updateProposalStatusSchema = z.object({
+  params: z.object({ id: z.string().min(1) }),
+  body: z.object({ status: z.string().min(1) })
+});
+
 proposalRouter.patch(
   "/:id/status",
   requireAuth,
-  validateResource({
-    params: z.object({ id: z.string().min(1) }),
-    body: z.object({ status: z.string().min(1) })
-  }),
+  validateResource(updateProposalStatusSchema),
   updateProposalStatus
 );
 

@@ -72,6 +72,9 @@ const mapApiProposal = (proposal = {}) => {
     proposal.client?.fullName ||
     proposal.client?.name ||
     proposal.client?.email ||
+    proposal.owner?.fullName ||
+    proposal.owner?.name ||
+    proposal.owner?.email ||
     proposal.user?.fullName ||
     proposal.user?.name ||
     proposal.user?.email ||
@@ -88,6 +91,7 @@ const mapApiProposal = (proposal = {}) => {
     recipientId:
       proposal.project?.owner?.id ||
       proposal.client?.id ||
+      proposal.owner?.id ||
       proposal.user?.id ||
       proposal.ownerId ||
       "CLIENT",
@@ -247,34 +251,79 @@ const Section = ({ title, items, onStatusChange, onOpenProposal, empty }) => (
   </div>
 );
 
+const loadStoredProposals = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("freelancer:receivedProposals") || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const saveStoredProposals = (proposals) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("freelancer:receivedProposals", JSON.stringify(proposals));
+};
+
+const mapLocalProposal = (proposal = {}) => ({
+  id: proposal.id,
+  title: proposal.title || "Proposal",
+  category: proposal.category || "General",
+  status: normalizeProposalStatus(proposal.status || "PENDING"),
+  recipientName:
+    proposal.clientName ||
+    proposal.preparedFor ||
+    proposal.senderName ||
+    proposal.ownerName ||
+    proposal.recipientName ||
+    "Client",
+  recipientId: proposal.recipientId || proposal.ownerId || "CLIENT",
+  projectId: proposal.projectId || null,
+  freelancerId: proposal.freelancerId || null,
+  submittedDate: proposal.submittedDate || new Date().toLocaleDateString(),
+  proposalId: proposal.proposalId || `PRP-${(proposal.id || "").slice(0, 6)}`,
+  avatar:
+    proposal.avatar ||
+    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
+  budget: proposal.budget || null,
+  content: proposal.content || "",
+  isLocal: true,
+});
+
 const FreelancerProposalContent = ({ filter = "all" }) => {
   const { authFetch, isAuthenticated } = useAuth();
   const [proposals, setProposals] = useState([]);
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
 
+  const syncClientLocalCache = (proposalId, status) => {
+    if (typeof window === "undefined" || !proposalId) return;
+    try {
+      const stored =
+        JSON.parse(window.localStorage.getItem("client:sentProposals") || "[]") ||
+        [];
+      const updated = stored.map((item) => {
+        const matches =
+          item?.id === proposalId ||
+          item?.proposalId === proposalId ||
+          (item?.proposalId && proposalId?.startsWith(item.proposalId.replace(/^PRP-/, "")));
+        return matches ? { ...item, status } : item;
+      });
+      window.localStorage.setItem("client:sentProposals", JSON.stringify(updated));
+    } catch (error) {
+      console.warn("Unable to sync client cache for proposal", proposalId, error);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const fetchProposals = async () => {
       try {
-        const [asFreelancer, asOwner] = await Promise.all([
-          authFetch("/proposals"),
-          authFetch("/proposals?as=owner")
-        ]);
-
-        const payloadFreelancer = await asFreelancer.json().catch(() => null);
-        const payloadOwner = await asOwner.json().catch(() => null);
-
-        const remoteFreelancer = Array.isArray(payloadFreelancer?.data) ? payloadFreelancer.data : [];
-        const remoteOwner = Array.isArray(payloadOwner?.data) ? payloadOwner.data : [];
-
-        const mergedMap = new Map();
-        [...remoteFreelancer, ...remoteOwner].forEach((p) => {
-          if (p?.id) mergedMap.set(p.id, p);
-        });
-
-        setProposals(Array.from(mergedMap.values()).map(mapApiProposal));
+        const response = await authFetch("/proposals");
+        const payload = await response.json().catch(() => null);
+        const remote = Array.isArray(payload?.data) ? payload.data : [];
+        setProposals(remote.map(mapApiProposal));
       } catch (error) {
         console.error("Failed to load freelancer proposals from API:", error);
       }
@@ -349,7 +398,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
 
   const handleOpenProposal = async (proposal) => {
     setSelectedProposal(proposal);
-    if (!proposal?.id) return;
+    if (!proposal?.id || proposal.isLocal) return;
     setIsLoadingProposal(true);
     try {
       const response = await authFetch(`/proposals/${proposal.id}`);

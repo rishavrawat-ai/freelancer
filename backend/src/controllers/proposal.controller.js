@@ -123,12 +123,16 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
-  const normalizedStatus =
-    (status || "").toUpperCase() === "RECEIVED"
-      ? "PENDING"
-      : (status || "").toUpperCase();
+  const normalizedStatus = (() => {
+    const incoming = (status || "").toString().trim().toUpperCase();
+    if (incoming === "RECEIVED") return "PENDING";
+    if (["PENDING", "ACCEPTED", "REJECTED"].includes(incoming)) {
+      return incoming;
+    }
+    return null;
+  })();
 
-  if (!["PENDING", "ACCEPTED", "REJECTED"].includes(normalizedStatus)) {
+  if (!normalizedStatus) {
     throw new AppError("Invalid proposal status", 400);
   }
 
@@ -153,30 +157,36 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
     throw new AppError("You do not have permission to update this proposal", 403);
   }
 
-  const updateResult = await prisma.proposal.updateMany({
-    where: { id: proposalId },
-    data: { status: normalizedStatus }
-  });
+  try {
+    const updated = await prisma.proposal.update({
+      where: { id: proposalId },
+      data: { status: normalizedStatus },
+      include: {
+        project: { include: { owner: true } },
+        freelancer: true
+      }
+    });
 
-  if (updateResult.count === 0) {
-    throw new AppError("Proposal not found", 404);
-  }
-
-  const refreshed = await prisma.proposal.findUnique({
-    where: { id: proposalId },
-    include: {
-      project: {
-        include: {
-          owner: true
-        }
-      },
-      freelancer: true
+    res.json({ data: updated });
+  } catch (error) {
+    console.error("Failed to update proposal status", {
+      proposalId,
+      normalizedStatus,
+      error
+    });
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2004"
+    ) {
+      throw new AppError("Invalid proposal status value", 400);
     }
-  });
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      throw new AppError(`Database error (${error.code}) updating proposal`, 500, {
+        code: error.code,
+        meta: error.meta
+      });
+    }
 
-  if (!refreshed) {
-    throw new AppError("Proposal not found after update", 404);
+    throw error;
   }
-
-  res.json({ data: refreshed });
 });
