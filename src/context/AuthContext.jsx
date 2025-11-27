@@ -22,6 +22,8 @@ AuthContext.displayName = "AuthContext";
 
 const VERIFY_TIMEOUT_MS = 4000;
 const PROTECTED_PATH_PREFIXES = ["/client", "/freelancer", "/dashboard"];
+const SAVED_PROPOSAL_KEY = "markify:savedProposal";
+const SAVED_PROPOSAL_SYNCED_KEY = "markify:savedProposalSynced";
 
 const isAbsoluteUrl = (value = "") => /^https?:\/\//i.test(value);
 
@@ -73,6 +75,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(initialSession.user);
   const [token, setToken] = useState(initialSession.token);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncingSavedProposal, setIsSyncingSavedProposal] = useState(false);
 
   const syncSession = useCallback((nextSession) => {
     if (nextSession?.accessToken && nextSession?.user) {
@@ -190,6 +193,83 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     verifyUser();
   }, [verifyUser]);
+
+  // Sync saved chat proposal to backend after login/signup
+  useEffect(() => {
+    const syncSavedProposal = async () => {
+      if (!token || isSyncingSavedProposal) return;
+
+      try {
+        const alreadySynced =
+          typeof window !== "undefined" &&
+          window.localStorage.getItem(SAVED_PROPOSAL_SYNCED_KEY) === "1";
+        if (alreadySynced) return;
+
+        const raw =
+          typeof window !== "undefined"
+            ? window.localStorage.getItem(SAVED_PROPOSAL_KEY)
+            : null;
+        if (!raw) return;
+
+        let saved;
+        try {
+          saved = JSON.parse(raw);
+        } catch {
+          saved = null;
+        }
+        if (!saved) return;
+
+        setIsSyncingSavedProposal(true);
+
+        const budgetValue = saved.budget
+          ? Number(String(saved.budget).replace(/[^0-9.]/g, "") || 0)
+          : null;
+
+        const response = await fetch(resolveRequestUrl("/projects"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: saved.projectTitle || saved.service || "Project",
+            description:
+              saved.content ||
+              saved.summary ||
+              "Project proposal saved from chat",
+            budget: Number.isFinite(budgetValue) ? budgetValue : null,
+            status: "OPEN",
+            proposal: {
+              coverLetter:
+                saved.content ||
+                saved.summary ||
+                "Project proposal saved from chat",
+              amount: Number.isFinite(budgetValue) ? budgetValue : 0
+            }
+          })
+        });
+
+        if (response.ok) {
+          window.localStorage.setItem(SAVED_PROPOSAL_SYNCED_KEY, "1");
+          window.localStorage.removeItem(SAVED_PROPOSAL_KEY);
+          toast.success("Saved proposal synced to your account.");
+        } else {
+          const payload = await response.json().catch(() => null);
+          const message =
+            payload?.message ||
+            payload?.error ||
+            `Failed to sync proposal (status ${response.status})`;
+          toast.error(message);
+        }
+      } catch (error) {
+        console.error("Failed to sync saved proposal after login:", error);
+      } finally {
+        setIsSyncingSavedProposal(false);
+      }
+    };
+
+    syncSavedProposal();
+  }, [token, isSyncingSavedProposal]);
 
   const login = useCallback(
     (userData, authToken) => {

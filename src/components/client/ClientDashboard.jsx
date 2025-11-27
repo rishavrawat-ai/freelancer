@@ -699,33 +699,6 @@ const ClientDashboardContent = () => {
             </CardContent>
           </Card>
         </section>
-        {sentProposals.length > 0 && (
-          <section className="grid gap-3">
-            <Card className="border border-border bg-card/80 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base text-foreground">Recently sent proposals</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                {sentProposals.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="text-foreground font-medium truncate">{item.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.service} • Sent to {item.freelancer}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">
-                      {item.sentAt}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </section>
-        )}
-
         <Dialog open={isFreelancerModalOpen} onOpenChange={setIsFreelancerModalOpen}>
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>

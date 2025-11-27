@@ -2,19 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  CheckCircle2,
-  Clock,
-  FileText,
-  MoreVertical,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, Clock, FileText, MoreVertical, XCircle } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 const statusConfig = {
   pending: {
@@ -47,50 +42,49 @@ const statusConfig = {
   },
 };
 
-const initialProposals = [
-  {
-    id: "launch-hero",
-    title: "Product Launch Creative",
-    category: "Development & Tech",
-    status: "pending",
-    recipientName: "Nova Design Lab",
-    recipientId: "ORG-2214",
-    submittedDate: "Nov 17, 2025",
-    proposalId: "PRP-8234",
+const normalizeProposalStatus = (status = "") => {
+  switch (status.toUpperCase()) {
+    case "ACCEPTED":
+      return "accepted";
+    case "REJECTED":
+      return "rejected";
+    case "RECEIVED":
+    case "PENDING":
+      return "received";
+    default:
+      return "pending";
+  }
+};
+
+const mapApiProposal = (proposal = {}) => {
+  return {
+    id: proposal.id,
+    title: proposal.project?.title || proposal.title || "Proposal",
+    category: proposal.project?.description ? "Project" : proposal.category || "General",
+    status: normalizeProposalStatus(proposal.status || "PENDING"),
+    recipientName: proposal.project?.owner?.fullName || "Client",
+    recipientId: proposal.project?.owner?.id || "CLIENT",
+    projectId: proposal.project?.id || null,
+    freelancerId: proposal.freelancerId || null,
+    submittedDate: proposal.createdAt
+      ? new Date(proposal.createdAt).toLocaleDateString()
+      : new Date().toLocaleDateString(),
+    proposalId: proposal.id
+      ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
+      : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
     avatar:
-      "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=256&q=80",
-  },
-  {
-    id: "email-suite",
-    title: "Lifecycle Email Automation",
-    category: "Marketing",
-    status: "received",
-    recipientName: "Atlas Collective",
-    recipientId: "ORG-1998",
-    submittedDate: "Nov 15, 2025",
-    proposalId: "PRP-8120",
-    avatar:
-      "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=256&q=80",
-  },
-  {
-    id: "portal-refresh",
-    title: "Investor Portal Refresh",
-    category: "Product",
-    status: "accepted",
-    recipientName: "Beacon Ventures",
-    recipientId: "ORG-2056",
-    submittedDate: "Nov 08, 2025",
-    proposalId: "PRP-7791",
-    avatar:
-      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=256&q=80",
-  },
-];
+      proposal.avatar ||
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
+    budget: proposal.amount || null
+  };
+};
 
 const ProposalCard = ({ proposal, onStatusChange }) => {
   const config = statusConfig[proposal.status];
   const StatusIcon = config.icon;
 
   const handleMove = (nextStatus) => onStatusChange(proposal.id, nextStatus);
+  const handleDelete = () => onStatusChange(proposal.id, "delete");
 
   return (
     <Card className="group overflow-hidden border border-border/50 bg-card/70 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
@@ -192,6 +186,13 @@ const ProposalCard = ({ proposal, onStatusChange }) => {
                 </Button>
               </>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-border"
+              onClick={handleDelete}>
+              Delete
+            </Button>
             <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden">
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -241,25 +242,25 @@ const saveStoredProposals = (proposals) => {
 };
 
 const FreelancerProposalContent = ({ filter = "all" }) => {
-  const [proposals, setProposals] = useState(() => [
-    ...initialProposals,
-    ...loadStoredProposals()
-  ]);
+  const { authFetch, isAuthenticated } = useAuth();
+  const [proposals, setProposals] = useState([]);
 
   useEffect(() => {
-    const stored = loadStoredProposals();
-    if (stored.length) {
-      setProposals((prev) => {
-        const existingIds = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        stored.forEach((p) => {
-          if (!existingIds.has(p.id)) merged.unshift(p);
-        });
-        return merged;
-      });
-      toast.success(`You have ${stored.length} new proposal(s).`);
-    }
-  }, []);
+    if (!isAuthenticated) return;
+
+    const fetchProposals = async () => {
+      try {
+        const response = await authFetch("/proposals");
+        const payload = await response.json().catch(() => null);
+        const remote = Array.isArray(payload?.data) ? payload.data : [];
+        setProposals(remote.map(mapApiProposal));
+      } catch (error) {
+        console.error("Failed to load freelancer proposals from API:", error);
+      }
+    };
+
+    fetchProposals();
+  }, [authFetch, isAuthenticated]);
 
   const grouped = useMemo(() => {
     return proposals.reduce(
@@ -271,61 +272,37 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     );
   }, [proposals]);
 
-  const pushClientProject = (proposal) => {
-    if (typeof window === "undefined") return;
-    const existing = JSON.parse(localStorage.getItem("client:projects") || "[]");
-    const project = {
-      id: proposal.id,
-      title: proposal.title,
-      freelancer: proposal.recipientName,
-      status: "pending",
-      budget: proposal.budget || null,
-      deadline: proposal.submittedDate || new Date().toLocaleDateString(),
-      progress: 0
-    };
-    const updated = [project, ...existing].slice(0, 20);
-    localStorage.setItem("client:projects", JSON.stringify(updated));
+  const handleStatusChange = async (id, nextStatus) => {
+    if (nextStatus === "delete") {
+      try {
+        await authFetch(`/proposals/${id}`, { method: "DELETE" });
+        setProposals((prev) => prev.filter((p) => p.id !== id));
+      } catch (error) {
+        console.error("Failed to delete proposal:", error);
+        toast.error("Unable to delete proposal. Please try again.");
+      }
+      return;
+    }
 
-    const freelancerProjects = JSON.parse(localStorage.getItem("freelancer:projects") || "[]");
-    const newFreelancerProject = {
-      id: proposal.id,
-      title: proposal.title,
-      client: "Client",
-      status: "pending",
-      budget: proposal.budget || null,
-      deadline: proposal.submittedDate || new Date().toLocaleDateString(),
-      progress: 0
-    };
-    localStorage.setItem(
-      "freelancer:projects",
-      JSON.stringify([newFreelancerProject, ...freelancerProjects].slice(0, 20))
-    );
+    const apiStatus =
+      nextStatus === "received" ? "PENDING" : nextStatus.toUpperCase();
 
-    const notifications = JSON.parse(localStorage.getItem("client:notifications") || "[]");
-    notifications.unshift({
-      id: `notif-${Date.now()}`,
-      message: `Your proposal "${proposal.title}" was accepted by ${proposal.recipientName}. A project has been created.`,
-      createdAt: new Date().toISOString()
-    });
-    localStorage.setItem("client:notifications", JSON.stringify(notifications.slice(0, 20)));
-  };
-
-  const handleStatusChange = (id, nextStatus) => {
-    setProposals((prev) => {
-      const updated = prev.map((proposal) => {
-        if (proposal.id === id) {
-          const next = { ...proposal, status: nextStatus };
-          if (nextStatus === "accepted" && proposal.id.startsWith("prp-")) {
-            pushClientProject(next);
-          }
-          return next;
-        }
-        return proposal;
+    try {
+      const response = await authFetch(`/proposals/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: apiStatus })
       });
-      const received = updated.filter((p) => p.id.startsWith("prp-"));
-      saveStoredProposals(received);
-      return updated;
-    });
+      const payload = await response.json().catch(() => null);
+      const apiProposal = payload?.data ? mapApiProposal(payload.data) : null;
+      if (apiProposal) {
+        setProposals((prev) =>
+          prev.map((proposal) => (proposal.id === id ? apiProposal : proposal))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to persist proposal status:", error);
+      toast.error(error?.message || "Unable to update proposal status.");
+    }
   };
 
   const allowedFilters = ["pending", "received", "accepted", "rejected"];

@@ -1,18 +1,14 @@
-"use client"
+"use client";
 
-import React, { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import {
-  CheckCircle2,
-  Clock,
-  FileText,
-  MoreVertical,
-} from "lucide-react"
-import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ClientTopBar } from "@/components/client/ClientTopBar"
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { CheckCircle2, Clock, FileText, MoreVertical, XCircle } from "lucide-react";
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ClientTopBar } from "@/components/client/ClientTopBar";
+import { useAuth } from "@/context/AuthContext";
 
 const statusConfig = {
   pending: {
@@ -20,75 +16,90 @@ const statusConfig = {
     icon: Clock,
     className:
       "bg-yellow-500/15 text-yellow-700 border-yellow-200 dark:text-yellow-400 dark:border-yellow-500/30",
-    dotColor: "bg-yellow-500",
+    dotColor: "bg-yellow-500"
   },
   accepted: {
     label: "Accepted",
     icon: CheckCircle2,
     className:
       "bg-green-500/15 text-green-700 border-green-200 dark:text-green-400 dark:border-green-500/30",
-    dotColor: "bg-green-500",
+    dotColor: "bg-green-500"
   },
   sent: {
     label: "Sent",
     icon: FileText,
     className:
       "bg-blue-500/15 text-blue-700 border-blue-200 dark:text-blue-400 dark:border-blue-500/30",
-    dotColor: "bg-blue-500",
+    dotColor: "bg-blue-500"
   },
-}
+  rejected: {
+    label: "Rejected",
+    icon: XCircle,
+    className:
+      "bg-red-500/15 text-red-700 border-red-200 dark:text-red-400 dark:border-red-500/30",
+    dotColor: "bg-red-500"
+  }
+};
 
-const mockProposals = [
-  {
-    id: "launch-hero",
-    title: "Product Launch Creative",
-    category: "Development & Tech",
-    status: "pending",
-    recipientName: "Nova Design Lab",
-    recipientId: "ORG-2214",
-    submittedDate: "Nov 17, 2025",
-    proposalId: "PRP-8234",
-    avatar:
-      "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=256&q=80",
-  },
-  {
-    id: "email-suite",
-    title: "Lifecycle Email Automation",
-    category: "Marketing",
-    status: "sent",
-    recipientName: "Atlas Collective",
-    recipientId: "ORG-1998",
-    submittedDate: "Nov 15, 2025",
-    proposalId: "PRP-8120",
-    avatar:
-      "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=256&q=80",
-  },
-  {
-    id: "portal-refresh",
-    title: "Investor Portal Refresh",
-    category: "Product",
-    status: "accepted",
-    recipientName: "Beacon Ventures",
-    recipientId: "ORG-2056",
-    submittedDate: "Nov 08, 2025",
-    proposalId: "PRP-7791",
-    avatar:
-      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=256&q=80",
-  },
-]
+const normalizeProposalStatus = (status = "") => {
+  switch (status.toUpperCase()) {
+    case "ACCEPTED":
+      return "accepted";
+    case "REJECTED":
+      return "rejected";
+    case "PENDING":
+      return "pending";
+    default:
+      return "sent";
+  }
+};
 
-const loadSentProposals = () => {
+const mapApiProposal = (proposal = {}) => {
+  return {
+    id: proposal.id,
+    title: proposal.project?.title || proposal.title || "Proposal",
+    category: proposal.project?.description ? "Project" : proposal.category || "General",
+    status: normalizeProposalStatus(proposal.status || "PENDING"),
+    recipientName: proposal.freelancer?.fullName || "Freelancer",
+    recipientId: proposal.freelancer?.id || "FREELANCER",
+    submittedDate: proposal.createdAt
+      ? new Date(proposal.createdAt).toLocaleDateString()
+      : new Date().toLocaleDateString(),
+    proposalId: proposal.id
+      ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
+      : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
+    avatar:
+      proposal.avatar ||
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80"
+  };
+};
+
+const loadLocalSent = () => {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem("client:sentProposals") || "[]");
+    return JSON.parse(window.localStorage.getItem("client:sentProposals") || "[]");
   } catch {
     return [];
   }
 };
 
+const mapLocalProposal = (proposal = {}) => ({
+  id: proposal.id || proposal.proposalId || `prp-${Math.floor(Math.random() * 1e6)}`,
+  title: proposal.title || "Proposal",
+  category: proposal.service || proposal.category || "General",
+  status: normalizeProposalStatus(proposal.status || "SENT"),
+  recipientName: proposal.recipientName || "Freelancer",
+  recipientId: proposal.recipientId || "FREELANCER",
+  submittedDate: proposal.submittedDate || new Date().toLocaleDateString(),
+  proposalId: proposal.proposalId || `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
+  avatar:
+    proposal.avatar ||
+    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80"
+});
+
 const ProposalCard = ({ proposal }) => {
-  const config = statusConfig[proposal.status]
-  const StatusIcon = config.icon
+  const config = statusConfig[proposal.status] || statusConfig.sent;
+  const StatusIcon = config.icon;
 
   return (
     <Card className="group overflow-hidden border border-border/50 bg-card/70 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
@@ -121,20 +132,12 @@ const ProposalCard = ({ proposal }) => {
 
             <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <p className="uppercase tracking-widest text-[10px]">
-                  Recipient
-                </p>
-                <p className="font-medium text-foreground">
-                  {proposal.recipientName}
-                </p>
+                <p className="uppercase tracking-widest text-[10px]">Recipient</p>
+                <p className="font-medium text-foreground">{proposal.recipientName}</p>
               </div>
               <div>
-                <p className="uppercase tracking-widest text-[10px]">
-                  Submitted
-                </p>
-                <p className="font-medium text-foreground">
-                  {proposal.submittedDate}
-                </p>
+                <p className="uppercase tracking-widest text-[10px]">Submitted</p>
+                <p className="font-medium text-foreground">{proposal.submittedDate}</p>
               </div>
             </div>
           </div>
@@ -161,47 +164,58 @@ const ProposalCard = ({ proposal }) => {
         </div>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
 const ClientProposalContent = () => {
-  const [proposals, setProposals] = useState(mockProposals);
+  const { isAuthenticated, authFetch } = useAuth();
+  const [proposals, setProposals] = useState([]);
 
   useEffect(() => {
-    const stored = loadSentProposals();
-    if (stored.length) {
-      setProposals((prev) => {
-        const ids = new Set(prev.map((p) => p.id));
-        const normalized = stored.map((p) => ({
-          ...p,
-          category: p.service || p.category || "General",
-          status: p.status || "sent",
-          avatar:
-            p.avatar ||
-            "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
-          recipientName: p.recipientName || "Freelancer",
-          recipientId: p.recipientId || "FREELANCER",
-          submittedDate: p.submittedDate || new Date().toLocaleDateString(),
-          proposalId: p.proposalId || `PRP-${Math.floor(Math.random() * 9000 + 1000)}`
-        }));
-        const merged = [...normalized.filter((p) => !ids.has(p.id)), ...prev];
-        return merged;
-      });
-    }
-  }, []);
+    if (!isAuthenticated) return;
+
+    let isMounted = true;
+
+    const fetchProposals = async () => {
+      try {
+        const response = await authFetch("/proposals?as=owner");
+        const payload = await response.json().catch(() => null);
+        const remote = Array.isArray(payload?.data) ? payload.data : [];
+        if (!isMounted) return;
+
+        const remoteNormalized = remote.map(mapApiProposal);
+        const localNormalized = loadLocalSent().map(mapLocalProposal);
+
+        const mergedMap = new Map();
+        [...remoteNormalized, ...localNormalized].forEach((p) => {
+          if (p?.id) mergedMap.set(p.id, p);
+        });
+
+        setProposals(Array.from(mergedMap.values()));
+      } catch (error) {
+        console.error("Failed to load proposals from API:", error);
+      }
+    };
+
+    fetchProposals();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authFetch, isAuthenticated]);
 
   const grouped = useMemo(() => {
     return proposals.reduce(
       (acc, proposal) => {
-        acc[proposal.status] = [...(acc[proposal.status] || []), proposal];
+        const bucket = proposal.status === "accepted" ? "accepted" : "sent";
+        acc[bucket] = [...(acc[bucket] || []), proposal];
         return acc;
       },
-      { pending: [], sent: [], accepted: [] }
+      { sent: [], accepted: [] }
     );
   }, [proposals]);
 
   const sectionsToRender = [
-    { key: "pending", title: "Pending" },
     { key: "sent", title: "Sent" },
     { key: "accepted", title: "Accepted" }
   ];
@@ -232,15 +246,15 @@ const ClientProposalContent = () => {
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
 const ClientProposal = () => {
   return (
     <RoleAwareSidebar>
       <ClientProposalContent />
     </RoleAwareSidebar>
-  )
-}
+  );
+};
 
-export default ClientProposal
+export default ClientProposal;
