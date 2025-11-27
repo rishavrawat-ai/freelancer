@@ -2,13 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, AlertCircle, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -16,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
+import { useAuth } from "@/context/AuthContext";
 
 const statusConfig = {
   "in-progress": {
@@ -39,45 +34,6 @@ const statusConfig = {
     badgeClass:
       "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800",
   },
-};
-
-const mockProjects = [
-  {
-    id: "launch",
-    title: "Product Launch Microsite",
-    client: "Arcadia Systems",
-    status: "in-progress",
-    budget: 18500,
-    deadline: "Dec 02, 2025",
-    progress: 72,
-  },
-  {
-    id: "email-suite",
-    title: "Lifecycle Email Automation",
-    client: "Tempo.fm",
-    status: "pending",
-    budget: 9400,
-    deadline: "Dec 14, 2025",
-    progress: 18,
-  },
-  {
-    id: "portal",
-    title: "Investor Portal Refresh",
-    client: "Beacon Ventures",
-    status: "completed",
-    budget: 22600,
-    deadline: "Nov 11, 2025",
-    progress: 100,
-  },
-];
-
-const loadFreelancerProjects = () => {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("freelancer:projects") || "[]");
-  } catch {
-    return [];
-  }
 };
 
 const ProjectCard = ({ project }) => {
@@ -191,29 +147,48 @@ const ProjectCard = ({ project }) => {
 };
 
 const FreelancerProjectsContent = () => {
-  const [projects, setProjects] = useState(() => {
-    const base = [...mockProjects, ...loadFreelancerProjects()];
-    const seen = new Set();
-    return base.filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-  });
+  const { authFetch, isAuthenticated } = useAuth();
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    const stored = loadFreelancerProjects();
-    if (stored.length) {
-      setProjects((prev) => {
-        const ids = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        stored.forEach((p) => {
-          if (!ids.has(p.id)) merged.unshift(p);
+    if (!isAuthenticated) return;
+
+    const fetchProjects = async () => {
+      try {
+        const response = await authFetch("/proposals");
+        const payload = await response.json().catch(() => null);
+        const proposals = Array.isArray(payload?.data) ? payload.data : [];
+        const accepted = proposals.filter(
+          (p) => (p.status || "").toUpperCase() === "ACCEPTED" && p.project
+        );
+        const uniqueProjects = new Map();
+        accepted.forEach((p) => {
+          const project = p.project;
+          if (!project?.id) return;
+          if (!uniqueProjects.has(project.id)) {
+            uniqueProjects.set(project.id, {
+              id: project.id,
+              title: project.title || "Project",
+              client:
+                project.owner?.fullName ||
+                project.owner?.name ||
+                project.owner?.email ||
+                "Client",
+              status: "in-progress",
+              budget: project.budget || 0,
+              deadline: project.deadline || "",
+              progress: 35,
+            });
+          }
         });
-        return merged;
-      });
-    }
-  }, []);
+        setProjects(Array.from(uniqueProjects.values()));
+      } catch (error) {
+        console.error("Failed to load projects from API:", error);
+      }
+    };
+
+    fetchProjects();
+  }, [authFetch, isAuthenticated]);
 
   return (
     <div className="space-y-6 p-6">

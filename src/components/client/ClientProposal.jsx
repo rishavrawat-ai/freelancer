@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Clock, FileText, MoreVertical, XCircle } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -59,7 +59,12 @@ const mapApiProposal = (proposal = {}) => {
     proposal.freelancer?.fullName ||
     proposal.freelancer?.name ||
     proposal.freelancer?.email ||
+    proposal.freelancerName ||
     "Freelancer";
+  const freelancerAvatar =
+    proposal.freelancer?.avatar ||
+    proposal.avatar ||
+    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80";
 
   return {
     id: proposal.id,
@@ -68,19 +73,19 @@ const mapApiProposal = (proposal = {}) => {
     status: normalizeProposalStatus(proposal.status || "PENDING"),
     recipientName: freelancerName,
     recipientId: proposal.freelancer?.id || "FREELANCER",
+    projectId: proposal.projectId || proposal.project?.id || null,
+    freelancerId: proposal.freelancer?.id || proposal.freelancerId || null,
     submittedDate: proposal.createdAt
       ? new Date(proposal.createdAt).toLocaleDateString()
       : new Date().toLocaleDateString(),
     proposalId: proposal.id
       ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
-    avatar:
-      proposal.avatar ||
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80"
+    avatar: freelancerAvatar
   };
 };
 
-const ProposalCard = ({ proposal }) => {
+const ProposalCard = ({ proposal, onDelete }) => {
   const config = statusConfig[proposal.status] || statusConfig.sent;
   const StatusIcon = config.icon;
 
@@ -137,6 +142,7 @@ const ProposalCard = ({ proposal }) => {
               size="sm"
               variant="outline"
               className="border-border bg-transparent hover:bg-muted"
+              onClick={() => onDelete?.(proposal.id)}
             >
               Delete
             </Button>
@@ -154,35 +160,67 @@ const ClientProposalContent = () => {
   const { isAuthenticated, authFetch } = useAuth();
   const [proposals, setProposals] = useState([]);
 
+  const fetchProposals = useCallback(async () => {
+    try {
+      const response = await authFetch("/proposals?as=owner");
+      const payload = await response.json().catch(() => null);
+      const remote = Array.isArray(payload?.data) ? payload.data : [];
+      const remoteNormalized = remote.map(mapApiProposal);
+      const uniqueById = remoteNormalized.reduce(
+        (acc, proposal) => {
+          const key =
+            proposal.id ||
+            `${proposal.projectId || "project"}-${proposal.freelancerId || proposal.recipientId}`;
+          if (!key || acc.seen.has(key)) return acc;
+          acc.seen.add(key);
+          acc.list.push(proposal);
+          return acc;
+        },
+        { seen: new Set(), list: [] }
+      ).list;
+      setProposals(uniqueById);
+    } catch (error) {
+      console.error("Failed to load proposals from API:", error);
+    }
+  }, [authFetch]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
     let isMounted = true;
     let intervalId;
 
-    const fetchProposals = async () => {
-      try {
-        const response = await authFetch("/proposals?as=owner");
-        const payload = await response.json().catch(() => null);
-        const remote = Array.isArray(payload?.data) ? payload.data : [];
-        if (!isMounted) return;
-
-        const remoteNormalized = remote.map(mapApiProposal);
-        setProposals(remoteNormalized);
-      } catch (error) {
-        console.error("Failed to load proposals from API:", error);
-      }
+    const safeFetch = async () => {
+      if (!isMounted) return;
+      await fetchProposals();
     };
 
-    fetchProposals();
-    // Keep the client dashboard fresh so accepted states appear without reload.
-    intervalId = window.setInterval(fetchProposals, 6000);
+    safeFetch();
+    intervalId = window.setInterval(safeFetch, 6000);
 
     return () => {
       isMounted = false;
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [authFetch, isAuthenticated]);
+  }, [fetchProposals, isAuthenticated]);
+
+  const handleDelete = useCallback(
+    async (id) => {
+      try {
+        const response = await authFetch(`/proposals/${id}`, { method: "DELETE" });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          const message = payload?.message || "Unable to delete proposal.";
+          throw new Error(message);
+        }
+        setProposals((prev) => prev.filter((proposal) => proposal.id !== id));
+      } catch (error) {
+        console.error("Failed to delete proposal:", error);
+        toast.error(error?.message || "Unable to delete proposal right now.");
+      }
+    },
+    [authFetch]
+  );
 
   const grouped = useMemo(() => {
     return proposals.reduce(
@@ -214,7 +252,11 @@ const ClientProposalContent = () => {
             {grouped[key]?.length ? (
               <div className="space-y-4">
                 {grouped[key].map((proposal) => (
-                  <ProposalCard key={proposal.id} proposal={proposal} />
+                  <ProposalCard
+                    key={proposal.id}
+                    proposal={proposal}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </div>
             ) : (

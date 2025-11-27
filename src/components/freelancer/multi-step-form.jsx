@@ -523,12 +523,7 @@ const FreelancerMultiStepForm = () => {
 
       <div className="w-full max-w-7xl">
         {/* Header */}
-        <div className="mb-8 text-center relative z-10">
-          <div className="inline-flex items-center justify-center mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
-            <span className="text-xs font-semibold text-primary uppercase tracking-[0.18em]">
-              GoHypeMedia
-            </span>
-          </div>
+        <div className="mb-8 text-center relative z-10 mt-5">
           <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
             Become a Freelancer
           </h1>

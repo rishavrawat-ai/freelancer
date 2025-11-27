@@ -27,6 +27,7 @@ import { getSession } from "@/lib/auth-storage";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
 import { listFreelancers } from "@/lib/api-client";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 const dashboardTemplate = {
   heroSubtitle: "Review proposals, unlock talent, and keep budgets on track.",
@@ -176,14 +177,7 @@ const ClientDashboardContent = () => {
   const [isFreelancerModalOpen, setIsFreelancerModalOpen] = useState(false);
   const [freelancers, setFreelancers] = useState([]);
   const [freelancersLoading, setFreelancersLoading] = useState(false);
-  const [sentProposals, setSentProposals] = useState(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      return JSON.parse(localStorage.getItem("client:sentProposals") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const { authFetch } = useAuth();
   const [notificationsChecked, setNotificationsChecked] = useState(false);
 
   useEffect(() => {
@@ -368,55 +362,109 @@ const ClientDashboardContent = () => {
     return filtered.length ? filtered : source;
   }, [savedProposalDetails, freelancers]);
 
-  const sendProposalToFreelancer = (freelancer) => {
+  const sendProposalToFreelancer = async (freelancer) => {
     if (!savedProposalDetails) return;
-    const existing =
-      typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("freelancer:receivedProposals") || "[]")
-        : [];
-    const uniqueId =
-      (typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID()) ||
-      `prp-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-    const newProposal = {
-      id: uniqueId,
-      title: savedProposalDetails.projectTitle,
-      category: savedProposalDetails.service,
-      status: "received",
-      recipientName: freelancer.name,
-      recipientId: freelancer.id || "CLIENT",
-      submittedDate: savedProposalDetails.createdAtDisplay,
-      proposalId: `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
-      avatar:
-        freelancer.avatar ||
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
-      content: savedProposalDetails.summary,
-      clientName: savedProposalDetails.preparedFor || "Client",
-      budget: savedProposalDetails.budget || null
-    };
-    const updated = [newProposal, ...existing].slice(0, 50);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("freelancer:receivedProposals", JSON.stringify(updated));
+    if (!freelancer?.id) {
+      toast.error("Please select a freelancer with a valid account to send this proposal.");
+      return;
     }
-    const clientSentEntry = {
-      id: newProposal.id,
-      title: savedProposalDetails.projectTitle,
-      service: savedProposalDetails.service,
-      status: "sent",
-      recipientName: freelancer.name,
-      recipientId: freelancer.id || "FREELANCER",
-      submittedDate: newProposal.submittedDate,
-      proposalId: newProposal.proposalId,
-      avatar:
-        freelancer.avatar ||
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80"
+
+    const coverLetter =
+      savedProposalDetails.summary ||
+      savedProposalDetails.raw?.coverLetter ||
+      "Proposal submission";
+
+    const amount = Number(
+      (savedProposalDetails.raw?.budget ||
+        savedProposalDetails.raw?.budgetRange ||
+        savedProposalDetails.raw?.estimate ||
+        "").toString().replace(/[^0-9.]/g, "")
+    );
+
+    const resolveProject = async () => {
+      const existingProjectId =
+        savedProposalDetails.raw?.projectId ||
+        savedProposalDetails.raw?.project?.id ||
+        savedProposalDetails.projectId ||
+        null;
+
+      if (existingProjectId) return { projectId: existingProjectId, proposalFromProject: null };
+
+      // Create a minimal project and attach the proposal in one call.
+      const payload = {
+        title: savedProposalDetails.projectTitle || "Untitled Project",
+        description:
+          coverLetter || savedProposalDetails.service || "Project created for proposal",
+        budget: Number.isFinite(amount) ? amount : undefined,
+        proposal: {
+          coverLetter,
+          amount: Number.isFinite(amount) ? amount : 0,
+          status: "PENDING",
+          freelancerId: freelancer.id,
+        },
+      };
+
+      const projectResp = await authFetch("/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!projectResp.ok) {
+        const projectPayload = await projectResp.json().catch(() => null);
+        throw new Error(projectPayload?.message || "Unable to create project for proposal.");
+      }
+
+      const projectPayload = await projectResp.json().catch(() => null);
+      return {
+        projectId:
+          projectPayload?.data?.project?.id ||
+          projectPayload?.data?.id ||
+          null,
+        proposalFromProject: projectPayload?.data?.proposal || null
+      };
     };
-    const nextSent = [clientSentEntry, ...sentProposals].slice(0, 10);
-    setSentProposals(nextSent);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("client:sentProposals", JSON.stringify(nextSent));
+
+    try {
+      const { projectId, proposalFromProject } = await resolveProject();
+      if (!projectId) {
+        throw new Error("No project available for this proposal.");
+      }
+
+      // If the project creation already created the proposal, we are done.
+      if (proposalFromProject?.id) {
+        toast.success(`Proposal sent to ${freelancer.name}`);
+        setIsFreelancerModalOpen(false);
+        return;
+      }
+
+      // Otherwise, create the proposal against the project.
+      const response = await authFetch("/proposals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId,
+          coverLetter,
+          amount: Number.isFinite(amount) ? amount : 0,
+          status: "PENDING",
+          freelancerId: freelancer.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message = payload?.message || "Failed to send proposal.";
+        throw new Error(message);
+      }
+
+      toast.success(`Proposal sent to ${freelancer.name}`);
+      setIsFreelancerModalOpen(false);
+    } catch (error) {
+      console.error("Failed to send proposal:", error);
+      toast.error(error?.message || "Unable to send proposal right now.");
     }
-    toast.success(`Proposal sent to ${freelancer.name}`);
-    setIsFreelancerModalOpen(false);
   };
 
   const handleClearSavedProposal = () => {
@@ -453,13 +501,17 @@ const ClientDashboardContent = () => {
                 Array.isArray(f.skills) && f.skills.length
                   ? f.skills.join(", ")
                   : f.bio || "Freelancer";
-              return {
+                            return {
+                id: f.id,
                 name: f.fullName || f.name || "Freelancer",
                 specialty: skillsText,
                 rating: f.rating || "4.7",
-                projects: f.projects || "—",
-                availability: f.availability || (f.hourlyRate ? `$${f.hourlyRate}/hr` : "Available"),
-                serviceMatch: skillsText || "Freelancer"
+                projects: f.projects || "4+",
+                availability: f.availability || (f.hourlyRate ? `${f.hourlyRate}/hr` : "Available"),
+                serviceMatch: skillsText || "Freelancer",
+                avatar:
+                  f.avatar ||
+                  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
               };
             })
           : [];
@@ -709,31 +761,37 @@ const ClientDashboardContent = () => {
             </DialogHeader>
             <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
               {(matchingFreelancers.length ? matchingFreelancers : recommendedFreelancers).map(
-                (freelancer, idx) => (
-                  <div
-                    key={`${freelancer.name}-${idx}`}
-                    className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-base font-semibold text-foreground">{freelancer.name}</p>
-                      <p className="text-sm text-muted-foreground">{freelancer.specialty}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-semibold text-primary">★ {freelancer.rating}</span>
-                        <span>•</span>
-                        <span>{freelancer.projects} projects</span>
-                        <span>•</span>
-                        <span>{freelancer.availability}</span>
+                (freelancer, idx) => {
+                  const canSend = Boolean(freelancer.id);
+                  return (
+                    <div
+                      key={`${freelancer.name}-${idx}`}
+                      className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-base font-semibold text-foreground">{freelancer.name}</p>
+                        <p className="text-sm text-muted-foreground">{freelancer.specialty}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-semibold text-primary">★ {freelancer.rating}</span>
+                          <span>•</span>
+                          <span>{freelancer.projects} projects</span>
+                          <span>•</span>
+                          <span>{freelancer.availability}</span>
+                        </div>
                       </div>
-                    </div>
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm">
                           View profile
                         </Button>
-                      <Button size="sm" onClick={() => sendProposalToFreelancer(freelancer)}>
-                        Send
-                      </Button>
+                        <Button
+                          size="sm"
+                          disabled={!canSend}
+                          onClick={() => canSend && sendProposalToFreelancer(freelancer)}>
+                          Send
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )
+                  );
+                }
               )}
               {freelancersLoading && (
                 <p className="text-sm text-muted-foreground">Loading freelancers...</p>
@@ -765,3 +823,4 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
