@@ -1,9 +1,12 @@
-﻿import OpenAI from "openai";
+import OpenAI from "openai";
 import { env } from "../config/env.js";
 import {
     DEFAULT_QUESTIONS,
     SERVICE_QUESTION_SETS
 } from "../constants/serviceQuestions.js";
+import { prisma } from "../lib/prisma.js";
+import { asyncHandler } from "../utils/async-handler.js";
+import { AppError } from "../utils/app-error.js";
 
 const MIN_WEBSITE_PRICE = 120000;
 const MIN_WEBSITE_PRICE_DISPLAY = "INR 120,000";
@@ -26,7 +29,11 @@ const defaultReferer =
     normalizeOrigin(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
     "http://localhost:5173";
 
-// Helper function to get service details
+const normalizeService = (service = "") => {
+    const safe = (service || "").toString().trim();
+    return safe.length ? safe : null;
+};
+
 const getServiceDetails = (service) => {
     const services = {
         "Development & Tech": "Starting at INR 120,000. Web/mobile apps, SaaS platforms, e-commerce solutions.",
@@ -45,9 +52,12 @@ const getServiceDetails = (service) => {
 
 const needsWebsitePolicy = (service = "") => service.toLowerCase().includes("web");
 
-const getWebsitePolicy = (service) => needsWebsitePolicy(service) ? `Website projects policy:
+const getWebsitePolicy = (service) =>
+    needsWebsitePolicy(service)
+        ? `Website projects policy:
 - Hosting and domain must be purchased and owned by the client (Hostinger/domain handled on the client side).
-- Minimum website project price: ${MIN_WEBSITE_PRICE_DISPLAY}. If budget is lower, propose a reduced scope or phased delivery.` : "";
+- Minimum website project price: ${MIN_WEBSITE_PRICE_DISPLAY}. If budget is lower, propose a reduced scope or phased delivery.`
+        : "";
 
 const getCounterQuestion = () => `Counter question (ask first):
 - Ask: "To get started, please share 1) a brief project summary, 2) must-have features, 3) expected timeline."
@@ -57,7 +67,6 @@ const getCounterQuestion = () => `Counter question (ask first):
   - E-commerce (catalog + checkout); timeline 1-2 months
   - Custom: I'll describe my needs`;
 
-// Guided flow specifically for Development & Tech
 const devTechFlow = `Conversation format (Development & Tech):
 - No intros or preamble. Output only the next question (or brief confirmation + next question).
 - Ask one question at a time in this order and keep answers short:
@@ -82,12 +91,11 @@ const devTechFlow = `Conversation format (Development & Tech):
 - Be concise (1-2 sentences), respond fast, and move to the next question.
 - Do NOT stop; always ask the next question until all are answered or you deliver the proposal.`;
 
-// Proposal template to generate once the questionnaire is answered
 const proposalTemplate = `When you have enough answers, generate a proposal in this exact structure (replace unknowns with "Not provided"):
 PROJECT PROPOSAL
 Project Title: [Service]
 
-Prepared for: [Name] — [Company/Project]
+Prepared for: [Name] - [Company/Project]
 
 Executive Summary
 [Name] has requested [Service] services. Target delivery: [Timeline]. Budget: [Budget].
@@ -118,7 +126,7 @@ Next Steps
 Confirm package & scope.
 Sign proposal & pay deposit (deposit amount depends on chosen package).
 Kickoff meeting to gather assets & finalize schedule.
-Generated from questionnaire answers — edit if you'd like to add more specifics before saving.`;
+Generated from questionnaire answers - edit if you'd like to add more specifics before saving.`;
 
 const getQuestionsForService = (service = "") =>
     SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS;
@@ -143,7 +151,7 @@ Response rules:
 - Be direct, professional, and friendly
 - Respond fast and move to the next question quickly.
 - No intros or repeated greetings; output only the next question (or brief confirmation + next question).
-- Keep a strict checklist: mark a question asked as "done" and never ask it again unless the answer was empty/unclear. If the user re-answers an earlier question, accept it and move to the next unanswered one—do not repeat it.
+- Keep a strict checklist: mark a question asked as "done" and never ask it again unless the answer was empty/unclear. If the user re-answers an earlier question, accept it and move to the next unanswered one-do not repeat it.
 - Once all checklist items are answered (or the user declines), immediately generate the proposal from what you have and stop asking questions. Do NOT ask any further questions after that.
 - If the user asks for suggestions, provide 3-5 concise, relevant options tailored to the service, then continue with the next unanswered checklist item.
 - Ask the most important items first: 1) project summary, 2) budget (remind floor ${MIN_WEBSITE_PRICE_DISPLAY} if web), 3) timeline, 4) must-have features, 5) tech/design constraints.
@@ -178,6 +186,67 @@ After 3-4 exchanges, provide:
 Keep it short and structured.`;
 };
 
+export const generateChatReply = async ({ message, service, history }) => {
+    const apiKey = env.OPENROUTER_API_KEY?.trim();
+
+    if (!apiKey) {
+        throw new Error(
+            "LLM API key not configured. Set OPENROUTER_API_KEY in backend/.env."
+        );
+    }
+
+    const openai = new OpenAI({
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey: apiKey,
+        defaultHeaders: {
+            "HTTP-Referer": defaultReferer,
+            "X-Title": "Freelancer Platform"
+        }
+    });
+
+    const systemContent = buildSystemPrompt(service || "");
+    const safeHistory = Array.isArray(history) ? history.slice(-20) : [];
+
+    const messages = [
+        { role: "system", content: systemContent },
+        ...safeHistory.map((msg) => ({
+            role: msg.role === "assistant" ? "assistant" : "user",
+            content: msg.content
+        })),
+        { role: "user", content: message }
+    ];
+
+    let completion;
+    try {
+        completion = await openai.chat.completions.create({
+            model: env.OPENROUTER_MODEL,
+            messages,
+            max_tokens: 320,
+            temperature: 0.2
+        });
+    } catch (error) {
+        if (error?.status === 429 && env.OPENROUTER_MODEL_FALLBACK) {
+            console.warn(
+                `Primary model ${env.OPENROUTER_MODEL} rate limited. Switching to fallback model ${env.OPENROUTER_MODEL_FALLBACK}...`
+            );
+            completion = await openai.chat.completions.create({
+                model: env.OPENROUTER_MODEL_FALLBACK,
+                messages,
+                max_tokens: 320,
+                temperature: 0.2
+            });
+        } else {
+            console.error("Primary model failed with error:", error);
+            throw error;
+        }
+    }
+
+    return (
+        completion?.choices?.[0]?.message?.content ||
+        "I'm here-please share a bit more so I can prepare your quick proposal."
+    );
+};
+
 export const chatController = async (req, res) => {
     try {
         const { message, service, history } = req.body;
@@ -186,69 +255,71 @@ export const chatController = async (req, res) => {
             return res.status(400).json({ error: "Message is required" });
         }
 
-        const apiKey = env.OPENROUTER_API_KEY?.trim();
-
-        if (!apiKey) {
-            console.error("API Key is missing");
-            return res.status(500).json({
-                error: "LLM API key not configured. Set OPENROUTER_API_KEY in backend/.env."
-            });
-        }
-
-        const openai = new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: apiKey,
-            defaultHeaders: {
-                "HTTP-Referer": defaultReferer,
-                "X-Title": "Freelancer Platform"
-            }
-        });
-
-        const systemContent = buildSystemPrompt(service || "");
-        const safeHistory = Array.isArray(history) ? history.slice(-20) : [];
-
-        // Construct messages array from history and current message
-        const messages = [
-            { role: "system", content: systemContent },
-            ...safeHistory.map(msg => ({ role: msg.role, content: msg.content })),
-            { role: "user", content: message }
-        ];
-
         console.log("Sending request to OpenRouter...");
-        let completion;
-        try {
-            completion = await openai.chat.completions.create({
-                model: env.OPENROUTER_MODEL,
-                messages: messages,
-                max_tokens: 320, // allow fuller replies without cutting off
-                temperature: 0.2,
-            });
-        } catch (error) {
-            if (error?.status === 429 && env.OPENROUTER_MODEL_FALLBACK) {
-                console.warn(`Primary model ${env.OPENROUTER_MODEL} rate limited. Switching to fallback model ${env.OPENROUTER_MODEL_FALLBACK}...`);
-                completion = await openai.chat.completions.create({
-                    model: env.OPENROUTER_MODEL_FALLBACK,
-                    messages: messages,
-                    max_tokens: 320,
-                    temperature: 0.2,
-                });
-            } else {
-                console.error("Primary model failed with error:", error);
-                throw error;
-            }
-        }
-
-        const botResponse =
-            completion?.choices?.[0]?.message?.content ||
-            "I'm here—please share a bit more so I can prepare your quick proposal.";
+        const botResponse = await generateChatReply({
+            message,
+            service,
+            history: Array.isArray(history) ? history : []
+        });
         res.json({ response: botResponse });
-
     } catch (error) {
         console.error("Chat error:", error);
         if (error?.response) {
             console.error("OpenAI API Error Data:", error.response.data);
             console.error("OpenAI API Error Status:", error.response.status);
         }
-        res.status(500).json({ error: "Unable to generate a response right now. Please try again." });
+        res.status(500).json({
+            error: "Unable to generate a response right now. Please try again."
+        });
     }
 };
+
+export const createConversation = asyncHandler(async (req, res) => {
+  const createdById = req.user?.sub || null;
+  const serviceKey = normalizeService(req.body?.service);
+
+  // Reuse existing conversation if the same service key already exists.
+  const existing = serviceKey
+    ? await prisma.chatConversation.findFirst({
+        where: { service: serviceKey }
+      })
+    : null;
+
+  if (existing) {
+    res.status(200).json({ data: existing });
+    return;
+  }
+
+  const conversation = await prisma.chatConversation.create({
+    data: {
+      service: serviceKey,
+      createdById
+    }
+  });
+  res.status(201).json({ data: conversation });
+});
+
+export const getConversationMessages = asyncHandler(async (req, res) => {
+    const conversationId = req.params?.id;
+
+    const conversation = await prisma.chatConversation.findUnique({
+        where: { id: conversationId }
+    });
+
+    if (!conversation) {
+        throw new AppError("Conversation not found", 404);
+    }
+
+    const messages = await prisma.chatMessage.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "asc" },
+        take: 100
+    });
+
+    res.json({
+        data: {
+            conversation,
+            messages
+        }
+    });
+});

@@ -38,6 +38,8 @@ model User {
   hourlyRate   Decimal?   @db.Decimal(10, 2)
   ownedProjects Project[] @relation("ProjectOwner")
   proposals    Proposal[]
+  createdChats ChatConversation[] @relation("ChatCreator")
+  sentMessages ChatMessage[]      @relation("ChatSender")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -77,4 +79,28 @@ model Profile {
   workExperience Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model ChatConversation {
+  id          String        @id @default(cuid())
+  service     String?
+  createdBy   User?         @relation("ChatCreator", fields: [createdById], references: [id])
+  createdById String?
+  messages    ChatMessage[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id              String           @id @default(cuid())
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId  String
+  sender          User?            @relation("ChatSender", fields: [senderId], references: [id])
+  senderId        String?
+  senderName      String?
+  senderRole      String?
+  role            String           @default("user")
+  content         String           @db.Text
+  createdAt       DateTime         @default(now())
+  @@index([conversationId, createdAt])
 }

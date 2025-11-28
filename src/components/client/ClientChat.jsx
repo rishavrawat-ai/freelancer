@@ -62,36 +62,77 @@ const ChatArea = ({
         </Badge>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
+      <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-6 py-4">
         {messages.map((message, index) => {
           const isSelf = message.senderId && currentUser?.id && message.senderId === currentUser.id;
           const isAssistant = message.role === "assistant";
           const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
           const isDeleted = message.deleted || message.isDeleted;
-          const bubbleTone = (() => {
-            if (isAssistant) return "border border-border/60 bg-card text-foreground";
-            if (isDeleted) return "bg-emerald-800/40 text-emerald-50 border border-emerald-600/40";
-            if (message.senderRole === "CLIENT")
-              return "bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100";
-            if (message.senderRole === "FREELANCER")
-              return "bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50";
-            return isSelf
-              ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
-              : "border border-border/50 bg-card text-foreground";
+          const bubbleStyle = (() => {
+            if (isAssistant) {
+              return {
+                backgroundColor: "var(--chat-bubble-assistant)",
+                color: "var(--chat-bubble-assistant-text)",
+                border: `1px solid var(--chat-bubble-border)`
+              };
+            }
+            if (isDeleted) {
+              return {
+                backgroundColor: "var(--chat-bubble-assistant)",
+                color: "var(--chat-bubble-assistant-text)",
+                border: `1px solid var(--chat-bubble-border)`
+              };
+            }
+            if (message.senderRole === "CLIENT") {
+              return {
+                backgroundColor: "var(--chat-bubble-client)",
+                color: "var(--chat-bubble-client-text)",
+                border: `1px solid var(--chat-bubble-border)`
+              };
+            }
+            if (message.senderRole === "FREELANCER") {
+              return {
+                backgroundColor: "var(--chat-bubble-freelancer)",
+                color: "var(--chat-bubble-freelancer-text)",
+                border: `1px solid var(--chat-bubble-border)`
+              };
+            }
+            if (isSelf) {
+              return {
+                backgroundColor: "var(--chat-bubble-self)",
+                color: "var(--chat-bubble-self-text)",
+                border: `1px solid var(--chat-bubble-border)`
+              };
+            }
+            return {
+              backgroundColor: "var(--chat-bubble-assistant)",
+              color: "var(--chat-bubble-assistant-text)",
+              border: `1px solid var(--chat-bubble-border)`
+            };
           })();
 
           return (
             <div key={message.id || index} className={`flex ${align}`}>
-              <div className={`max-w-sm rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 ${bubbleTone}`}>
+              <div
+                className="max-w-[70%] md:max-w-[60%] rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 overflow-hidden"
+                style={bubbleStyle}
+                role="group"
+              >
                 {isDeleted ? (
                   <>
                     <Clock4 className="h-4 w-4 flex-shrink-0 opacity-70" />
                     <span className="italic text-foreground/90 flex-1">
-                      {isSelf ? "You deleted this message." : "This message was deleted."}
+                    {isSelf ? "You deleted this message." : "This message was deleted."}
                     </span>
                   </>
                 ) : (
-                  <p className="leading-relaxed whitespace-pre-wrap break-words flex-1">
+                  <p
+                    className="leading-relaxed whitespace-pre-wrap flex-1"
+                    style={{
+                      overflowWrap: "break-word",
+                      wordBreak: "break-all"
+                    }}
+                  >
                     {message.content}
                   </p>
                 )}
@@ -152,6 +193,12 @@ const ClientChatContent = () => {
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
 
+  // Reset state when switching conversation to avoid cross-chat bleed.
+  useEffect(() => {
+    setConversationId(null);
+    setMessages([]);
+  }, [selectedConversation?.serviceKey, selectedConversation?.id]);
+
   // Load freelancers you've engaged with (from proposals as owner)
   useEffect(() => {
     let cancelled = false;
@@ -162,42 +209,45 @@ const ClientChatContent = () => {
         const payload = await response.json().catch(() => null);
         const items = Array.isArray(payload?.data) ? payload.data : [];
 
-        const uniq = [];
-        const seen = new Set();
-        for (const item of items) {
-          const freelancer = item.freelancer;
-          if (!freelancer?.id) continue;
-          if (seen.has(freelancer.id)) continue;
-          seen.add(freelancer.id);
-          const clientId = user?.id || "client";
-          const sharedKey = `CHAT:${clientId}:${freelancer.id}`;
+        const deduped = new Map();
+        const clientId = user?.id || "client";
 
-          uniq.push({
-            id: freelancer.id,
-            name: freelancer.fullName || freelancer.name || freelancer.email || "Freelancer",
+        for (const item of items) {
+          if ((item.status || "").toUpperCase() !== "ACCEPTED") continue;
+          const freelancer = item.freelancer || {};
+          const freelancerId = freelancer.id || item.freelancerId || null;
+          const freelancerEmail = (freelancer.email || item.freelancerEmail || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          const freelancerName = (freelancer.fullName || freelancer.name || freelancerEmail || "Freelancer")
+            .toString()
+            .trim();
+
+          const keyBase = freelancerId || freelancerEmail;
+          const fallbackKey = freelancerName.toLowerCase();
+          const dedupeKey = (keyBase || fallbackKey).toString();
+          if (!dedupeKey) continue;
+
+          const sharedKey = `CHAT:${clientId}:${dedupeKey}`;
+          if (deduped.has(sharedKey)) continue;
+
+          deduped.set(sharedKey, {
+            id: freelancerId || dedupeKey,
+            name: freelancerName,
             avatar:
               freelancer.avatar ||
               "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
-            label: `Project with ${freelancer.fullName || freelancer.email || "Freelancer"}`,
-            serviceKey: sharedKey
+            label: `Project with ${freelancerName}`,
+            serviceKey: sharedKey,
+            accepted: true
           });
         }
 
-        const fallback = [
-          {
-            id: "assistant",
-            name: "Project Assistant",
-            avatar:
-              "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
-            label: "General Assistant",
-            serviceKey: "CHAT:assistant"
-          }
-        ];
-
-        const finalList = uniq.length ? uniq : fallback;
+        const uniqueFinal = deduped.size ? Array.from(deduped.values()) : [];
         if (!cancelled) {
-          setConversations(finalList);
-          setSelectedConversation(finalList[0]);
+          setConversations(uniqueFinal);
+          setSelectedConversation(uniqueFinal[0] || null);
         }
       } catch (error) {
         console.error("Failed to load conversations:", error);
@@ -225,9 +275,9 @@ const ClientChatContent = () => {
           setConversationId(stored);
           return;
         }
-        const conversation = await apiClient.createChatConversation({
-          service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
-        });
+      const conversation = await apiClient.createChatConversation({
+        service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+      });
         if (!cancelled && conversation?.id) {
           setConversationId(conversation.id);
           if (typeof window !== "undefined") {
@@ -271,6 +321,24 @@ const ClientChatContent = () => {
         (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       );
       setMessages(sorted);
+
+      if (
+        sorted.length === 0 &&
+        selectedConversation?.accepted &&
+        conversationId &&
+        !seededAutoMessage.current.has(conversationId)
+      ) {
+        seededAutoMessage.current.add(conversationId);
+        socket.emit("chat:message", {
+          conversationId,
+          content: "Freelancer accepted the project.",
+          service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL,
+          senderId: selectedConversation.id || null,
+          senderRole: "FREELANCER",
+          senderName: selectedConversation.name || "Freelancer",
+          skipAssistant: true
+        });
+      }
     });
 
     socket.on("chat:message", (message) => {
@@ -322,20 +390,21 @@ const ClientChatContent = () => {
     <div className="flex h-screen flex-col gap-6 overflow-hidden p-6">
       <ClientTopBar />
 
-      <div className="grid h-full gap-6 overflow-hidden lg:grid-cols-[360px_minmax(0,1fr)]">
-        <Card className="border border-border/30 bg-[#0a0d12] shadow-lg shadow-black/40">
-          <CardContent className="flex h-full flex-col gap-3 overflow-hidden p-4">
-            <div className="flex items-center gap-2 rounded-lg bg-slate-900/70 px-3 py-2">
-              <Input
-                placeholder="Search or start new chat"
-                className="border-none bg-transparent text-sm focus-visible:ring-0"
-                disabled
-              />
+      <div className="grid h-full gap-6 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="border border-border/50 bg-card/70">
+          <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
+                Conversations
+              </p>
+              {selectedConversation?.name ? (
+                <p className="text-lg font-semibold">{selectedConversation.name}</p>
+              ) : null}
+              <p className="text-sm text-muted-foreground">
+                Chat with your freelancer/assistant threads.
+              </p>
             </div>
-            <div className="text-xs uppercase tracking-[0.28em] text-muted-foreground px-1">
-              Chats
-            </div>
-            <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {loading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading chats...
@@ -344,21 +413,20 @@ const ClientChatContent = () => {
                 <div className="text-sm text-muted-foreground">No conversations yet.</div>
               ) : (
                 conversations.map((conversation) => {
-                  const isActive = conversation.id === selectedConversation?.id;
-                  const timeLabel = "";
-                  const unread = conversation.unreadCount || 0;
-                  const lastPreview = conversation.label || SERVICE_LABEL;
+                  const isActive =
+                    (conversation.serviceKey || conversation.id) ===
+                    (selectedConversation?.serviceKey || selectedConversation?.id);
                   return (
                     <button
-                      key={conversation.id}
+                      key={conversation.serviceKey || conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
-                      className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition ${
+                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                         isActive
-                          ? "bg-emerald-500/10 ring-1 ring-emerald-400/40"
-                          : "hover:bg-slate-900/60"
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-border/50 hover:border-primary/30"
                       }`}
                     >
-                      <Avatar className="h-11 w-11">
+                      <Avatar className="h-10 w-10">
                         <AvatarImage
                           src={conversation.avatar || "/placeholder.svg"}
                           alt={conversation.name}
@@ -367,30 +435,28 @@ const ClientChatContent = () => {
                           {conversation.name?.[0] || "C"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-1 flex-col min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold uppercase">
-                            {conversation.name}
-                          </p>
-                          <span className="ml-auto text-[11px] font-semibold text-emerald-400">
-                            {timeLabel}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-xs text-muted-foreground">
-                            {lastPreview}
-                          </p>
-                          {unread > 0 ? (
-                            <span className="ml-auto rounded-full bg-emerald-500 px-2 py-[2px] text-[11px] font-semibold text-emerald-950">
-                              {unread}
-                            </span>
-                          ) : null}
-                        </div>
+                      <div className="flex flex-1 flex-col">
+                        <p className="font-semibold">{conversation.name}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {conversation.label || SERVICE_LABEL}
+                        </p>
                       </div>
                     </button>
                   );
                 })
               )}
+            </div>
+            <div className="mt-2 space-y-2 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
+              <p>Role color key:</p>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+                  Client
+                </Badge>
+                <Badge className="bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50">
+                  Freelancer
+                </Badge>
+                <Badge variant="secondary">Assistant</Badge>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -5,16 +5,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, SOCKET_IO_URL } from "@/lib/api-client";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 
 const ChatDialog = ({ isOpen, onClose, service }) => {
   const [messages, setMessages] = useState([]);
@@ -24,10 +25,20 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const [conversationId, setConversationId] = useState(null);
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const socketRef = useRef(null);
+  const serviceKey = service?.title || "Project";
+
+  const formatTime = (value) => {
+    if (!value) return "";
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
 
   const persistSavedProposalToStorage = (proposal) => {
     if (typeof window === "undefined" || !proposal) return;
@@ -35,70 +46,146 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       content: proposal.content || proposal,
       service: proposal.service || service?.title || "Project",
       createdAt: proposal.createdAt || new Date().toISOString(),
-      projectTitle: proposal.projectTitle || proposal.service || service?.title || "Proposal",
+      projectTitle:
+        proposal.projectTitle || proposal.service || service?.title || "Proposal",
       preparedFor: proposal.preparedFor || proposal.name || "Client",
       budget: proposal.budget || null,
-      summary: proposal.summary || (typeof proposal === "string" ? proposal : proposal.content) || "",
+      summary:
+        proposal.summary ||
+        (typeof proposal === "string" ? proposal : proposal.content) ||
+        ""
     };
     window.localStorage.setItem("markify:savedProposal", JSON.stringify(payload));
   };
 
+  // Start or resume a conversation, persisting the id for the session.
   useEffect(() => {
-    if (isOpen && service) {
-      setMessages([
-        {
-          role: "assistant",
-          content: `Hi! I see you're interested in ${service.title}. How can I help you with that?`,
-        },
-      ]);
-      // Focus the input when chat opens.
-      queueMicrotask(() => {
-        inputRef.current?.focus();
+    if (!isOpen) return;
+
+    let cancelled = false;
+
+    const ensureConversation = async () => {
+      try {
+        const storageKey = `markify:chatConversationId:${serviceKey}`;
+        const stored =
+          typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+
+        if (stored) {
+          setConversationId(stored);
+          return;
+        }
+
+        const conversation = await apiClient.createChatConversation({
+          service: serviceKey
+        });
+
+        if (!cancelled && conversation?.id) {
+          setConversationId(conversation.id);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(storageKey, conversation.id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to start chat conversation:", error);
+      }
+    };
+
+    ensureConversation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, serviceKey]);
+
+  // Wire up socket.io for real-time chat.
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    const socket = io(SOCKET_IO_URL, {
+      transports: ["websocket"]
+    });
+    socketRef.current = socket;
+
+    socket.emit("chat:join", { conversationId, service: service?.title });
+
+    socket.on("chat:joined", (payload) => {
+      if (payload?.conversationId) {
+        setConversationId(payload.conversationId);
+      }
+    });
+
+    socket.on("chat:history", (history = []) => {
+      const sorted = [...history].sort((a, b) =>
+        new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+      );
+      setMessages(sorted);
+    });
+
+    socket.on("chat:message", (message) => {
+      setIsLoading(message?.role !== "assistant");
+      setMessages((prev) => {
+        const filtered = prev.filter(
+          (msg) =>
+            !msg.pending ||
+            msg.content !== message?.content ||
+            msg.role !== message?.role
+        );
+        return [...filtered, message];
       });
-    }
-  }, [isOpen, service]);
+    });
+
+    socket.on("chat:error", (payload) => {
+      console.error("Socket error:", payload);
+      setIsLoading(false);
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [conversationId, isOpen, service]);
+
+  // Seed an opening prompt if there is no history.
+  useEffect(() => {
+    if (!isOpen || !service || messages.length) return;
+
+    setMessages([
+      {
+        role: "assistant",
+        content: `Hi! I see you're interested in ${service.title}. How can I help you with that?`
+      }
+    ]);
+
+    queueMicrotask(() => {
+      inputRef.current?.focus();
+    });
+  }, [isOpen, service, messages.length]);
 
   const handleSend = async () => {
-    if (!input.trim() || !service?.title) return;
+    if (!input.trim()) return;
+    if (!socketRef.current) {
+      console.warn("Chat socket not ready");
+      return;
+    }
 
-    const userMessage = { role: "user", content: input };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+    const payload = {
+      conversationId,
+      content: input,
+      service: serviceKey,
+      senderId: user?.id || null,
+      senderRole: user?.role || "GUEST"
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      { ...payload, role: "user", pending: true }
+    ]);
     setInput("");
     setIsLoading(true);
-
-    try {
-      const data = await apiClient.chat({
-        message: input,
-        service: service.title,
-        history: nextMessages,
-      });
-
-      const safeData = data || {};
-      if (safeData.error) {
-        throw new Error(safeData.error);
-      }
-
-      const botMessage = {
-        role: "assistant",
-        content: safeData.response || "I'm here—please share a bit more so I can prepare your proposal.",
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, I encountered an error reaching the assistant. Please try again in a moment.",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-      queueMicrotask(() => {
-        inputRef.current?.focus();
-      });
-    }
+    socketRef.current.emit("chat:message", payload);
+    queueMicrotask(() => {
+      inputRef.current?.focus();
+    });
   };
 
   const latestProposalMessage =
@@ -126,7 +213,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       const proposalPayload = {
         content: latestProposalMessage.content,
         service: service?.title || "Project",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
       setSavedProposal(latestProposalMessage.content);
       persistSavedProposalToStorage(proposalPayload);
@@ -149,6 +236,13 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     setMessages(nextMessages);
     setSavedProposal(editedText);
     setIsEditing(false);
+  };
+
+  const resolveSenderChip = (msg) => {
+    if (msg.role === "assistant") return "Assistant";
+    if (msg.senderId && user?.id && msg.senderId === user.id) return "You";
+    if (msg.senderRole) return msg.senderRole;
+    return user?.role === "CLIENT" ? "Freelancer" : "Client";
   };
 
   useEffect(() => {
@@ -176,39 +270,60 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
         <ScrollArea className="flex-1 pr-4 overflow-y-auto">
           <div className="space-y-4 min-w-0">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex items-start gap-3 min-w-0 ${
-                  msg.role === "user" ? "flex-row-reverse" : ""
-                }`}>
+            {messages.map((msg, index) => {
+              const isSelf = msg.senderId && user?.id && msg.senderId === user.id;
+              const isAssistant = msg.role === "assistant";
+              const alignment =
+                isAssistant || !isSelf ? "flex-row" : "flex-row-reverse";
+
+              const bubbleTone = (() => {
+                if (isAssistant) return "bg-muted text-foreground";
+                if (msg.senderRole === "CLIENT")
+                  return "bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100";
+                if (msg.senderRole === "FREELANCER")
+                  return "bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50";
+                return isSelf
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground";
+              })();
+
+              return (
                 <div
-                  className={`p-2 rounded-full ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}>
-                  {msg.role === "user" ? (
-                    <User className="w-4 h-4" />
-                  ) : (
-                    <Bot className="w-4 h-4" />
-                  )}
+                  key={msg.id || index}
+                  className={`flex items-start gap-3 min-w-0 ${alignment}`}
+                >
+                  <div
+                    className={`p-2 rounded-full ${
+                      isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}
+                  >
+                    {isAssistant ? (
+                      <Bot className="w-4 h-4" />
+                    ) : (
+                      <User className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div
+                    className={`p-3 rounded-lg max-w-[80%] min-w-0 text-sm break-words overflow-wrap-anywhere hyphens-auto ${bubbleTone}`}
+                    style={{
+                      wordBreak: "break-word",
+                      overflowWrap: "anywhere",
+                      whiteSpace: "pre-wrap"
+                    }}
+                  >
+                    <div className="mb-1 text-[10px] uppercase tracking-[0.12em] opacity-70">
+                      {resolveSenderChip(msg)}
+                      {msg.createdAt ? (
+                        <span className="ml-2 lowercase text-[9px] opacity-60">
+                          {formatTime(msg.createdAt)}
+                        </span>
+                      ) : null}
+                    </div>
+                    {msg.content}
+                  </div>
                 </div>
-                <div
-                  className={`p-3 rounded-lg max-w-[80%] min-w-0 text-sm break-words overflow-wrap-anywhere hyphens-auto ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
-                  style={{
-                    wordBreak: "break-word",
-                    overflowWrap: "anywhere",
-                    whiteSpace: "pre-wrap",
-                  }}>
-                  {msg.content}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {isLoading && (
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-full bg-muted">
@@ -229,14 +344,16 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
               e.preventDefault();
               handleSend();
             }}
-            className="flex w-full items-center space-x-2">
+            className="flex w-full items-center space-x-2"
+          >
             <Input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
+              disabled={!conversationId}
             />
-            <Button type="submit" size="icon" disabled={isLoading}>
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
               <Send className="w-4 h-4" />
             </Button>
           </form>
@@ -246,7 +363,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Proposal ready</DialogTitle>
-            <DialogDescription>Review, edit, or save this proposal.</DialogDescription>
+            <DialogDescription>
+              Review, edit, or save this proposal.
+            </DialogDescription>
           </DialogHeader>
           <pre className="whitespace-pre-wrap rounded-md bg-slate-900 text-slate-50 p-4 text-sm leading-relaxed border border-slate-800 max-h-[360px] overflow-y-auto">
             {latestProposalMessage?.content}

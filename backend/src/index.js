@@ -2,11 +2,13 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import { createServer } from "http";
 import { env, envInitError } from "./config/env.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
 import { apiRouter } from "./routes/index.js";
 import { prisma, prismaInitError } from "./lib/prisma.js";
+import { initSocket } from "./lib/socket.js";
 
 const runningInVercel = process.env.VERCEL === "1";
 export const createApp = () => {
@@ -125,7 +127,10 @@ if (prismaInitError) {
 }
 
 if (!runningInVercel) {
-  const server = app.listen(env.PORT, () => {
+  const httpServer = createServer(app);
+  const io = initSocket(httpServer);
+
+  const server = httpServer.listen(env.PORT, () => {
     console.log(`API server ready on http://localhost:${env.PORT}`);
   });
 
@@ -143,6 +148,9 @@ if (!runningInVercel) {
   const gracefulShutdown = async () => {
     console.log("Shutting down server...");
     server.close();
+    if (io && typeof io.close === "function") {
+      io.close();
+    }
     if (prisma && typeof prisma.$disconnect === "function") {
       try {
         await prisma.$disconnect();

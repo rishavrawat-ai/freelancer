@@ -27,6 +27,8 @@ export const API_BASE_URL =
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
 
+export const SOCKET_IO_URL = API_BASE_URL.replace(/\/api$/, "");
+
 const defaultHeaders = {
   "Content-Type": "application/json"
 };
@@ -121,6 +123,19 @@ export const chat = ({ message, service, history = [] }) => {
   });
 };
 
+export const createChatConversation = ({ service }) => {
+  return request("/chat/conversations", {
+    method: "POST",
+    body: JSON.stringify({ service })
+  });
+};
+
+export const fetchChatMessages = (conversationId) => {
+  return request(`/chat/conversations/${conversationId}/messages`, {
+    method: "GET"
+  });
+};
+
 export const listFreelancers = (params = {}) => {
   const query = new URLSearchParams({ role: "FREELANCER", ...params }).toString();
   return request(`/users?${query}`, {
@@ -131,5 +146,7 @@ export const listFreelancers = (params = {}) => {
 export const apiClient = {
   signup,
   login,
-  chat
+  chat,
+  createChatConversation,
+  fetchChatMessages
 };
