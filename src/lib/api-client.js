@@ -29,9 +29,12 @@ export const API_BASE_URL =
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
 
-const defaultSocketUrl = API_BASE_URL.replace(/\/api$/, "");
-
-const inferredSocketUrl = envSocketUrl || defaultSocketUrl;
+// Only enable sockets when explicitly configured or on localhost for dev.
+const inferredSocketUrl =
+  envSocketUrl ||
+  (safeWindow && safeWindow.location.hostname === "localhost"
+    ? API_BASE_URL.replace(/\/api$/, "")
+    : null);
 
 const inferredSocketPath = envSocketPath || "/socket.io";
 
