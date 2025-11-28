@@ -34,6 +34,19 @@ const normalizeService = (service = "") => {
     return safe.length ? safe : null;
 };
 
+const serializeMessage = (message) => ({
+    ...message,
+    createdAt:
+        message.createdAt instanceof Date
+            ? message.createdAt.toISOString()
+            : message.createdAt
+});
+
+const toHistoryMessage = (message) => ({
+    role: message.role === "assistant" ? "assistant" : "user",
+    content: message.content
+});
+
 const getServiceDetails = (service) => {
     const services = {
         "Development & Tech": "Starting at INR 120,000. Web/mobile apps, SaaS platforms, e-commerce solutions.",
