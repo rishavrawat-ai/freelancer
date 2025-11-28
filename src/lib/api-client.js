@@ -28,6 +28,12 @@ export const API_BASE_URL =
   "http://localhost:5000/api";
 
 export const SOCKET_IO_URL = API_BASE_URL.replace(/\/api$/, "");
+export const SOCKET_OPTIONS = {
+  transports: ["polling"], // prevent websocket upgrade on hosts that do not support it (e.g., Vercel serverless)
+  upgrade: false, // keep the transport stable so it works globally
+  withCredentials: true,
+  path: "/socket.io"
+};
 
 const defaultHeaders = {
   "Content-Type": "application/json"

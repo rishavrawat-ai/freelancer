@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
 import { SendHorizontal, Paperclip, Bot, User, Loader2, Clock4 } from "lucide-react";
-import { apiClient, SOCKET_IO_URL } from "@/lib/api-client";
+import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 
 const SERVICE_LABEL = "Project Chat";
@@ -299,11 +299,7 @@ const ClientChatContent = () => {
     if (!conversationId || !selectedConversation) return;
 
     const storageKey = `markify:chatConversationId:${selectedConversation.serviceKey || selectedConversation.id}`;
-    const socket = io(SOCKET_IO_URL, {
-      transports: ["polling", "websocket"],
-      withCredentials: true,
-      path: "/socket.io"
-    });
+    const socket = io(SOCKET_IO_URL, SOCKET_OPTIONS);
     socketRef.current = socket;
 
     socket.emit("chat:join", {
