@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot } from "lucide-react";
-import { apiClient, SOCKET_IO_URL } from "@/lib/api-client";
+import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS } from "@/lib/api-client";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -101,11 +101,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   useEffect(() => {
     if (!isOpen || !conversationId) return;
 
-    const socket = io(SOCKET_IO_URL, {
-      transports: ["polling", "websocket"],
-      withCredentials: true,
-      path: "/socket.io"
-    });
+    const socket = io(SOCKET_IO_URL, SOCKET_OPTIONS);
     socketRef.current = socket;
 
     socket.emit("chat:join", { conversationId, service: service?.title });
