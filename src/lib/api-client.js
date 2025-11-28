@@ -29,10 +29,7 @@ export const API_BASE_URL =
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
 
-const defaultSocketUrl =
-  safeWindow && safeWindow.location.hostname === "localhost"
-    ? API_BASE_URL.replace(/\/api$/, "")
-    : null;
+const defaultSocketUrl = API_BASE_URL.replace(/\/api$/, "");
 
 const inferredSocketUrl = envSocketUrl || defaultSocketUrl;
 

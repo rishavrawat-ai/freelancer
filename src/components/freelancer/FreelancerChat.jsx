@@ -434,9 +434,7 @@ const FreelancerChatContent = () => {
 
     socket.on("chat:presence", ({ conversationId: cid, online: list = [] }) => {
       if (!cid || cid !== conversationId) return;
-      const selfId = user?.id;
-      const othersOnline = list.some((id) => (selfId ? id !== selfId : true));
-      setOnline(othersOnline);
+      setOnline(Array.isArray(list) && list.length > 0);
     });
 
     socket.on("connect_error", (error) => {
