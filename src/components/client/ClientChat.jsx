@@ -69,9 +69,6 @@ const ChatArea = ({
             {online ? "Online" : "Offline"}
           </p>
         </div>
-        <Badge variant="outline" className="ml-auto">
-          Live
-        </Badge>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-6 py-4">
@@ -458,7 +455,9 @@ const ClientChatContent = () => {
 
     socket.on("chat:presence", ({ conversationId: cid, online: list = [] }) => {
       if (!cid || cid !== conversationId) return;
-      setOnline(Array.isArray(list) && list.length > 0);
+      const selfId = user?.id;
+      const othersOnline = list.some((id) => (selfId ? id !== selfId : true));
+      setOnline(othersOnline);
     });
 
     socket.on("connect_error", (error) => {
@@ -536,9 +535,6 @@ const ClientChatContent = () => {
               {selectedConversation?.name ? (
                 <p className="text-lg font-semibold">{selectedConversation.name}</p>
               ) : null}
-              <p className="text-sm text-muted-foreground">
-                Chat with your freelancer/assistant threads.
-              </p>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {loading ? (
@@ -552,13 +548,15 @@ const ClientChatContent = () => {
                   const isActive =
                     (conversation.serviceKey || conversation.id) ===
                     (selectedConversation?.serviceKey || selectedConversation?.id);
+                  const nameClass = isActive ? "text-neutral-900" : "text-foreground";
+                  const labelClass = isActive ? "text-neutral-800" : "text-muted-foreground";
                   return (
                     <button
                       key={conversation.serviceKey || conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                         isActive
-                          ? "border-primary/40 bg-primary/10"
+                          ? "border-primary/40 bg-primary"
                           : "border-border/50 hover:border-primary/30"
                       }`}
                     >
@@ -567,13 +565,13 @@ const ClientChatContent = () => {
                           src={conversation.avatar || "/placeholder.svg"}
                           alt={conversation.name}
                         />
-                        <AvatarFallback className="bg-primary/20 text-primary">
+                        <AvatarFallback className="bg-primary/30 text-primary">
                           {conversation.name?.[0] || "C"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-1 flex-col">
-                        <p className="font-semibold">{conversation.name}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p className={`font-semibold ${nameClass}`}>{conversation.name}</p>
+                        <p className={`text-xs line-clamp-1 ${labelClass}`}>
                           {conversation.label || SERVICE_LABEL}
                         </p>
                       </div>
@@ -581,18 +579,6 @@ const ClientChatContent = () => {
                   );
                 })
               )}
-            </div>
-            <div className="mt-2 space-y-2 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-              <p>Role color key:</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
-                  Client
-                </Badge>
-                <Badge className="bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50">
-                  Freelancer
-                </Badge>
-                <Badge variant="secondary">Assistant</Badge>
-              </div>
             </div>
           </CardContent>
         </Card>

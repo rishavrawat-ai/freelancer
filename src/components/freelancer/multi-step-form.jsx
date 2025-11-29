@@ -51,7 +51,8 @@ const PROFESSIONAL_FIELDS = [
   "Creative & Design",
   "Writing & Content",
   "Lead Generation",
-  "Video Services",,
+  "Video Services",
+  ,
   "Lifestyle & Personal",
   "Customer Support",
   "Administrative Services",
@@ -496,13 +497,15 @@ const FreelancerMultiStepForm = () => {
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <svg
           className="w-full h-full opacity-10"
-          xmlns="http://www.w3.org/2000/svg">
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <defs>
             <pattern
               id="grid"
               width="40"
               height="40"
-              patternUnits="userSpaceOnUse">
+              patternUnits="userSpaceOnUse"
+            >
               <path
                 d="M 40 0 L 0 0 0 40"
                 fill="none"
@@ -566,7 +569,8 @@ const FreelancerMultiStepForm = () => {
                     isActive || isCompleted
                       ? "cursor-pointer"
                       : "cursor-not-allowed opacity-60"
-                  )}>
+                  )}
+                >
                   <div
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg font-semibold text-sm transition-all duration-300 transform shadow-sm",
@@ -575,7 +579,8 @@ const FreelancerMultiStepForm = () => {
                         : isActive
                         ? "bg-card text-primary border-2 border-primary"
                         : "bg-muted text-muted-foreground border border-border"
-                    )}>
+                    )}
+                  >
                     {isCompleted ? (
                       <Check className="h-5 w-5" />
                     ) : (
@@ -588,7 +593,8 @@ const FreelancerMultiStepForm = () => {
                       isActive || isCompleted
                         ? "text-foreground"
                         : "text-muted-foreground"
-                    )}>
+                    )}
+                  >
                     {step.label}
                   </span>
                 </button>
@@ -597,11 +603,11 @@ const FreelancerMultiStepForm = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10 items-stretch">
           {/* Left Panel - Form Content */}
           <div className="lg:col-span-2">
-            <Card className="border border-border bg-card text-card-foreground shadow-xl backdrop-blur-sm h-full">
-              <CardContent className="pt-8 pb-6 space-y-6 min-h-[500px] flex flex-col justify-between">
+            <Card className="border border-border bg-card text-card-foreground shadow-xl backdrop-blur-sm h-full min-h-[500px] lg:min-h-[540px]">
+              <CardContent className="pt-8 pb-6 space-y-6 flex flex-col justify-between h-full">
                 {/* Step Content */}
                 <div className="space-y-6">
                   {currentStep === 1 && (
@@ -678,60 +684,98 @@ const FreelancerMultiStepForm = () => {
 
                   {stepError && (
                     <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/40">
-                      <p className="text-sm text-destructive">
-                        {stepError}
-                      </p>
+                      <p className="text-sm text-destructive">{stepError}</p>
                     </div>
                   )}
                 </div>
-
-                {/* Login Link */}
-                <p className="text-sm text-muted-foreground">
-                  Already have an account?{" "}
-                  <a
-                    href="/login"
-                    className="font-semibold text-primary hover:underline">
-                    Login here
-                  </a>
-                </p>
-              </CardContent>
-
-              <CardFooter className="border-t border-border pt-6 flex items-center justify-between gap-4">
-                <Button
+                <div className="md:hidden flex justify-between">
+                  <Button
                   type="button"
                   variant="outline"
-                  className="bg-secondary text-secondary-foreground hover:bg-muted"
                   disabled={currentStep === 1 || isSubmitting}
-                  onClick={handleBack}>
-                  Back
+                  onClick={handleBack}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground transition-colors duration-300 group-hover:bg-primary" />
+                    Back
+                  </span>
                 </Button>
 
                 <Button
                   type="button"
-                  className={cn(
-                    "min-w-[140px] bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm disabled:opacity-60"
-                  )}
                   disabled={disableNext}
-                  onClick={isLastStep ? handleSubmit : handleNext}>
-                  <span className="flex items-center gap-2">
+                  onClick={isLastStep ? handleSubmit : handleNext}
+                >
+                  <span className="absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <span className="relative flex items-center gap-2 justify-center">
                     {isSubmitting && isLastStep
                       ? "Submitting..."
                       : isLastStep
                       ? "Submit"
                       : "Next"}
                     {!isLastStep && !isSubmitting && (
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     )}
                   </span>
                 </Button>
-              </CardFooter>
+                </div>
+              </CardContent>
+
             </Card>
           </div>
 
           {/* Right Visual Panel */}
-          <div className="hidden lg:flex flex-col">
-            <div className="sticky top-20 h-[500px] rounded-xl overflow-hidden border border-border bg-card shadow-xl flex items-center justify-center p-6">
-              <StepVisualPanel currentStep={currentStep} formData={formData} />
+          <div className="hidden lg:flex flex-col h-full items-center">
+            <div className="sticky top-6 w-full pt-30 h-full min-h-[500px] lg:min-h-[540px] max-w-[420px] rounded-xl overflow-hidden border border-border bg-card shadow-xl flex flex-col gap-6 items-center p-6">
+              <div className="w-full flex flex-col items-center justify-center text-center gap-4">
+                <StepVisualPanel
+                  currentStep={currentStep}
+                  formData={formData}
+                />
+              </div>
+              <div className="w-full text-center pt-10">
+                {/* Login Link */}
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <a
+                    href="/login"
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Login here
+                  </a>
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={currentStep === 1 || isSubmitting}
+                  onClick={handleBack}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground transition-colors duration-300 group-hover:bg-primary" />
+                    Back
+                  </span>
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={disableNext}
+                  onClick={isLastStep ? handleSubmit : handleNext}
+                >
+                  <span className="absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <span className="relative flex items-center gap-2 justify-center">
+                    {isSubmitting && isLastStep
+                      ? "Submitting..."
+                      : isLastStep
+                      ? "Submit"
+                      : "Next"}
+                    {!isLastStep && !isSubmitting && (
+                      <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    )}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -761,7 +805,6 @@ const StepVisualPanel = ({ currentStep, formData }) => {
                   : "Pick a professional field that matches your expertise"}
               </p>
             </div>
-            
           </div>
         );
       case 2:
@@ -790,7 +833,8 @@ const StepVisualPanel = ({ currentStep, formData }) => {
                 <div
                   key={skill}
                   className="px-3 py-1 rounded-full bg-primary/15 border border-primary/40 text-primary text-xs font-semibold"
-                  style={{ animationDelay: `${idx * 100}ms` }}>
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
                   {skill}
                 </div>
               ))}
@@ -909,7 +953,8 @@ const StepProfessional = ({ selectedField, onSelectField }) => {
                 isActive
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}>
+              )}
+            >
               <span className="text-xl">{icon}</span>
               <span>{field}</span>
             </button>
@@ -938,10 +983,7 @@ const StepSpecialty = ({ specialty, onChange, options }) => {
         </SelectTrigger>
         <SelectContent className="bg-popover border border-border">
           {options.map((option) => (
-            <SelectItem
-              key={option}
-              value={option}
-              className="text-foreground">
+            <SelectItem key={option} value={option} className="text-foreground">
               {option}
             </SelectItem>
           ))}
@@ -990,12 +1032,14 @@ const StepSkills = ({
               <div
                 key={skill}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/40 text-primary text-sm font-medium"
-                style={{ animationDelay: `${index * 50}ms` }}>
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
                 <span>{skill}</span>
                 <button
                   type="button"
                   onClick={() => onRemoveSkill(skill)}
-                  className="ml-1 hover:text-primary-foreground/80 transition-colors">
+                  className="ml-1 hover:text-primary-foreground/80 transition-colors"
+                >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -1021,7 +1065,8 @@ const StepSkills = ({
                   isActive
                     ? "border-primary bg-primary/10 text-primary shadow-sm"
                     : "border-border bg-muted text-foreground hover:bg-secondary"
-                )}>
+                )}
+              >
                 {skill}
               </button>
             );
@@ -1046,7 +1091,8 @@ const StepSkills = ({
           <Button
             type="button"
             onClick={onAddCustomSkill}
-            className="h-11 rounded-lg bg-primary text-primary-foreground px-6 font-semibold hover:bg-primary/90">
+            className="h-11 rounded-lg bg-primary text-primary-foreground px-6 font-semibold hover:bg-primary/90"
+          >
             Add
           </Button>
         </div>
@@ -1079,7 +1125,8 @@ const StepExperience = ({ experience, onSelectExperience }) => {
                 isActive
                   ? "border-primary bg-primary/10 text-primary shadow-sm"
                   : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}>
+              )}
+            >
               {option} years
             </button>
           );
@@ -1112,7 +1159,8 @@ const StepPortfolio = ({
         <div className="space-y-2">
           <Label
             htmlFor="portfolioWebsite"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Portfolio Website
           </Label>
           <Input
@@ -1128,7 +1176,8 @@ const StepPortfolio = ({
         <div className="space-y-2">
           <Label
             htmlFor="linkedinProfile"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             LinkedIn Profile
           </Label>
           <Input
@@ -1144,7 +1193,8 @@ const StepPortfolio = ({
         <div className="space-y-2">
           <Label
             htmlFor="portfolioFile"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Upload PDF File (Optional)
           </Label>
           <Input
@@ -1184,10 +1234,10 @@ const StepTerms = ({ accepted, onToggle }) => {
           </p>
           <ol className="list-decimal space-y-2 ps-4">
             <li>
-              <span className="font-semibold">Project Completion</span> – Payment
-              will only be made upon successful completion and delivery of the
-              assigned project as per the agreed scope, timeline, and quality
-              standards.
+              <span className="font-semibold">Project Completion</span> –
+              Payment will only be made upon successful completion and delivery
+              of the assigned project as per the agreed scope, timeline, and
+              quality standards.
             </li>
             <li>
               <span className="font-semibold">Professional Conduct</span> – You
@@ -1243,7 +1293,8 @@ const StepPersonalInfo = ({
         <div className="space-y-2">
           <Label
             htmlFor="fullName"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Full Name *
           </Label>
           <Input
@@ -1259,7 +1310,8 @@ const StepPersonalInfo = ({
         <div className="space-y-2">
           <Label
             htmlFor="email"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Email Address *
           </Label>
           <Input
@@ -1275,7 +1327,8 @@ const StepPersonalInfo = ({
         <div className="space-y-2">
           <Label
             htmlFor="password"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Password * (Min 8 characters)
           </Label>
           <Input
@@ -1291,7 +1344,8 @@ const StepPersonalInfo = ({
         <div className="space-y-2">
           <Label
             htmlFor="phone"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Phone Number
           </Label>
           <Input
@@ -1307,7 +1361,8 @@ const StepPersonalInfo = ({
         <div className="space-y-2">
           <Label
             htmlFor="location"
-            className="text-sm text-foreground font-semibold">
+            className="text-sm text-foreground font-semibold"
+          >
             Location *
           </Label>
           <Input

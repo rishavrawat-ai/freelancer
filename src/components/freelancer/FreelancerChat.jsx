@@ -532,6 +532,8 @@ const FreelancerChatContent = () => {
                   const isActive =
                     (conversation.serviceKey || conversation.id) ===
                     (selectedConversation?.serviceKey || selectedConversation?.id);
+                  const nameClass = isActive ? "text-neutral-900" : "text-foreground";
+                  const labelClass = isActive ? "text-neutral-800" : "text-muted-foreground";
                   return (
                     <button
                       key={conversation.serviceKey || conversation.id}
@@ -552,8 +554,8 @@ const FreelancerChatContent = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-1 flex-col">
-                        <p className="font-semibold">{conversation.name}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p className={`font-semibold ${nameClass}`}>{conversation.name}</p>
+                        <p className={`text-xs line-clamp-1 ${labelClass}`}>
                           {conversation.label || SERVICE_LABEL}
                         </p>
                       </div>

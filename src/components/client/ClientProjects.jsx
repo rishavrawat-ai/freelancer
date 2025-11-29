@@ -128,7 +128,7 @@ const ProjectCard = ({ project }) => {
           <Button
             asChild
             className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}>
-            <Link to={`/freelancer/project/${project.id}`}>
+            <Link to={`/client/project/${project.id}`}>
               View details
               <motion.div
                 animate={{ x: [0, 6, 0] }}

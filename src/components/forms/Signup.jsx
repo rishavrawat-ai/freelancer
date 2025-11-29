@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { signup } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
+import { Eye, EyeOff } from "lucide-react";
 
 const initialFormState = {
   fullName: "",
@@ -29,6 +30,7 @@ function Signup({ className, ...props }) {
   const [formData, setFormData] = useState(initialFormState);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login: setAuthSession } = useAuth();
 
@@ -121,15 +123,28 @@ function Signup({ className, ...props }) {
 
                   <Field>
                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="pr-10"
+                        required
+                      />
+                      <div
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </div>
+                    </div>
                     <FieldDescription>
                       Must be at least 8 characters long.
                     </FieldDescription>

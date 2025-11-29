@@ -1,436 +1,470 @@
-"use client"
+"use client";
 
-import React, { useMemo, useState } from "react"
-import { useParams } from "react-router-dom"
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
-  AlertCircle,
-  Calendar,
-  CheckCircle2,
-  FileText,
-  MessageSquare,
-  Target,
-  TrendingUp,
-  Clock,
-} from "lucide-react"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { ClientTopBar } from "@/components/client/ClientTopBar";
+import { useAuth } from "@/context/AuthContext";
 
-import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
-import { ClientTopBar } from "@/components/client/ClientTopBar"
-
-const phases = [
+const initialPhases = [
   {
-    id: 1,
-    name: "Requirement Gathering",
-    status: "active",
-    tasks: [
-      {
-        id: "a",
-        name: "Client brief and scope definition",
-        status: "pending",
-        due: "Dec 25, 2025",
-      },
-      {
-        id: "b",
-        name: "Finalize functional and non-functional needs",
-        status: "pending",
-        due: "Dec 25, 2025",
-      },
-      {
-        id: "c",
-        name: "Agree on acceptance criteria",
-        status: "pending",
-        due: "Dec 25, 2025",
-      },
-    ],
+    id: "1",
+    name: "Requirements & Planning",
+    status: "completed",
+    progress: 100
   },
   {
-    id: 2,
-    name: "Planning & Design",
-    status: "queued",
+    id: "2",
+    name: "Design & Architecture",
+    status: "in-progress",
+    progress: 65
   },
   {
-    id: 3,
-    name: "Development & Testing",
-    status: "queued",
+    id: "3",
+    name: "Development",
+    status: "pending",
+    progress: 0
   },
   {
-    id: 4,
-    name: "Final Handover",
-    status: "queued",
-  },
-]
+    id: "4",
+    name: "Testing & Deployment",
+    status: "pending",
+    progress: 0
+  }
+];
 
-const activities = [
-  { title: "Requirements finalized", time: "3 days ago" },
-  { title: "Client approved wireframes", time: "1 day ago" },
-  { title: "Prototype 75% complete", time: "5 hours ago" },
-  { title: "Design submitted for review", time: "2 hours ago" },
-]
+const initialTasks = [
+  { id: "1", title: "Define project requirements", phase: "1", status: "completed" },
+  { id: "2", title: "Create system architecture", phase: "2", status: "completed" },
+  { id: "3", title: "Design UI mockups", phase: "2", status: "in-progress" },
+  { id: "4", title: "API specification", phase: "2", status: "pending" }
+];
 
-const todoItems = [
-  { id: "req", label: "Requirement Gathering" },
-  { id: "plan", label: "Planning & Design" },
-  { id: "dev", label: "Development & Testing" },
-  { id: "handover", label: "Final Handover" },
-]
-
-const projectMeta = [
+const initialMessages = [
   {
-    id: "launch",
-    title: "Development & Tech",
-    freelancer: "Aniket Thakur",
-    progress: 0,
-    eta: "Dec 30, 2025",
-    milestones: "0/12",
-    issues: 4,
-  },
-  {
-    id: "email-suite",
-    title: "Lifecycle Email Automation",
-    freelancer: "Nova Growth Lab",
-    progress: 18,
-    eta: "Jan 10, 2026",
-    milestones: "3/10",
-    issues: 1,
-  },
-  {
-    id: "portal",
-    title: "Investor Portal Refresh",
-    freelancer: "Beacon Ventures",
-    progress: 100,
-    eta: "Nov 11, 2025",
-    milestones: "12/12",
-    issues: 0,
-  },
-]
+    id: "1",
+    sender: "assistant",
+    text: "Hello! How can I help you with your project today?",
+    timestamp: new Date()
+  }
+];
 
-const hoverPalette = [
-  "rgba(253,200,0,0.25)",
-  "rgba(99,102,241,0.25)",
-  "rgba(16,185,129,0.25)",
-  "rgba(244,114,182,0.25)",
-]
+const getPhaseIcon = (status) => {
+  switch (status) {
+    case "completed":
+      return <CheckCircle2 className="w-5 h-5 text-green-600" />;
+    case "in-progress":
+      return <AlertCircle className="w-5 h-5 text-blue-600" />;
+    default:
+      return <Circle className="w-5 h-5 text-gray-400" />;
+  }
+};
 
-const ClientProjectDetailContent = () => {
-  const { projectId } = useParams()
-  const [checkedTasks, setCheckedTasks] = useState({})
-  const [expandedPhase, setExpandedPhase] = useState(1)
-  const [hoveredPhase, setHoveredPhase] = useState(null)
+const getStatusBadge = (status) => {
+  const variants = {
+    completed: "default",
+    "in-progress": "secondary",
+    pending: "outline"
+  };
+  return variants[status] || "outline";
+};
 
-  const project = useMemo(() => {
-    return projectMeta.find((meta) => meta.id === projectId) ?? projectMeta[0]
-  }, [projectId])
+const mapStatus = (status = "") => {
+  const normalized = status.toString().toUpperCase();
+  if (normalized === "COMPLETED") return "completed";
+  if (normalized === "IN_PROGRESS" || normalized === "OPEN") return "in-progress";
+  return "pending";
+};
 
-  const backgroundStyle = useMemo(() => {
-    if (hoveredPhase === null) {
-      return { transition: "background 500ms ease" }
+const ProjectDashboard = () => {
+  const { projectId } = useParams();
+  const { authFetch, isAuthenticated } = useAuth();
+  const [project, setProject] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [messages, setMessages] = useState(initialMessages);
+  const [input, setInput] = useState("");
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
     }
-    const color = hoverPalette[hoveredPhase % hoverPalette.length]
-    return {
-      background: `radial-gradient(circle at center, ${color} 0%, transparent 60%)`,
-      transition: "background 500ms ease",
+
+    let active = true;
+    const fetchProject = async () => {
+      setIsLoading(true);
+      try {
+        const response = await authFetch("/projects");
+        const payload = await response.json().catch(() => null);
+        const list = Array.isArray(payload?.data) ? payload.data : [];
+        const match = list.find((item) => String(item.id) === String(projectId)) || null;
+        if (active) {
+          setProject(match);
+        }
+      } catch (error) {
+        console.error("Failed to load project detail:", error);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchProject();
+    return () => {
+      active = false;
+    };
+  }, [authFetch, isAuthenticated, projectId]);
+
+  const handleSendMessage = () => {
+    if (!input.trim()) return;
+
+    const userMessage = {
+      id: Date.now().toString(),
+      sender: "user",
+      text: input,
+      timestamp: new Date()
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+
+    setTimeout(() => {
+      const assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: "assistant",
+        text: "I understand. Let me help you with that.",
+        timestamp: new Date()
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    }, 500);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const userMessage = {
+        id: Date.now().toString(),
+        sender: "user",
+        text: `Uploaded document: ${file.name}`,
+        timestamp: new Date(),
+        attachment: {
+          name: file.name,
+          size: `${(file.size / 1024).toFixed(2)} KB`
+        }
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+
+      setTimeout(() => {
+        const assistantMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: "assistant",
+          text: `Document "${file.name}" received. I'll review it and help you accordingly.`,
+          timestamp: new Date()
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }, 500);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
-  }, [hoveredPhase])
+  };
 
-  return (
-    <div className="min-h-screen bg-background text-foreground" style={backgroundStyle}>
-      <div className="space-y-6 p-6">
-        <ClientTopBar label={`${project.title} detail`} />
+  const overallProgress = useMemo(() => {
+    if (project?.progress !== undefined && project?.progress !== null) {
+      const value = Number(project.progress);
+      return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+    }
+    const status = mapStatus(project?.status);
+    if (status === "completed") return 100;
+    if (status === "in-progress") return 45;
+    return 10;
+  }, [project]);
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          <aside className="space-y-4 lg:col-span-3">
-            {phases.map((phase) => {
-              const isOpen = expandedPhase === phase.id
-              return (
-                <Card
-                  key={phase.id}
-                  className={`border transition-all duration-300 ${
-                    phase.status === "active"
-                      ? "border-primary/40 bg-card/80 shadow-[0_20px_80px_-60px_rgba(0,0,0,0.6)]"
-                      : "border-border/50 bg-card/80 hover:border-border/70"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedPhase(isOpen ? 0 : phase.id)
-                    }
-                    onMouseEnter={() => setHoveredPhase(phase.id)}
-                    onMouseLeave={() => setHoveredPhase(null)}
-                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-4 text-left"
-                  >
-                    <div
-                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                        phase.status === "active"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {phase.id}
-                    </div>
-                    <div className="flex flex-1 flex-col gap-1">
-                      <h3 className="text-sm font-semibold text-foreground">
-                        {phase.name}
-                      </h3>
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        Phase
-                      </p>
-                    </div>
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border border-border/70 text-xs text-muted-foreground transition-transform ${
-                        isOpen ? "rotate-180" : ""
-                      }`}
-                    >
-                      ▾
-                    </div>
-                  </button>
-                  {phase.tasks && isOpen && (
-                    <div className="space-y-3 border-t border-border/40 px-4 pb-4 pt-3">
-                      {phase.tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className="rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-xs shadow-[0_15px_50px_-45px_rgba(0,0,0,0.8)]"
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <p className=" text-sm leading-relaxed">
-                              {task.id}. {task.name}
-                            </p>
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px]"
-                            >
-                              Pending
-                            </Badge>
-                          </div>
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            Due: {task.due}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              )
-            })}
-          </aside>
+  const derivedPhases = useMemo(() => {
+    const step = 100 / initialPhases.length;
+    return initialPhases.map((phase, index) => {
+      const phaseValue = Math.max(0, Math.min(step, overallProgress - index * step));
+      const normalized = Math.round((phaseValue / step) * 100);
+      let status = "pending";
+      if (normalized >= 100) status = "completed";
+      else if (normalized > 0) status = "in-progress";
+      return {
+        ...phase,
+        status,
+        progress: normalized
+      };
+    });
+  }, [overallProgress]);
 
-          <main className="space-y-6 lg:col-span-6">
-            <Card className="border border-border/60 bg-card/80">
-              <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h1 className="text-3xl font-semibold">{project.title}</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Freelancer:{" "}
-                    <span className="text-foreground font-medium">
-                      {project.freelancer}
-                    </span>
-                    , started: Dec 1, 2025
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-primary/40 bg-primary/10 px-4 py-2 text-right">
-                  <p className="text-xs text-muted-foreground">Progress</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {project.progress}%
-                  </p>
-                </div>
-              </div>
-              <div className="grid gap-3 border-t border-border/40 p-6 text-center sm:grid-cols-3">
-                <div className="rounded-xl border border-border/50 bg-card/70 p-4">
-                  <p className="mb-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Estimate delivery
-                  </p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {project.eta}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/70 p-4">
-                  <p className="mb-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Target className="h-3.5 w-3.5" />
-                    Milestones
-                  </p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {project.milestones}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/70 p-4">
-                  <p className="mb-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    Open issues
-                  </p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {project.issues}
-                  </p>
-                </div>
-              </div>
-            </Card>
+  const derivedTasks = useMemo(() => {
+    return initialTasks.map((task) => {
+      const phaseStatus = derivedPhases.find((p) => p.id === task.phase)?.status || task.status;
+      if (phaseStatus === "completed") {
+        return { ...task, status: "completed" };
+      }
+      if (phaseStatus === "in-progress" && task.status === "completed") {
+        return task;
+      }
+      return { ...task, status: phaseStatus === "in-progress" ? "in-progress" : "pending" };
+    });
+  }, [derivedPhases]);
 
-            <Card className="border border-border/60 bg-card/80 p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Current status</h2>
-                <Button variant="ghost" size="sm">
-                  Overview
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-5">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-                      <p className="text-sm font-semibold text-primary">
-                        Requirement Gathering
-                      </p>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {project.progress}% done
-                    </span>
-                  </div>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    Client brief and scope definition.
-                  </p>
-                  <Button className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    <MessageSquare className="h-4 w-4" />
-                    Chat
-                  </Button>
-                </div>
-                <div className="rounded-2xl border border-border/50 bg-card/70 p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-muted-foreground/40" />
-                    <div>
-                      <p className="text-sm font-semibold">Planning & Design</p>
-                      <p className="text-sm text-muted-foreground">
-                        Waiting for client approval or dependency completion.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
+  const completedPhases = derivedPhases.filter((p) => p.status === "completed").length;
+  const pageTitle = project?.title ? `Project: ${project.title}` : "Project Dashboard";
+  const totalBudget = useMemo(() => {
+    if (project?.budget !== undefined && project?.budget !== null) {
+      const value = Number(project.budget);
+      if (Number.isFinite(value)) return Math.max(0, value);
+    }
+    return 50000;
+  }, [project]);
+  const spentBudget = useMemo(() => Math.round(totalBudget * 0.5), [totalBudget]);
+  const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
 
-            <Card className="border border-border/60 bg-card/80 p-6">
-              <h2 className="mb-4 text-xl font-semibold">Project to-do list</h2>
-              <div className="space-y-3">
-                {todoItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between rounded-2xl border border-border/50 bg-card/60 p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id={item.id}
-                        checked={checkedTasks[item.id] || false}
-                        onCheckedChange={(checked) =>
-                          setCheckedTasks((prev) => ({
-                            ...prev,
-                            [item.id]: Boolean(checked),
-                          }))
-                        }
-                      />
-                      <label
-                        htmlFor={item.id}
-                        className="cursor-pointer text-sm font-medium text-foreground"
-                      >
-                        {item.label}
-                      </label>
-                    </div>
-                    <Button size="sm" className="rounded-full">
-                      Verify
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </main>
-
-          <aside className="space-y-6 lg:col-span-3">
-            <Card className="border border-border/60 bg-card/80 p-5">
-              <div className="mb-5 flex items-center gap-2">
-                <div className="rounded-lg border border-primary/20 p-1.5">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                </div>
-                <h2 className="text-lg font-semibold text-primary">
-                  Activity log
-                </h2>
-              </div>
-              <div className="space-y-2">
-                {activities.map((activity, index) => (
-                  <div key={activity.title}>
-                    <div className="flex items-start gap-3 rounded-xl p-3 hover:bg-muted/50">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {activity.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                    {index < activities.length - 1 && (
-                      <Separator className="bg-border/70" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="border border-border/60 bg-card/80 p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="rounded-lg border border-primary/20 p-1.5">
-                  <FileText className="h-4 w-4 text-primary" />
-                </div>
-                <h2 className="text-lg font-semibold text-primary">
-                  Documents & files
-                </h2>
-              </div>
-              <div className="rounded-2xl border border-dashed border-border/70 py-8 text-center text-sm text-muted-foreground">
-                No files attached.
-              </div>
-            </Card>
-
-            <Card className="border border-border/60 bg-card/80 p-5">
-              <h2 className="mb-4 text-lg font-semibold text-primary">
-                Payment summary
-              </h2>
-              <div className="space-y-4 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    Total project cost
-                  </span>
-                  <span className="font-semibold text-foreground">$0.00</span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Paid</span>
-                  <span className="font-semibold text-emerald-400">$0.00</span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/10 p-3">
-                  <span className="font-medium text-foreground">Remaining</span>
-                  <span className="text-lg font-semibold text-primary">
-                    $0.00
-                  </span>
-                </div>
-              </div>
-            </Card>
-          </aside>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const ClientProjectDetail = () => {
   return (
     <RoleAwareSidebar>
-      <ClientProjectDetailContent />
-    </RoleAwareSidebar>
-  )
-}
+      <div className="mt-5 ml-5">
+      <ClientTopBar title={pageTitle} />
+      </div>
+        
+      <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
+        <div className="w-full max-w-full mx-auto space-y-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
+            <p className="text-sm text-muted-foreground">
+              {isLoading ? "Loading project details..." : "Track project progress and manage tasks efficiently"}
+            </p>
+          </div>
+          {!isLoading && !project && (
+            <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
+              No project data found for this link. Showing sample progress so you can preview the layout.
+            </div>
+          )}
 
-export default ClientProjectDetail
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
+                <Progress value={overallProgress} className="mt-3 h-2" />
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-foreground/90">Completed Phases</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold text-foreground">
+                  {completedPhases}/{derivedPhases.length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">phases completed</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 space-y-4">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-foreground">Project Phases</CardTitle>
+                  <CardDescription className="text-muted-foreground">Monitor each phase of your project</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {derivedPhases.map((phase) => (
+                    <div
+                      key={phase.id}
+                      className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0"
+                    >
+                      <div className="mt-1">{getPhaseIcon(phase.status)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
+                          <Badge
+                            variant={getStatusBadge(phase.status)}
+                            className="rounded-full bg-primary text-primary-foreground text-[11px] font-medium px-2 py-0.5"
+                          >
+                            {phase.status === "in-progress"
+                              ? "In Progress"
+                              : phase.status === "completed"
+                              ? "Completed"
+                              : "Pending"}
+                          </Badge>
+                        </div>
+                        <Progress value={phase.progress} className="h-2" />
+                        <p className="text-xs text-muted-foreground mt-1">{phase.progress}% complete</p>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-foreground">Tasks & Checklist</CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} tasks completed
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {derivedTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent transition-colors"
+                    >
+                      {task.status === "completed" ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <span
+                        className={`flex-1 text-sm ${
+                          task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
+                        }`}
+                      >
+                        {task.title}
+                      </span>
+                      <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
+                        Phase {task.phase}
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-4">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <FileText className="w-4 h-4" />
+                    Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    No documents attached yet. Upload project documentation here.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <DollarSign className="w-4 h-4" />
+                    Budget Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                    <span>Total Budget</span>
+                    <span className="font-semibold text-foreground">${totalBudget.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                    <span>Spent</span>
+                    <span className="font-semibold text-emerald-600">${spentBudget.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Remaining</span>
+                    <span className="font-semibold text-foreground">${remainingBudget.toLocaleString()}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="border-b border-border/60">
+                  <CardTitle className="text-base text-foreground">Project Chat</CardTitle>
+                  <CardDescription className="text-muted-foreground">Ask questions and share documents</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto space-y-3 py-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex gap-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className="space-y-1">
+                        <div
+                          className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
+                            message.sender === "user"
+                              ? "bg-primary text-primary-foreground rounded-br-none"
+                              : "bg-muted text-foreground rounded-bl-none border border-border/60"
+                          }`}
+                        >
+                          {message.text}
+                        </div>
+                        {message.attachment && (
+                          <div
+                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                              message.sender === "user"
+                                ? "bg-primary/20 text-foreground"
+                                : "bg-accent text-accent-foreground border border-border/60"
+                            }`}
+                          >
+                            <FileText className="w-3 h-3" />
+                            {message.attachment.name} ({message.attachment.size})
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+                <div className="border-t border-border/60 p-3 flex gap-2">
+                  <Input
+                    placeholder="Type your message..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    className="h-9 text-sm bg-muted border-border/60"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    size="sm"
+                    variant="outline"
+                    className="h-9 w-9 p-0 border-border/60"
+                    title="Upload document"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.txt,.xls,.xlsx"
+                  />
+                  <Button onClick={handleSendMessage} size="sm" variant="default" className="h-9 w-9 p-0">
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </RoleAwareSidebar>
+  );
+};
+
+const ClientProjectDetail = () => <ProjectDashboard />;
+
+export default ClientProjectDetail;
