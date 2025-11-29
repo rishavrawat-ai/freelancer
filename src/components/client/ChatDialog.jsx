@@ -1,34 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, User, Bot } from "lucide-react";
+import { Send, Loader2, User, Bot, RotateCcw } from "lucide-react";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import ProposalPanel from "./ProposalPanel";
 
 const ChatDialog = ({ isOpen, onClose, service }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [savedProposal, setSavedProposal] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedText, setEditedText] = useState("");
-  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [useSocket] = useState(SOCKET_ENABLED);
-  const { isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const socketRef = useRef(null);
@@ -39,24 +32,6 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  const persistSavedProposalToStorage = (proposal) => {
-    if (typeof window === "undefined" || !proposal) return;
-    const payload = {
-      content: proposal.content || proposal,
-      service: proposal.service || service?.title || "Project",
-      createdAt: proposal.createdAt || new Date().toISOString(),
-      projectTitle:
-        proposal.projectTitle || proposal.service || service?.title || "Proposal",
-      preparedFor: proposal.preparedFor || proposal.name || "Client",
-      budget: proposal.budget || null,
-      summary:
-        proposal.summary ||
-        (typeof proposal === "string" ? proposal : proposal.content) ||
-        ""
-    };
-    window.localStorage.setItem("markify:savedProposal", JSON.stringify(payload));
   };
 
   // Start or resume a conversation, persisting the id for the session.
@@ -178,11 +153,13 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     });
   }, [isOpen, service, messages.length]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (contentOverride) => {
+    const msgContent = contentOverride || input;
+    if (!msgContent.trim()) return;
+
     const payload = {
       conversationId,
-      content: input,
+      content: msgContent,
       service: serviceKey,
       senderId: user?.id || null,
       senderRole: user?.role || "GUEST",
@@ -194,7 +171,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         ...prev,
         { ...payload, role: "user", pending: true }
       ]);
-      setInput("");
+      if (!contentOverride) setInput("");
       setIsLoading(true);
       socketRef.current.emit("chat:message", payload);
       queueMicrotask(() => {
@@ -208,7 +185,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       ...prev,
       { ...payload, role: "user", pending: true }
     ]);
-    setInput("");
+    if (!contentOverride) setInput("");
     setIsLoading(true);
     apiClient
       .sendChatMessage(payload)
@@ -230,55 +207,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       });
   };
 
-  const latestProposalMessage =
-    messages
-      .slice()
-      .reverse()
-      .find(
-        (msg) =>
-          msg.role === "assistant" &&
-          (msg.content?.includes("Quick Proposal") ||
-            msg.content?.includes("PROJECT PROPOSAL") ||
-            msg.content?.includes("Scope") ||
-            msg.content?.includes("Budget"))
-      ) || null;
-
-  const handleEditProposal = () => {
-    if (latestProposalMessage?.content) {
-      setEditedText(latestProposalMessage.content);
-      setIsEditing(true);
-    }
-  };
-
-  const handleSaveProposal = () => {
-    if (latestProposalMessage?.content) {
-      const proposalPayload = {
-        content: latestProposalMessage.content,
-        service: service?.title || "Project",
-        createdAt: new Date().toISOString()
-      };
-      setSavedProposal(latestProposalMessage.content);
-      persistSavedProposalToStorage(proposalPayload);
-      if (!isAuthenticated) {
-        navigate("/login");
-        return;
-      }
-      navigate("/client/proposal");
-    }
-  };
-
-  const applyEdit = () => {
-    if (!latestProposalMessage || !editedText.trim()) {
-      setIsEditing(false);
-      return;
-    }
-    const nextMessages = messages.map((msg) =>
-      msg === latestProposalMessage ? { ...msg, content: editedText } : msg
-    );
-    setMessages(nextMessages);
-    setSavedProposal(editedText);
-    setIsEditing(false);
-  };
+  const proposalMessage = useMemo(() => {
+    return [...messages].reverse().find(m => m.content && m.content.includes("PROJECT PROPOSAL"));
+  }, [messages]);
 
   const resolveSenderChip = (msg) => {
     if (msg.role === "assistant") return "Assistant";
@@ -292,159 +223,234 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isLoading, latestProposalMessage]);
+  }, [messages, isLoading, proposalMessage]);
 
-  useEffect(() => {
-    if (latestProposalMessage?.content) {
-      setIsProposalModalOpen(true);
+  const handleResetChat = () => {
+    if (confirm("Are you sure you want to start a new chat? This will clear the current conversation.")) {
+      const storageKey = `markify:chatConversationId:${serviceKey}`;
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(storageKey);
+      }
+      setConversationId(null);
+      setMessages([]);
+      // Re-trigger conversation creation
+      apiClient.createChatConversation({ service: serviceKey, forceNew: true }).then(conversation => {
+        if (conversation?.id) {
+          setConversationId(conversation.id);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(storageKey, conversation.id);
+          }
+        }
+      });
     }
-  }, [latestProposalMessage]);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Chat about {service?.title}</DialogTitle>
-          <DialogDescription>
-            Discuss your requirements and get a proposal.
-          </DialogDescription>
+      <DialogContent className={`h-[85vh] flex flex-col overflow-hidden transition-all duration-300 ${proposalMessage ? "max-w-[90vw] lg:max-w-6xl" : "max-w-2xl"}`}>
+        <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
+          <div className="space-y-1">
+            <DialogTitle>Chat about {service?.title}</DialogTitle>
+            <DialogDescription>
+              Discuss your requirements and get a proposal.
+            </DialogDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleResetChat} className="gap-2">
+            <RotateCcw className="w-4 h-4" />
+            New Chat
+          </Button>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 overflow-y-auto">
-          <div className="space-y-4 min-w-0">
-            {messages.map((msg, index) => {
-              const isSelf = msg.senderId && user?.id && msg.senderId === user.id;
-              const isAssistant = msg.role === "assistant";
-              const alignment =
-                isAssistant || !isSelf ? "flex-row" : "flex-row-reverse";
+        <div className={`flex-1 overflow-hidden grid gap-6 ${proposalMessage ? "lg:grid-cols-[1fr_400px]" : "grid-cols-1"}`}>
+          {/* Chat Area */}
+          <div className="flex flex-col h-full min-h-0 overflow-hidden">
+            <ScrollArea className="flex-1 h-full pr-4">
+              <div className="space-y-4 min-w-0 pb-4">
+                {messages.map((msg, index) => {
+                  const isSelf = msg.senderId && user?.id && msg.senderId === user.id;
+                  const isAssistant = msg.role === "assistant";
+                  const alignment =
+                    isAssistant || !isSelf ? "flex-row" : "flex-row-reverse";
 
-              const bubbleTone = (() => {
-                if (isAssistant) return "bg-muted text-foreground";
-                if (msg.senderRole === "CLIENT")
-                  return "bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100";
-                if (msg.senderRole === "FREELANCER")
-                  return "bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50";
-                return isSelf
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground";
-              })();
+                  const bubbleTone = (() => {
+                    if (isAssistant) return "bg-muted text-foreground";
+                    if (msg.senderRole === "CLIENT")
+                      return "bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100";
+                    if (msg.senderRole === "FREELANCER")
+                      return "bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50";
+                    return isSelf
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground";
+                  })();
 
-              return (
-                <div
-                  key={msg.id || index}
-                  className={`flex items-start gap-3 min-w-0 ${alignment}`}
-                >
-                  <div
-                    className={`p-2 rounded-full ${
-                      isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
-                  >
-                    {isAssistant ? (
-                      <Bot className="w-4 h-4" />
-                    ) : (
-                      <User className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div
-                    className={`p-3 rounded-lg max-w-[80%] min-w-0 text-sm break-words overflow-wrap-anywhere hyphens-auto ${bubbleTone}`}
-                    style={{
-                      wordBreak: "break-word",
-                      overflowWrap: "anywhere",
-                      whiteSpace: "pre-wrap"
-                    }}
-                  >
-                    <div className="mb-1 text-[10px] uppercase tracking-[0.12em] opacity-70">
-                      {resolveSenderChip(msg)}
-                      {msg.createdAt ? (
-                        <span className="ml-2 lowercase text-[9px] opacity-60">
-                          {formatTime(msg.createdAt)}
-                        </span>
-                      ) : null}
+                  // Parse content for suggestions and multi-select
+                  const suggestionMatch = msg.content?.match(/\[SUGGESTIONS:\s*(.*?)\]/i);
+                  const suggestions = suggestionMatch ? suggestionMatch[1].split("|").map(s => s.trim()) : [];
+
+                  const multiSelectMatch = msg.content?.match(/\[MULTI_SELECT:\s*(.*?)\]/i);
+                  const multiSelectOptions = multiSelectMatch ? multiSelectMatch[1].split("|").map(s => s.trim()) : [];
+
+                  // Parse proposal data
+                  const proposalMatch = msg.content?.match(/\[PROPOSAL_DATA\]([\s\S]*?)\[\/PROPOSAL_DATA\]/);
+                  const hasProposal = !!proposalMatch;
+
+                  // Clean content for display
+                  let cleanContent = msg.content
+                    ?.replace(/\[SUGGESTIONS:.*?\]/i, "")
+                    .replace(/\[MULTI_SELECT:.*?\]/i, "")
+                    .replace(/\[PROPOSAL_DATA\][\s\S]*?\[\/PROPOSAL_DATA\]/, "")
+                    .trim();
+
+                  if (hasProposal && !cleanContent) {
+                    cleanContent = "I've generated a proposal based on your requirements. You can view it in the panel on the right.";
+                  }
+
+                  return (
+                    <div
+                      key={msg.id || index}
+                      className={`flex flex-col gap-2 min-w-0 ${isAssistant || !isSelf ? "items-start" : "items-end"}`}
+                    >
+                      <div className={`flex items-start gap-3 max-w-[85%] ${alignment}`}>
+                        <div
+                          className={`p-2 rounded-full flex-shrink-0 ${isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
+                            }`}
+                        >
+                          {isAssistant ? (
+                            <Bot className="w-4 h-4" />
+                          ) : (
+                            <User className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg min-w-0 text-sm break-words overflow-wrap-anywhere hyphens-auto ${bubbleTone}`}
+                          style={{
+                            wordBreak: "break-word",
+                            overflowWrap: "anywhere",
+                            whiteSpace: "pre-wrap"
+                          }}
+                        >
+                          <div className="mb-1 text-[10px] uppercase tracking-[0.12em] opacity-70">
+                            {resolveSenderChip(msg)}
+                            {msg.createdAt ? (
+                              <span className="ml-2 lowercase text-[9px] opacity-60">
+                                {formatTime(msg.createdAt)}
+                              </span>
+                            ) : null}
+                          </div>
+                          {cleanContent || msg.content}
+                          {hasProposal && (
+                            <Button
+                              variant="link"
+                              className="p-0 h-auto text-xs mt-2 text-primary underline"
+                              onClick={() => {
+                                // Logic to ensure panel is open if on mobile/hidden
+                              }}
+                            >
+                              View Proposal
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Render Single Select Suggestions */}
+                      {suggestions.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pl-12">
+                          {suggestions.map((suggestion, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSend(suggestion)}
+                              className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-full transition-colors border border-primary/20"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Render Multi-Select Options */}
+                      {multiSelectOptions.length > 0 && (
+                        <div className="flex flex-col gap-2 pl-12 w-full max-w-sm">
+                          <div className="flex flex-wrap gap-2">
+                            {multiSelectOptions.map((option, idx) => {
+                              const isSelected = input.includes(option);
+                              return (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    const current = input ? input.split(", ").filter(Boolean) : [];
+                                    const next = current.includes(option)
+                                      ? current.filter(c => c !== option)
+                                      : [...current, option];
+                                    setInput(next.join(", "));
+                                  }}
+                                  className={`text-xs px-3 py-1.5 rounded-full transition-colors border ${input.includes(option)
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-background hover:bg-muted border-input"
+                                    }`}
+                                >
+                                  {option}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {input && (
+                            <Button
+                              size="sm"
+                              className="self-start mt-1"
+                              onClick={() => handleSend()}
+                            >
+                              Done
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {msg.content}
+                  );
+                })}
+                {isLoading && (
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-full bg-muted">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            {isLoading && (
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-full bg-muted">
-                  <Bot className="w-4 h-4" />
-                </div>
-                <div className="p-3 rounded-lg bg-muted">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
+                )}
+                <div ref={scrollRef} />
               </div>
-            )}
-            <div ref={scrollRef} />
-          </div>
-        </ScrollArea>
+            </ScrollArea>
 
-        <DialogFooter className="pt-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="flex w-full items-center space-x-2"
-          >
-            <Input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message..."
-              disabled={!conversationId}
-            />
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
-        </DialogFooter>
+            <div className="pt-4 border-t mt-auto">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSend();
+                }}
+                className="flex w-full items-center space-x-2"
+              >
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type your message..."
+                  disabled={!conversationId}
+                />
+                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                  <Send className="w-4 h-4" />
+                </Button>
+              </form>
+            </div>
+          </div>
+
+          {/* Proposal Panel */}
+          {proposalMessage && (
+            <div className="h-full min-h-0 border-l pl-6 hidden lg:block overflow-hidden">
+              <ProposalPanel content={proposalMessage.content} />
+            </div>
+          )}
+        </div>
       </DialogContent>
-      <Dialog open={isProposalModalOpen} onOpenChange={setIsProposalModalOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>Proposal ready</DialogTitle>
-            <DialogDescription>
-              Review, edit, or save this proposal.
-            </DialogDescription>
-          </DialogHeader>
-          <pre className="whitespace-pre-wrap rounded-md bg-slate-900 text-slate-50 p-4 text-sm leading-relaxed border border-slate-800 max-h-[360px] overflow-y-auto">
-            {latestProposalMessage?.content}
-          </pre>
-          <DialogFooter className="flex justify-between gap-2">
-            <div className="text-xs text-muted-foreground">
-              {savedProposal ? "Saved for this session." : null}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={handleEditProposal}>
-                Edit
-              </Button>
-              <Button onClick={handleSaveProposal}>Save</Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Edit proposal</DialogTitle>
-            <DialogDescription>Adjust the text before saving.</DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={editedText}
-            onChange={(e) => setEditedText(e.target.value)}
-            rows={7}
-            className="w-full text-sm leading-relaxed max-h-[320px] min-h-[160px]"
-          />
-          <DialogFooter className="justify-end gap-2">
-            <Button variant="ghost" onClick={() => setIsEditing(false)}>
-              Cancel
-            </Button>
-            <Button onClick={applyEdit}>Update</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 };

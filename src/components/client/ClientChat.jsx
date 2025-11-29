@@ -7,11 +7,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ClientTopBar } from "@/components/client/ClientTopBar";
-import { SendHorizontal, Paperclip, Bot, User, Loader2, Clock4 } from "lucide-react";
+import { SendHorizontal, Paperclip, Bot, User, Loader2, Clock4, Plus } from "lucide-react";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
+import { ClientTopBar } from "@/components/client/ClientTopBar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import ProposalPanel from "./ProposalPanel";
 
 const SERVICE_LABEL = "Project Chat";
 
@@ -20,6 +27,65 @@ const formatTime = (value) => {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const SERVICES_LIST = [
+  "Development & Tech",
+  "Digital Marketing",
+  "Video Services",
+  "Creative & Design",
+  "Lead Generation",
+  "Writing & Content",
+  "Customer Support",
+  "Administrative Services",
+  "Audio Services",
+  "Lifestyle & Personal",
+  "Travel Services",
+  "Event Management",
+  "Visa & Passport",
+  "Insurance Services",
+  "Real Estate",
+  "HR Services",
+  "Influencer Services",
+  "Business & Finance",
+  "Legal & Compliance",
+  "Education & Training"
+];
+
+const NewChatDialog = ({ onSelectService }) => {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (service) => {
+    onSelectService(service);
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted">
+          <Plus className="h-5 w-5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Start a New Chat</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-2 py-4">
+          {SERVICES_LIST.map((service) => (
+            <Button
+              key={service}
+              variant="outline"
+              className="justify-start text-left h-auto py-3 px-4"
+              onClick={() => handleSelect(service)}
+            >
+              {service}
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const ChatArea = ({
@@ -51,15 +117,14 @@ const ChatArea = ({
       <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-border/40 bg-card/60 px-8 py-5 backdrop-blur-xl">
         <div className="relative">
           <Avatar className="h-12 w-12">
-          <AvatarImage src={"/placeholder.svg"} alt={conversationName} />
-          <AvatarFallback className="bg-primary/20 text-primary">
-            {conversationName?.[0] || "C"}
-          </AvatarFallback>
-        </Avatar>
+            <AvatarImage src={"/placeholder.svg"} alt={conversationName} />
+            <AvatarFallback className="bg-primary/20 text-primary">
+              {conversationName?.[0] || "C"}
+            </AvatarFallback>
+          </Avatar>
           <span
-            className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-card ${
-              online ? "bg-emerald-500" : "bg-muted-foreground/40"
-            }`}
+            className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-card ${online ? "bg-emerald-500" : "bg-muted-foreground/40"
+              }`}
             aria-label={online ? "Online" : "Offline"}
           />
         </div>
@@ -123,7 +188,7 @@ const ChatArea = ({
           return (
             <div key={message.id || index} className={`flex ${align}`}>
               <div
-                className="max-w-[70%] md:max-w-[60%] rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 overflow-hidden"
+                className="max-w-[85%] md:max-w-[85%] rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 overflow-hidden"
                 style={bubbleStyle}
                 role="group"
               >
@@ -131,7 +196,7 @@ const ChatArea = ({
                   <>
                     <Clock4 className="h-4 w-4 flex-shrink-0 opacity-70" />
                     <span className="italic text-foreground/90 flex-1">
-                    {isSelf ? "You deleted this message." : "This message was deleted."}
+                      {isSelf ? "You deleted this message." : "This message was deleted."}
                     </span>
                   </>
                 ) : (
@@ -216,6 +281,7 @@ const ClientChatContent = () => {
   const typingTimeoutRef = useRef(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [online, setOnline] = useState(false);
+  const seededAutoMessage = useRef(new Set());
 
   // Reset state when switching conversation to avoid cross-chat bleed.
   useEffect(() => {
@@ -346,9 +412,9 @@ const ClientChatContent = () => {
           setConversationId(stored);
           return;
         }
-      const conversation = await apiClient.createChatConversation({
-        service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
-      });
+        const conversation = await apiClient.createChatConversation({
+          service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+        });
         if (!cancelled && conversation?.id) {
           setConversationId(conversation.id);
           if (typeof window !== "undefined") {
@@ -521,20 +587,52 @@ const ClientChatContent = () => {
 
   const activeMessages = useMemo(() => messages, [messages]);
 
+  // Find the latest proposal
+  const proposalMessage = useMemo(() => {
+    return [...messages].reverse().find(m => m.content && m.content.includes("PROJECT PROPOSAL"));
+  }, [messages]);
+
+  const handleNewChat = (service) => {
+    // Check if we already have a conversation for this service
+    const existing = conversations.find(c => c.label === service || c.serviceKey === service);
+    if (existing) {
+      setSelectedConversation(existing);
+    } else {
+      // Create a temporary conversation object
+      const newConv = {
+        id: null, // Will be created on backend
+        name: "AI Assistant",
+        label: service,
+        serviceKey: service,
+        avatar: "/placeholder.svg"
+      };
+      // Add to conversations list if not present (optional, but good for UI feedback)
+      setConversations(prev => {
+        // Only add if not already there
+        if (prev.some(c => c.label === service)) return prev;
+        return [newConv, ...prev];
+      });
+      setSelectedConversation(newConv);
+    }
+  };
+
   return (
-    <div className="flex h-screen flex-col gap-6 overflow-hidden p-6">
+    <div className="flex h-screen flex-col gap-4 overflow-hidden p-2">
       <ClientTopBar />
 
-      <div className="grid h-full gap-6 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className={`grid h-full gap-4 overflow-hidden ${proposalMessage ? "lg:grid-cols-[320px_minmax(0,1fr)_400px]" : "lg:grid-cols-[320px_minmax(0,1fr)]"}`}>
         <Card className="border border-border/50 bg-card/70">
           <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
-                Conversations
-              </p>
-              {selectedConversation?.name ? (
-                <p className="text-lg font-semibold">{selectedConversation.name}</p>
-              ) : null}
+            <div className="flex items-center justify-between border-b border-border/40 pb-4">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
+                  Conversations
+                </p>
+                {selectedConversation?.name ? (
+                  <p className="text-lg font-semibold">{selectedConversation.name}</p>
+                ) : null}
+              </div>
+              <NewChatDialog onSelectService={handleNewChat} />
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {loading ? (
@@ -554,11 +652,10 @@ const ClientChatContent = () => {
                     <button
                       key={conversation.serviceKey || conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
-                        isActive
-                          ? "border-primary/40 bg-primary"
-                          : "border-border/50 hover:border-primary/30"
-                      }`}
+                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${isActive
+                        ? "border-primary/40 bg-primary"
+                        : "border-border/50 hover:border-primary/30"
+                        }`}
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarImage
@@ -594,6 +691,10 @@ const ClientChatContent = () => {
           typingUsers={typingUsers.map((u) => u.name)}
           online={online}
         />
+
+        {proposalMessage && (
+          <ProposalPanel content={proposalMessage.content} />
+        )}
       </div>
     </div>
   );

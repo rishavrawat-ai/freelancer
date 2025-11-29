@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import { env } from "../config/env.js";
+import fs from "fs";
+import path from "path";
 import {
     DEFAULT_QUESTIONS,
     SERVICE_QUESTION_SETS
@@ -8,8 +10,8 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 
-const MIN_WEBSITE_PRICE = 120000;
-const MIN_WEBSITE_PRICE_DISPLAY = "INR 120,000";
+const MIN_WEBSITE_PRICE = 10000;
+const MIN_WEBSITE_PRICE_DISPLAY = "INR 10,000";
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
@@ -49,18 +51,18 @@ const toHistoryMessage = (message) => ({
 
 const getServiceDetails = (service) => {
     const services = {
-        "Development & Tech": "Starting at INR 120,000. Web/mobile apps, SaaS platforms, e-commerce solutions.",
-        "Digital Marketing": "Starting at INR 110,000. SEO, PPC, social media, content marketing strategies.",
-        "Video Services": "Starting at INR 17,500. Video editing, promotional content, animation.",
-        "Creative & Design": "Starting at INR 13,500. Branding, UI/UX, graphics, motion design.",
-        "Lead Generation": "Starting at INR 115,000. Targeted lists, outreach campaigns, funnel building.",
-        "Writing & Content": "Starting at INR 12,000. SEO blogs, copywriting, technical writing.",
-        "Customer Support": "Starting at INR 18,000. Multi-channel support, helpdesk setup, 24/7 options.",
-        "Administrative Services": "Starting at INR 13,000. Virtual assistance, data management, scheduling.",
-        "Audio Services": "Starting at INR 12,000. Voiceover, podcast production, mixing & mastering.",
-        "Lifestyle & Personal": "Starting at INR 12,500. Coaching, fitness, personal styling."
+        "Development & Tech": "Websites, mobile apps, SaaS platforms, and e-commerce solutions.",
+        "Digital Marketing": "SEO, PPC, social media management, and content marketing strategies.",
+        "Video Services": "Video editing, promotional content, CGI, UGC, and animation.",
+        "Creative & Design": "Branding, UI/UX, graphics, and motion design.",
+        "Lead Generation": "Targeted lists, outreach campaigns, and funnel building.",
+        "Writing & Content": "SEO blogs, copywriting, technical writing, and scripts.",
+        "Customer Support": "Multi-channel support, helpdesk setup, and 24/7 options.",
+        "Administrative Services": "Virtual assistance, data management, and scheduling.",
+        "Audio Services": "Voiceover, podcast production, mixing & mastering.",
+        "Lifestyle & Personal": "Coaching, fitness, personal styling, and wellness."
     };
-    return services[service] || "Custom pricing based on requirements.";
+    return services[service] || "Custom services based on your requirements.";
 };
 
 const needsWebsitePolicy = (service = "") => service.toLowerCase().includes("web");
@@ -83,28 +85,29 @@ const getCounterQuestion = () => `Counter question (ask first):
 const devTechFlow = `Conversation format (Development & Tech):
 - No intros or preamble. Output only the next question (or brief confirmation + next question).
 - Ask one question at a time in this order and keep answers short:
-  1) What's your first name?
-  2) What's your company or project name?
-  3) Where are you based?
-  4) What type of development or tech service are you looking for? (options: Website, Web App/SaaS, Mobile App, E-commerce, Other)
-  5) Is this a new project or an existing one that needs updates?
-  6) Describe the project briefly (what it does, who uses it, 2-3 sentences).
-  7) What are the must-have features or pages? (bullet list ok)
-  8) Do you already have a design, wireframe, or concept ready? (Yes/No/Partial)
-  9) Would you like us to handle the UI/UX design? (Yes/No/Partial)
-  10) Do you have a preferred tech stack or platform? (e.g., React, Next.js, Node, Laravel, WordPress, Other)
-  11) Do you require integrations? (payment, auth, CRM/API, analytics)
-  12) Will you need ongoing maintenance or support after launch?
-  13) What's your estimated budget range? (remind the minimum ${MIN_WEBSITE_PRICE_DISPLAY})
-  14) What's your desired project timeline? (options: 2-4 weeks, 1-2 months, 2-3 months, Flexible)
-  15) Any SEO/analytics or marketing tools needed? (Yes/No/Maybe later)
-  16) Any AI features, chatbots, or automation needed? (Yes/No/Interested)
-  17) Any special requests or constraints?
-  18) Provide links to previous projects, repos, or references (optional).
-- Be concise (1-2 sentences), respond fast, and move to the next question.
+  1) Could you please provide your first name?
+  2) What is the name of your company or project?
+  3) Where are you located? (options: North America, Europe, Asia, Remote/Global, Other)
+  4) What specific type of development service do you require? (options: Website, Web Application/SaaS, Mobile Application, E-Commerce Platform, Custom Software)
+  5) Is this a new project or an existing one that requires updates? (options: New Project, Existing (Update), Existing (Rewrite), Consultation)
+  6) Please provide a brief summary of the project (what it does, target audience, 2-3 sentences).
+  7) What are the essential features or pages required? (Output options as [MULTI_SELECT: User Auth | Payment Gateway | Admin Panel | Dashboard | Search | Messaging | File Upload])
+  8) Do you have existing designs, wireframes, or concepts ready? (options: Yes (Full Designs), Partial Designs, Wireframes Only, No (Need Design))
+  9) Would you like us to handle the UI/UX design? (options: Yes (Full Design), UI Polish Only, No (Have Designs))
+  10) Do you have a preferred technology stack or platform? (Output options as [MULTI_SELECT: React/Next.js | Node.js | PHP/Laravel | WordPress | Python/Django | No Preference])
+  11) Do you require any specific integrations? (Output options as [MULTI_SELECT: Stripe/PayPal | Google Maps | Social Login | CRM | Analytics | None])
+  12) Will you require ongoing maintenance or support after the launch? (options: Yes (Monthly), Yes (Ad-hoc), No (Handover only))
+  13) What is your estimated budget range? (options: < $1k, $1k-$5k, $5k-$10k, $10k-$20k, $20k+)
+  14) What is your desired timeline for completion? (options: 2-4 weeks, 1-2 months, 2-3 months, Flexible)
+  15) Do you require SEO, analytics, or marketing tools? (Output options as [MULTI_SELECT: Basic SEO | Full Marketing | Analytics Setup | None])
+  16) Are there any AI features, chatbots, or automation requirements? (Output options as [MULTI_SELECT: AI Chatbot | Content Gen | Data Analysis | None])
+  17) Do you have any special requests or constraints? (options: NDA Required, Fast Turnaround, Specific Timezone, None)
+  18) Please provide links to previous projects, repositories, or references (optional). (options: I have links, No references)
+- Be concise (1-2 sentences), respond promptly, and proceed to the next question.
 - Do NOT stop; always ask the next question until all are answered or you deliver the proposal.`;
 
 const proposalTemplate = `When you have enough answers, generate a proposal in this exact structure (replace unknowns with "Not provided"):
+[PROPOSAL_DATA]
 PROJECT PROPOSAL
 Project Title: [Service]
 
@@ -114,14 +117,16 @@ Executive Summary
 [Name] has requested [Service] services. Target delivery: [Timeline]. Budget: [Budget].
 
 Scope of Work
-**Phase 1: Discovery & Planning** - Requirements gathering, defining core features, and technical architecture setup. (Tech Stack: [Tech Stack])
-**Phase 2: UI/UX Design** - Wireframing, mockup creation, and client review to finalize the user experience.
-**Phase 3: Development & Integration** - Building the core software/website functionality (e.g., [Service Type]) and integrating necessary APIs.
-**Phase 4: Testing & Deployment** - Comprehensive QA across target devices and final launch.
+Phase 1: Discovery & Planning - Requirements gathering, defining core features, and technical architecture setup. (Tech Stack: [Tech Stack])
+Phase 2: UI/UX Design - Wireframing, mockup creation, and client review to finalize the user experience.
+Phase 3: Development & Integration - Building the core software/website functionality (e.g., [Service Type]) and integrating necessary APIs.
+Phase 4: Testing & Deployment - Comprehensive QA across target devices and final launch.
+
 Deliverables
 Website Development Functional Beta/Staging link for review.
 Final, clean, and commented Source Code Repository.
 Technical documentation & deployment guide.
+
 Timeline
 [Timeline]
 
@@ -139,15 +144,27 @@ Next Steps
 Confirm package & scope.
 Sign proposal & pay deposit (deposit amount depends on chosen package).
 Kickoff meeting to gather assets & finalize schedule.
-Generated from questionnaire answers - edit if you'd like to add more specifics before saving.`;
+Generated from questionnaire answers - edit if you'd like to add more specifics before saving.
+[/PROPOSAL_DATA]`;
 
 const getQuestionsForService = (service = "") =>
     SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS;
+
+const getInstructions = () => {
+    try {
+        const filePath = path.join(process.cwd(), "src", "data", "instructions.md");
+        return fs.readFileSync(filePath, "utf-8");
+    } catch (error) {
+        console.error("Error reading instructions file:", error);
+        return "";
+    }
+};
 
 const buildSystemPrompt = (service) => {
     const servicePolicy = getWebsitePolicy(service);
     const counterQuestion = getCounterQuestion();
     const questions = getQuestionsForService(service);
+    const instructions = getInstructions();
     const questionLines = questions
         .map(
             (q, idx) =>
@@ -158,44 +175,40 @@ const buildSystemPrompt = (service) => {
     return `You are a professional consultant for FreelanceHub helping clients with "${service}" projects.
 
 Response rules:
-- Keep responses very short (1-2 sentences max)
-- Ask one focused question at a time
-- Use bullet points for lists
-- Be direct, professional, and friendly
-- Respond fast and move to the next question quickly.
-- No intros or repeated greetings; output only the next question (or brief confirmation + next question).
-- Keep a strict checklist: mark a question asked as "done" and never ask it again unless the answer was empty/unclear. If the user re-answers an earlier question, accept it and move to the next unanswered one-do not repeat it.
-- Once all checklist items are answered (or the user declines), immediately generate the proposal from what you have and stop asking questions. Do NOT ask any further questions after that.
-- If the user asks for suggestions, provide 3-5 concise, relevant options tailored to the service, then continue with the next unanswered checklist item.
-- Ask the most important items first: 1) project summary, 2) budget (remind floor ${MIN_WEBSITE_PRICE_DISPLAY} if web), 3) timeline, 4) must-have features, 5) tech/design constraints.
-- If an answer is blank, off-topic, contradictory, or clearly unrealistic (e.g., budget below floor, impossible timeline), ask for a correction briefly and give a 1-line example to guide them.
-- If the budget is below ${MIN_WEBSITE_PRICE_DISPLAY} for a website, restate the minimum and ask them to confirm/adjust the budget or scope.
-- Confirm unclear answers once, then continue to the next critical question.
-- Do not repeat questions. Keep a mental checklist. Ask at most 10 questions total, then summarize and deliver the proposal and next steps.
+- Maintain a strictly professional, direct, and concise tone.
+- Do NOT use buzzwords, slang, or overly enthusiastic language.
+- Keep responses very short (1-2 sentences max).
+- Ask ONE focused question at a time.
+- CRITICAL: Do NOT repeat questions. Check the history. If a question was already asked and the user answered (even briefly), accept it and move to the next one.
+- CRITICAL: Output suggestions for the CURRENT question if applicable.
+- Do NOT use markdown bolding (like **text**) in your responses.
+- If the question instructions say "Output options as [MULTI_SELECT: ...]", you MUST use that exact format.
+- Otherwise, for single-choice questions, format suggestions like this:
+  \`[SUGGESTIONS: Option 1 | Option 2 | Option 3]\`
+- If the user selects an option, treat it as their answer and move to the next question immediately.
+- When generating the proposal, YOU MUST wrap it in \`[PROPOSAL_DATA]...[/PROPOSAL_DATA]\` tags.
 
 Service Info: ${service}
 ${getServiceDetails(service)}   
 ${servicePolicy ? `\n${servicePolicy}\n` : ""}${counterQuestion}
 
+OFFICIAL SERVICE INSTRUCTIONS AND PRICING (STRICTLY FOLLOW THESE):
+${instructions}
+
 Use this question order for this service (ask top-down, skip if already answered):
 ${questionLines}
-If a suggestion list exists, surface 3-6 short options inline.
-Keep phrasing concise and move fast.
-${service === "Development & Tech" ? `\n${devTechFlow}\n` : ""}
+If a suggestion list exists for the current question, surface 3-5 short options in the [SUGGESTIONS: ...] format.
 
 Proposal instructions:
-${proposalTemplate}
+${proposalTemplate.replace(/\*\*/g, "")}
 
 Your Goal:
-- Gather: 1) what they need, 2) timeline, 3) budget range. Do NOT stop mid-flow; always ask the next required question.
+- Gather: 1) what they need, 2) timeline, 3) budget range.
+- Do NOT stop mid-flow; always ask the next required question.
 - If a website budget is under ${MIN_WEBSITE_PRICE_DISPLAY}, restate the minimum and suggest a smaller scope or phased plan.
 
-After 3-4 exchanges, provide:
-- Quick Proposal: 1 line scope
-- Timeline: estimate
-- Budget: range starting at your floor
-- Next: Book a consultation at FreelanceHub
-
+After 3-4 exchanges, or when you have enough info, generate the FULL PROPOSAL using the [PROPOSAL_DATA] template.
+Do NOT generate a partial "Quick Proposal".
 Keep it short and structured.`;
 };
 
@@ -274,7 +287,11 @@ export const chatController = async (req, res) => {
             service,
             history: Array.isArray(history) ? history : []
         });
-        res.json({ response: botResponse });
+
+        // Strip markdown bolding from the response
+        const cleanResponse = botResponse.replace(/\*\*/g, "");
+
+        res.json({ response: cleanResponse });
     } catch (error) {
         console.error("Chat error:", error);
         if (error?.response) {
@@ -288,28 +305,30 @@ export const chatController = async (req, res) => {
 };
 
 export const createConversation = asyncHandler(async (req, res) => {
-  const createdById = req.user?.sub || null;
-  const serviceKey = normalizeService(req.body?.service);
+    const createdById = req.user?.sub || null;
+    const serviceKey = normalizeService(req.body?.service);
+    const forceNew = req.body?.forceNew === true;
 
-  // Reuse existing conversation if the same service key already exists.
-  const existing = serviceKey
-    ? await prisma.chatConversation.findFirst({
-        where: { service: serviceKey }
-      })
-    : null;
+    // Reuse existing conversation if the same service key already exists, unless forced new.
+    const existing = (serviceKey && !forceNew)
+        ? await prisma.chatConversation.findFirst({
+            where: { service: serviceKey },
+            orderBy: { createdAt: "desc" }
+        })
+        : null;
 
-  if (existing) {
-    res.status(200).json({ data: existing });
-    return;
-  }
-
-  const conversation = await prisma.chatConversation.create({
-    data: {
-      service: serviceKey,
-      createdById
+    if (existing) {
+        res.status(200).json({ data: existing });
+        return;
     }
-  });
-  res.status(201).json({ data: conversation });
+
+    const conversation = await prisma.chatConversation.create({
+        data: {
+            service: serviceKey,
+            createdById
+        }
+    });
+    res.status(201).json({ data: conversation });
 });
 
 export const getConversationMessages = asyncHandler(async (req, res) => {
@@ -338,89 +357,89 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
 });
 
 export const addConversationMessage = asyncHandler(async (req, res) => {
-  const conversationId = req.params?.id;
-  const {
-    content,
-    service,
-    senderId,
-    senderRole,
-    senderName,
-    skipAssistant = false
-  } = req.body || {};
+    const conversationId = req.params?.id;
+    const {
+        content,
+        service,
+        senderId,
+        senderRole,
+        senderName,
+        skipAssistant = false
+    } = req.body || {};
 
-  if (!content) {
-    throw new AppError("Message content is required", 400);
-  }
-
-  const serviceKey = normalizeService(service);
-  let conversation = null;
-
-  if (conversationId) {
-    conversation = await prisma.chatConversation.findUnique({
-      where: { id: conversationId }
-    });
-  }
-
-  if (!conversation && serviceKey) {
-    conversation = await prisma.chatConversation.findFirst({
-      where: { service: serviceKey }
-    });
-  }
-
-  if (!conversation) {
-    conversation = await prisma.chatConversation.create({
-      data: {
-        service: serviceKey,
-        createdById: senderId || null
-      }
-    });
-  }
-
-  const userMessage = await prisma.chatMessage.create({
-    data: {
-      conversationId: conversation.id,
-      senderId: senderId || null,
-      senderName: senderName || null,
-      senderRole: senderRole || null,
-      role: "user",
-      content
+    if (!content) {
+        throw new AppError("Message content is required", 400);
     }
-  });
 
-  let assistantMessage = null;
+    const serviceKey = normalizeService(service);
+    let conversation = null;
 
-  if (!skipAssistant) {
-    const dbHistory = await prisma.chatMessage.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: "asc" },
-      take: 20
-    });
+    if (conversationId) {
+        conversation = await prisma.chatConversation.findUnique({
+            where: { id: conversationId }
+        });
+    }
 
-    try {
-      const assistantReply = await generateChatReply({
-        message: content,
-        service: service || conversation.service || "",
-        history: dbHistory.map(toHistoryMessage)
-      });
+    if (!conversation && serviceKey) {
+        conversation = await prisma.chatConversation.findFirst({
+            where: { service: serviceKey }
+        });
+    }
 
-      assistantMessage = await prisma.chatMessage.create({
+    if (!conversation) {
+        conversation = await prisma.chatConversation.create({
+            data: {
+                service: serviceKey,
+                createdById: senderId || null
+            }
+        });
+    }
+
+    const userMessage = await prisma.chatMessage.create({
         data: {
-          conversationId: conversation.id,
-          senderName: "Assistant",
-          senderRole: "assistant",
-          role: "assistant",
-          content: assistantReply
+            conversationId: conversation.id,
+            senderId: senderId || null,
+            senderName: senderName || null,
+            senderRole: senderRole || null,
+            role: "user",
+            content
         }
-      });
-    } catch (error) {
-      console.error("Assistant generation failed (HTTP):", error);
-    }
-  }
+    });
 
-  res.status(201).json({
-    data: {
-      message: serializeMessage(userMessage),
-      assistant: assistantMessage ? serializeMessage(assistantMessage) : null
+    let assistantMessage = null;
+
+    if (!skipAssistant) {
+        const dbHistory = await prisma.chatMessage.findMany({
+            where: { conversationId: conversation.id },
+            orderBy: { createdAt: "asc" },
+            take: 20
+        });
+
+        try {
+            const assistantReply = await generateChatReply({
+                message: content,
+                service: service || conversation.service || "",
+                history: dbHistory.map(toHistoryMessage)
+            });
+
+            assistantMessage = await prisma.chatMessage.create({
+                data: {
+                    conversationId: conversation.id,
+                    senderName: "Assistant",
+                    senderRole: "assistant",
+                    role: "assistant",
+                    content: assistantReply
+                }
+            });
+        } catch (error) {
+            console.error("Assistant generation failed (HTTP):", error);
+        }
     }
-  });
+
+    res.status(201).json({
+        data: {
+            message: serializeMessage(userMessage),
+            assistant: assistantMessage ? serializeMessage(assistantMessage) : null
+        }
+    });
 });

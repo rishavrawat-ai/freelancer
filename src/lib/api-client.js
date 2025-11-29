@@ -143,10 +143,10 @@ export const chat = ({ message, service, history = [] }) => {
   });
 };
 
-export const createChatConversation = ({ service }) => {
+export const createChatConversation = ({ service, ...rest }) => {
   return request("/chat/conversations", {
     method: "POST",
-    body: JSON.stringify({ service })
+    body: JSON.stringify({ service, ...rest })
   });
 };
 
