@@ -251,7 +251,7 @@ export const AuthProvider = ({ children }) => {
 
         if (response.ok) {
           window.localStorage.setItem(SAVED_PROPOSAL_SYNCED_KEY, "1");
-          window.localStorage.removeItem(SAVED_PROPOSAL_KEY);
+          // Keep the saved proposal locally so it stays visible in the dashboard.
           toast.success("Saved proposal synced to your account.");
         } else {
           const payload = await response.json().catch(() => null);

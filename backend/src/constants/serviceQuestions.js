@@ -43,9 +43,8 @@ export const SERVICE_QUESTION_SETS = {
     },
     {
       key: "timeline",
-      text: "What is your desired timeline for completion?",
-      type: "suggestion",
-      suggestions: ["2-4 weeks", "1-2 months", "3+ months", "Flexible"],
+      text: "When do you want the project completed?",
+      type: "text",
     },
     { key: "references", text: "Please share any reference links or repositories if available.", type: "text" },
   ],

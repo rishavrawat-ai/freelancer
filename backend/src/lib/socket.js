@@ -2,6 +2,14 @@ import { Server } from "socket.io";
 import { env } from "../config/env.js";
 import { prisma } from "./prisma.js";
 import { generateChatReply } from "../controllers/chat.controller.js";
+import {
+  ensureConversation,
+  findConversationByService,
+  createConversation as createInMemoryConversation,
+  addMessage,
+  listMessages,
+  getConversation
+} from "./chat-store.js";
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
@@ -14,7 +22,8 @@ const allowedOrigins = [
   ...parseOrigins(env.CORS_ORIGIN || ""),
   normalizeOrigin(env.LOCAL_CORS_ORIGIN || ""),
   normalizeOrigin(env.VERCEL_CORS_ORIGIN || ""),
-  "http://localhost:5173"
+  "http://localhost:5173",
+  "http://localhost:5174"
 ].filter(Boolean);
 
 const serializeMessage = (message) => ({
@@ -62,12 +71,24 @@ export const initSocket = (server) => {
     socket.on("chat:join", async ({ conversationId, service, senderId }) => {
       try {
         const serviceKey = service ? service.toString().trim() : null;
-        let conversation = null;
+        let useMemory = false;
+        let conversation = getConversation(conversationId);
+        if (conversation) {
+          useMemory = true;
+        }
 
-        if (conversationId) {
+        if (!conversation && conversationId) {
           conversation = await prisma.chatConversation.findUnique({
             where: { id: conversationId }
           });
+        }
+
+        if (!conversation && serviceKey) {
+          const memByService = findConversationByService(serviceKey);
+          if (memByService) {
+            conversation = memByService;
+            useMemory = true;
+          }
         }
 
         if (!conversation && serviceKey) {
@@ -77,8 +98,9 @@ export const initSocket = (server) => {
         }
 
         if (!conversation) {
+          // Default to persisted conversation for client/freelancer chat.
           conversation = await prisma.chatConversation.create({
-            data: { service: serviceKey || null }
+            data: { service: serviceKey || null, createdById: senderId || null }
           });
         }
 
@@ -94,11 +116,13 @@ export const initSocket = (server) => {
         presenceKeys.set(conversation.id, userKey);
         broadcastPresence(conversation.id);
 
-        const history = await prisma.chatMessage.findMany({
-          where: { conversationId: conversation.id },
-          orderBy: { createdAt: "asc" },
-          take: 100
-        });
+        const history = useMemory
+          ? listMessages(conversation.id, 100)
+          : await prisma.chatMessage.findMany({
+              where: { conversationId: conversation.id },
+              orderBy: { createdAt: "asc" },
+              take: 100
+            });
 
         if (history.length) {
           socket.emit(
@@ -134,6 +158,74 @@ export const initSocket = (server) => {
 
         try {
           const serviceKey = service ? service.toString().trim() : null;
+          const memoryConversation = getConversation(conversationId);
+          const useMemory = !skipAssistant || Boolean(memoryConversation);
+
+          // Ephemeral AI chat path
+          if (useMemory) {
+            let conversation = ensureConversation({
+              id: conversationId,
+              service: serviceKey || null,
+              createdById: senderId || null
+            });
+
+            if (!conversationId) {
+              socket.emit("chat:joined", { conversationId: conversation.id });
+            }
+
+            socket.join(conversation.id);
+
+            const userMessage = addMessage({
+              conversationId: conversation.id,
+              senderId: senderId || null,
+              senderName: senderName || null,
+              senderRole: senderRole || null,
+              role: "user",
+              content
+            });
+
+            io.to(conversation.id).emit(
+              "chat:message",
+              serializeMessage(userMessage)
+            );
+
+            if (skipAssistant) return;
+
+            const dbHistory = listMessages(conversation.id, 20);
+
+            let assistantReply = null;
+            try {
+              assistantReply = await generateChatReply({
+                message: content,
+                service: service || conversation.service || "",
+                history: dbHistory.map(toHistoryMessage)
+              });
+            } catch (error) {
+              console.error("Assistant generation failed", error);
+              socket.emit("chat:error", {
+                message:
+                  "Assistant is temporarily unavailable. Please continue the chat."
+              });
+            }
+
+            if (assistantReply) {
+              const assistantMessage = addMessage({
+                conversationId: conversation.id,
+                senderName: "Assistant",
+                senderRole: "assistant",
+                role: "assistant",
+                content: assistantReply
+              });
+
+              io.to(conversation.id).emit(
+                "chat:message",
+                serializeMessage(assistantMessage)
+              );
+            }
+            return;
+          }
+
+          // Persisted client/freelancer chat path
           let conversation = null;
 
           if (conversationId) {
@@ -175,46 +267,6 @@ export const initSocket = (server) => {
             "chat:message",
             serializeMessage(userMessage)
           );
-
-          if (skipAssistant) return;
-
-          const dbHistory = await prisma.chatMessage.findMany({
-            where: { conversationId: conversation.id },
-            orderBy: { createdAt: "asc" },
-            take: 20
-          });
-
-          let assistantReply = null;
-          try {
-            assistantReply = await generateChatReply({
-              message: content,
-              service: service || conversation.service || "",
-              history: dbHistory.map(toHistoryMessage)
-            });
-          } catch (error) {
-            console.error("Assistant generation failed", error);
-            socket.emit("chat:error", {
-              message:
-                "Assistant is temporarily unavailable. Please continue the chat."
-            });
-          }
-
-          if (assistantReply) {
-            const assistantMessage = await prisma.chatMessage.create({
-              data: {
-                conversationId: conversation.id,
-                senderName: "Assistant",
-                senderRole: "assistant",
-                role: "assistant",
-                content: assistantReply
-              }
-            });
-
-            io.to(conversation.id).emit(
-              "chat:message",
-              serializeMessage(assistantMessage)
-            );
-          }
         } catch (error) {
           console.error("chat:message failed", error);
           socket.emit("chat:error", {

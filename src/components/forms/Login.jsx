@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ function Login({ className, ...props }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: setAuthSession } = useAuth();
 
   const handleChange = (event) => {
@@ -52,7 +53,12 @@ function Login({ className, ...props }) {
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
       const nextRole = authPayload?.user?.role?.toUpperCase();
-      navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", { replace: true });
+      const redirectTo = location?.state?.redirectTo;
+      if (redirectTo) {
+        navigate(redirectTo, { replace: true });
+      } else {
+        navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", { replace: true });
+      }
     } catch (error) {
       const message = error?.message || "Unable to log in with those details.";
       setFormError(message);

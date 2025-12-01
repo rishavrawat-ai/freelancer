@@ -51,11 +51,11 @@ const ChatArea = ({
       <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-border/40 bg-card/60 px-8 py-5 backdrop-blur-xl">
         <div className="relative">
           <Avatar className="h-12 w-12">
-          <AvatarImage src={"/placeholder.svg"} alt={conversationName} />
-          <AvatarFallback className="bg-primary/20 text-primary">
-            {conversationName?.[0] || "C"}
-          </AvatarFallback>
-        </Avatar>
+            <AvatarImage src={"/placeholder.svg"} alt={conversationName} />
+            <AvatarFallback className="bg-primary/20 text-primary">
+              {conversationName?.[0] || "C"}
+            </AvatarFallback>
+          </Avatar>
           <span
             className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-card ${
               online ? "bg-emerald-500" : "bg-muted-foreground/40"
@@ -65,9 +65,7 @@ const ChatArea = ({
         </div>
         <div>
           <p className="text-lg font-semibold">{conversationName}</p>
-          <p className="text-xs text-muted-foreground">
-            {online ? "Online" : "Offline"}
-          </p>
+          <p className="text-xs text-muted-foreground">{online ? "Online" : "Offline"}</p>
         </div>
         <Badge variant="outline" className="ml-auto">
           Live
@@ -80,6 +78,9 @@ const ChatArea = ({
           const isAssistant = message.role === "assistant";
           const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
           const isDeleted = message.deleted || message.isDeleted;
+          const isClient = message.senderRole === "CLIENT";
+          const isFreelancer = message.senderRole === "FREELANCER";
+
           const bubbleStyle = (() => {
             if (isAssistant) {
               return {
@@ -95,14 +96,14 @@ const ChatArea = ({
                 border: `1px solid var(--chat-bubble-border)`
               };
             }
-            if (message.senderRole === "CLIENT") {
+            if (isClient) {
               return {
                 backgroundColor: "var(--chat-bubble-client)",
                 color: "var(--chat-bubble-client-text)",
                 border: `1px solid var(--chat-bubble-border)`
               };
             }
-            if (message.senderRole === "FREELANCER") {
+            if (isFreelancer) {
               return {
                 backgroundColor: "var(--chat-bubble-freelancer)",
                 color: "var(--chat-bubble-freelancer-text)",
@@ -126,7 +127,7 @@ const ChatArea = ({
           return (
             <div key={message.id || index} className={`flex ${align}`}>
               <div
-                className="max-w-[70%] md:max-w-[60%] rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 overflow-hidden"
+                className="max-w-[85%] md:max-w-[85%] rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 overflow-hidden"
                 style={bubbleStyle}
                 role="group"
               >
@@ -501,22 +502,19 @@ const FreelancerChatContent = () => {
   const activeMessages = useMemo(() => messages, [messages]);
 
   return (
-    <div className="flex h-screen flex-col gap-6 overflow-hidden p-6">
+    <div className="flex h-screen flex-col gap-4 overflow-hidden p-2">
       <FreelancerTopBar />
 
-      <div className="grid h-full gap-6 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid h-full gap-4 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="border border-border/50 bg-card/70">
           <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
-            <div className="space-y-1">
+            <div className="flex items-center justify-between border-b border-border/40 pb-4">
               <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
                 Conversations
               </p>
-              <p className="text-lg font-semibold">
-                {selectedConversation?.name || "Chats"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Chat with your clients/assistant threads.
-              </p>
+              {selectedConversation?.name ? (
+                <p className="text-lg font-semibold">{selectedConversation.name}</p>
+              ) : null}
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {loading ? (
@@ -540,8 +538,8 @@ const FreelancerChatContent = () => {
                       onClick={() => setSelectedConversation(conversation)}
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                         isActive
-                          ? "border-primary/40 bg-primary/10"
-                          : "border-border/50 hover:border-primary/30"
+                        ? "border-primary/40 bg-primary"
+                        : "border-border/50 hover:border-primary/30"
                       }`}
                     >
                       <Avatar className="h-10 w-10">
@@ -549,7 +547,7 @@ const FreelancerChatContent = () => {
                           src={conversation.avatar || "/placeholder.svg"}
                           alt={conversation.name}
                         />
-                        <AvatarFallback className="bg-primary/20 text-primary">
+                        <AvatarFallback className="bg-primary/30 text-primary">
                           {conversation.name?.[0] || "C"}
                         </AvatarFallback>
                       </Avatar>
@@ -563,18 +561,6 @@ const FreelancerChatContent = () => {
                   );
                 })
               )}
-            </div>
-            <div className="mt-2 space-y-2 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-              <p>Role color key:</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
-                  Client
-                </Badge>
-                <Badge className="bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50">
-                  Freelancer
-                </Badge>
-                <Badge variant="secondary">Assistant</Badge>
-              </div>
             </div>
           </CardContent>
         </Card>

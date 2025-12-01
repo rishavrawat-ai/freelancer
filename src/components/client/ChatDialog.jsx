@@ -15,6 +15,28 @@ import { useAuth } from "@/context/AuthContext";
 import { io } from "socket.io-client";
 import ProposalPanel from "./ProposalPanel";
 
+const getMessageStorageKey = (serviceKey) =>
+  serviceKey ? `markify:chatMessages:${serviceKey}` : null;
+
+const loadMessagesFromStorage = (key) => {
+  if (typeof window === "undefined" || !key) return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistMessagesToStorage = (key, messages) => {
+  if (typeof window === "undefined" || !key) return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(messages));
+  } catch {
+    // ignore write errors (quota, private mode, etc.)
+  }
+};
+
 const ChatDialog = ({ isOpen, onClose, service }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -26,6 +48,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const inputRef = useRef(null);
   const socketRef = useRef(null);
   const serviceKey = service?.title || "Project";
+  const messageStorageKey = useMemo(() => getMessageStorageKey(serviceKey), [serviceKey]);
 
   const formatTime = (value) => {
     if (!value) return "";
@@ -52,7 +75,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         }
 
         const conversation = await apiClient.createChatConversation({
-          service: serviceKey
+          service: serviceKey,
+          mode: "assistant",
+          ephemeral: true
         });
 
         if (!cancelled && conversation?.id) {
@@ -72,6 +97,15 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       cancelled = true;
     };
   }, [isOpen, serviceKey]);
+
+  // Load local chat history for this service if present.
+  useEffect(() => {
+    if (!isOpen || messages.length > 0) return;
+    const stored = loadMessagesFromStorage(messageStorageKey);
+    if (stored.length) {
+      setMessages(stored);
+    }
+  }, [isOpen, messages.length, messageStorageKey]);
 
   // Wire up socket.io for real-time chat.
   useEffect(() => {
@@ -93,6 +127,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       );
       setMessages(sorted);
+      persistMessagesToStorage(messageStorageKey, sorted);
     });
 
     socket.on("chat:message", (message) => {
@@ -104,7 +139,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
             msg.content !== message?.content ||
             msg.role !== message?.role
         );
-        return [...filtered, message];
+        const next = [...filtered, message];
+        persistMessagesToStorage(messageStorageKey, next);
+        return next;
       });
     });
 
@@ -126,16 +163,17 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const load = async () => {
       try {
         const payload = await apiClient.fetchChatMessages(conversationId);
-        const nextMessages =
-          payload?.data?.messages || payload?.messages || [];
-        setMessages(nextMessages);
-      } catch (error) {
-        console.error("Failed to load messages (HTTP):", error);
-      }
-    };
+      const nextMessages =
+        payload?.data?.messages || payload?.messages || [];
+      setMessages(nextMessages);
+      persistMessagesToStorage(messageStorageKey, nextMessages);
+    } catch (error) {
+      console.error("Failed to load messages (HTTP):", error);
+    }
+  };
 
-    load();
-  }, [conversationId, isOpen, useSocket]);
+  load();
+  }, [conversationId, isOpen, useSocket, messageStorageKey]);
 
   // Seed an opening prompt if there is no history.
   useEffect(() => {
@@ -153,6 +191,12 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     });
   }, [isOpen, service, messages.length]);
 
+  // Persist any message changes to local storage for this service.
+  useEffect(() => {
+    if (!messageStorageKey) return;
+    persistMessagesToStorage(messageStorageKey, messages);
+  }, [messages, messageStorageKey]);
+
   const handleSend = async (contentOverride) => {
     const msgContent = contentOverride || input;
     if (!msgContent.trim()) return;
@@ -163,7 +207,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       service: serviceKey,
       senderId: user?.id || null,
       senderRole: user?.role || "GUEST",
-      skipAssistant: false
+      skipAssistant: false,
+      mode: "assistant",
+      ephemeral: true
     };
 
     if (useSocket && socketRef.current) {
@@ -194,9 +240,11 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
           response?.data?.message || response?.message || payload;
         const assistant =
           response?.data?.assistant || response?.assistant || null;
-        setMessages((prev) =>
-          assistant ? [...prev, userMsg, assistant] : [...prev, userMsg]
-        );
+        setMessages((prev) => {
+          const next = assistant ? [...prev, userMsg, assistant] : [...prev, userMsg];
+          persistMessagesToStorage(messageStorageKey, next);
+          return next;
+        });
       })
       .catch((error) => {
         console.error("Failed to send chat via HTTP:", error);
@@ -226,23 +274,22 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   }, [messages, isLoading, proposalMessage]);
 
   const handleResetChat = () => {
-    if (confirm("Are you sure you want to start a new chat? This will clear the current conversation.")) {
-      const storageKey = `markify:chatConversationId:${serviceKey}`;
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(storageKey);
-      }
-      setConversationId(null);
-      setMessages([]);
-      // Re-trigger conversation creation
-      apiClient.createChatConversation({ service: serviceKey, forceNew: true }).then(conversation => {
-        if (conversation?.id) {
-          setConversationId(conversation.id);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(storageKey, conversation.id);
-          }
-        }
-      });
+    const storageKey = `markify:chatConversationId:${serviceKey}`;
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(storageKey);
+      window.localStorage.removeItem(messageStorageKey);
     }
+    setConversationId(null);
+    setMessages([]);
+    apiClient.createChatConversation({ service: serviceKey, forceNew: true, mode: "assistant", ephemeral: true }).then(conversation => {
+      if (conversation?.id) {
+        setConversationId(conversation.id);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(storageKey, conversation.id);
+        }
+      }
+    });
   };
 
   return (

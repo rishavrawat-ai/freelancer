@@ -53,7 +53,7 @@ const dashboardTemplate = {
     },
     {
       label: "Total Spend",
-      value: "$ 24",
+      value: "₹ 24",
       trend: "Vendors are responsive",
       icon: Banknote,
     },
@@ -116,10 +116,38 @@ const dashboardTemplate = {
 };
 
 const recommendedFreelancers = [
-  { name: "Nova Stack", specialty: "Full-stack • Next.js, Node", rating: "4.9", projects: "48", availability: "2 slots", serviceMatch: "Development & Tech" },
-  { name: "Lumen Creative", specialty: "UI/UX • Figma, Framer", rating: "4.8", projects: "36", availability: "3 slots", serviceMatch: "Creative & Design" },
-  { name: "Growth Loop", specialty: "Performance Marketing • Meta/Google Ads", rating: "4.7", projects: "52", availability: "1 slot", serviceMatch: "Digital Marketing" },
-  { name: "Opsline", specialty: "DevOps • AWS, CI/CD", rating: "4.9", projects: "41", availability: "2 slots", serviceMatch: "Development & Tech" },
+  {
+    name: "Nova Stack",
+    specialty: "Full-stack • Next.js, Node",
+    rating: "4.9",
+    projects: "48",
+    availability: "2 slots",
+    serviceMatch: "Development & Tech",
+  },
+  {
+    name: "Lumen Creative",
+    specialty: "UI/UX • Figma, Framer",
+    rating: "4.8",
+    projects: "36",
+    availability: "3 slots",
+    serviceMatch: "Creative & Design",
+  },
+  {
+    name: "Growth Loop",
+    specialty: "Performance Marketing • Meta/Google Ads",
+    rating: "4.7",
+    projects: "52",
+    availability: "1 slot",
+    serviceMatch: "Digital Marketing",
+  },
+  {
+    name: "Opsline",
+    specialty: "DevOps • AWS, CI/CD",
+    rating: "4.9",
+    projects: "41",
+    availability: "2 slots",
+    serviceMatch: "Development & Tech",
+  },
 ];
 
 const PROPOSAL_STORAGE_KEYS = [
@@ -170,6 +198,8 @@ const clearSavedProposalFromStorage = () => {
   );
 };
 
+const templateMetrics = dashboardTemplate.metrics || [];
+
 const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const [savedProposal, setSavedProposal] = useState(null);
@@ -179,6 +209,10 @@ const ClientDashboardContent = () => {
   const [freelancersLoading, setFreelancersLoading] = useState(false);
   const { authFetch } = useAuth();
   const [notificationsChecked, setNotificationsChecked] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const heroSubtitle = dashboardTemplate.heroSubtitle;
+  const [metrics, setMetrics] = useState(templateMetrics);
 
   useEffect(() => {
     const session = getSession();
@@ -188,6 +222,72 @@ const ClientDashboardContent = () => {
   useEffect(() => {
     setSavedProposal(loadSavedProposalFromStorage());
   }, []);
+
+  // Load projects for metrics
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (!authFetch) return;
+      try {
+        setIsLoadingProjects(true);
+        const response = await authFetch("/projects");
+        const payload = await response.json().catch(() => null);
+        const list = Array.isArray(payload?.data) ? payload.data : [];
+        setProjects(list);
+
+        // Build metrics from project data
+        const active = list.filter(
+          (p) => (p.status || "").toUpperCase() === "OPEN"
+        );
+        const completed = list.filter(
+          (p) => (p.status || "").toUpperCase() === "COMPLETED"
+        );
+        const proposalsSent = list.reduce(
+          (acc, project) => acc + (project.proposals?.length || 0),
+          0
+        );
+        const totalSpend = list.reduce(
+          (acc, project) => acc + (project.budget || 0),
+          0
+        );
+
+        setMetrics([
+          {
+            label: "Active projects",
+            value: String(active.length),
+            trend: `${list.length - active.length} awaiting review`,
+            icon: Briefcase,
+          },
+          {
+            label: "Completed projects",
+            value: String(completed.length),
+            trend: `${Math.max(list.length - completed.length, 0)} in progress`,
+            icon: Sparkles,
+          },
+          {
+            label: "Proposals Sent",
+            value: String(proposalsSent),
+            trend: proposalsSent
+              ? "Vendors are responsive"
+              : "Send your first proposal",
+            icon: Clock,
+          },
+          {
+            label: "Total Spend",
+            value: totalSpend ? `₹${totalSpend.toLocaleString()}` : "₹0",
+            trend: proposalsSent ? "Vendors are responsive" : "No spend yet",
+            icon: Banknote,
+          },
+        ]);
+      } catch (error) {
+        console.error("Failed to load projects", error);
+        setMetrics(templateMetrics);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+
+    loadProjects();
+  }, [authFetch, templateMetrics]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -226,13 +326,6 @@ const ClientDashboardContent = () => {
     ? `${sessionUser.fullName.trim()}'s dashboard`
     : `${roleLabel} dashboard`;
 
-  const template = useMemo(() => dashboardTemplate, []);
-
-  const {
-    heroSubtitle,
-    metrics = [],
-  } = template;
-
   const heroTitle = sessionUser?.fullName?.trim()
     ? `${sessionUser.fullName.split(" ")[0]}'s control room`
     : `${roleLabel} control room`;
@@ -258,7 +351,7 @@ const ClientDashboardContent = () => {
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: true
+      hour12: true,
     }).format(parsed);
   };
 
@@ -272,28 +365,28 @@ const ClientDashboardContent = () => {
         ? savedProposal
         : { content: savedProposal };
 
-      const service =
-        baseProposal.service ||
-        baseProposal.category ||
-        baseProposal.professionalField ||
-        baseProposal.serviceType ||
-        baseProposal.projectTitle ||
-        "General services";
+    const service =
+      baseProposal.service ||
+      baseProposal.category ||
+      baseProposal.professionalField ||
+      baseProposal.serviceType ||
+      baseProposal.projectTitle ||
+      "General services";
 
-      const projectTitle =
-        baseProposal.projectTitle ||
-        baseProposal.title ||
-        baseProposal.project ||
-        service ||
-        "Untitled project";
+    const projectTitle =
+      baseProposal.projectTitle ||
+      baseProposal.title ||
+      baseProposal.project ||
+      service ||
+      "Untitled project";
 
-      const projectSubtype =
-        baseProposal.projectSubtype ||
-        baseProposal.projectType ||
-        baseProposal.buildType ||
-        baseProposal.appType ||
-        baseProposal.siteType ||
-        null;
+    const projectSubtype =
+      baseProposal.projectSubtype ||
+      baseProposal.projectType ||
+      baseProposal.buildType ||
+      baseProposal.appType ||
+      baseProposal.siteType ||
+      null;
 
     const summary =
       baseProposal.summary ||
@@ -321,9 +414,9 @@ const ClientDashboardContent = () => {
       baseProposal.created_on ||
       baseProposal.created;
 
-      const createdAtDisplay = formatDateTime(
-        createdAtValue || baseProposal.createdAt || new Date()
-      );
+    const createdAtDisplay = formatDateTime(
+      createdAtValue || baseProposal.createdAt || new Date()
+    );
 
     const freelancerName =
       baseProposal.freelancerName ||
@@ -332,16 +425,16 @@ const ClientDashboardContent = () => {
       baseProposal.recipient ||
       "Freelancer";
 
-      return {
-        projectTitle,
-        service,
-        preparedFor,
-        summary: cleanedSummary,
-        projectSubtype,
-        budget:
-          typeof budgetValue === "number"
-            ? `$${budgetValue.toLocaleString()}`
-            : budgetValue,
+    return {
+      projectTitle,
+      service,
+      preparedFor,
+      summary: cleanedSummary,
+      projectSubtype,
+      budget:
+        typeof budgetValue === "number"
+          ? `$${budgetValue.toLocaleString()}`
+          : budgetValue,
       createdAtDisplay: createdAtDisplay ?? new Date().toLocaleString(),
       freelancerName,
       raw: baseProposal,
@@ -365,7 +458,9 @@ const ClientDashboardContent = () => {
   const sendProposalToFreelancer = async (freelancer) => {
     if (!savedProposalDetails) return;
     if (!freelancer?.id) {
-      toast.error("Please select a freelancer with a valid account to send this proposal.");
+      toast.error(
+        "Please select a freelancer with a valid account to send this proposal."
+      );
       return;
     }
 
@@ -375,10 +470,14 @@ const ClientDashboardContent = () => {
       "Proposal submission";
 
     const amount = Number(
-      (savedProposalDetails.raw?.budget ||
+      (
+        savedProposalDetails.raw?.budget ||
         savedProposalDetails.raw?.budgetRange ||
         savedProposalDetails.raw?.estimate ||
-        "").toString().replace(/[^0-9.]/g, "")
+        ""
+      )
+        .toString()
+        .replace(/[^0-9.]/g, "")
     );
 
     const resolveProject = async () => {
@@ -388,13 +487,16 @@ const ClientDashboardContent = () => {
         savedProposalDetails.projectId ||
         null;
 
-      if (existingProjectId) return { projectId: existingProjectId, proposalFromProject: null };
+      if (existingProjectId)
+        return { projectId: existingProjectId, proposalFromProject: null };
 
       // Create a minimal project and attach the proposal in one call.
       const payload = {
         title: savedProposalDetails.projectTitle || "Untitled Project",
         description:
-          coverLetter || savedProposalDetails.service || "Project created for proposal",
+          coverLetter ||
+          savedProposalDetails.service ||
+          "Project created for proposal",
         budget: Number.isFinite(amount) ? amount : undefined,
         proposal: {
           coverLetter,
@@ -412,16 +514,16 @@ const ClientDashboardContent = () => {
 
       if (!projectResp.ok) {
         const projectPayload = await projectResp.json().catch(() => null);
-        throw new Error(projectPayload?.message || "Unable to create project for proposal.");
+        throw new Error(
+          projectPayload?.message || "Unable to create project for proposal."
+        );
       }
 
       const projectPayload = await projectResp.json().catch(() => null);
       return {
         projectId:
-          projectPayload?.data?.project?.id ||
-          projectPayload?.data?.id ||
-          null,
-        proposalFromProject: projectPayload?.data?.proposal || null
+          projectPayload?.data?.project?.id || projectPayload?.data?.id || null,
+        proposalFromProject: projectPayload?.data?.proposal || null,
       };
     };
 
@@ -501,13 +603,15 @@ const ClientDashboardContent = () => {
                 Array.isArray(f.skills) && f.skills.length
                   ? f.skills.join(", ")
                   : f.bio || "Freelancer";
-                            return {
+              return {
                 id: f.id,
                 name: f.fullName || f.name || "Freelancer",
                 specialty: skillsText,
                 rating: f.rating || "4.7",
                 projects: f.projects || "4+",
-                availability: f.availability || (f.hourlyRate ? `${f.hourlyRate}/hr` : "Available"),
+                availability:
+                  f.availability ||
+                  (f.hourlyRate ? `${f.hourlyRate}/hr` : "Available"),
                 serviceMatch: skillsText || "Freelancer",
                 avatar:
                   f.avatar ||
@@ -523,7 +627,11 @@ const ClientDashboardContent = () => {
       }
     };
 
-    if (isFreelancerModalOpen && freelancers.length === 0 && !freelancersLoading) {
+    if (
+      isFreelancerModalOpen &&
+      freelancers.length === 0 &&
+      !freelancersLoading
+    ) {
       fetchFreelancers();
     }
   }, [isFreelancerModalOpen, freelancers.length, freelancersLoading]);
@@ -531,7 +639,9 @@ const ClientDashboardContent = () => {
   useEffect(() => {
     if (notificationsChecked) return;
     if (typeof window === "undefined") return;
-    const stored = JSON.parse(localStorage.getItem("client:notifications") || "[]");
+    const stored = JSON.parse(
+      localStorage.getItem("client:notifications") || "[]"
+    );
     if (stored.length) {
       stored.forEach((notif) => {
         toast.success(notif.message);
@@ -631,102 +741,106 @@ const ClientDashboardContent = () => {
                     className="text-white/70 hover:text-white"
                     onClick={handleClearSavedProposal}
                     disabled={!hasSavedProposal}
-                    aria-label="Clear saved proposal">
+                    aria-label="Clear saved proposal"
+                  >
                     <PanelLeftClose className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
-                    Project details
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
+                  Project details
+                </p>
+                <div
+                  className="mt-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-lg"
+                  style={{
+                    backgroundColor: "var(--card)",
+                    color: "var(--card-foreground)",
+                    backgroundImage:
+                      "linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.05))",
+                  }}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.5em] text-primary">
+                    --- Project Proposal ---
                   </p>
-                  <div
-                    className="mt-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-lg"
-                    style={{
-                      backgroundColor: "var(--card)",
-                      color: "var(--card-foreground)",
-                      backgroundImage:
-                        "linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.05))"
-                    }}>
-                    <p className="text-[11px] uppercase tracking-[0.5em] text-primary">
-                      --- Project Proposal ---
-                    </p>
-                    {hasSavedProposal ? (
-                      <div className="mt-4 space-y-5">
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold uppercase text-muted-foreground">
-                            Project Title
+                  {hasSavedProposal ? (
+                    <div className="mt-4 space-y-5">
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">
+                          Project Title
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-xl font-semibold text-primary">
+                            {savedProposalDetails.projectTitle}
                           </p>
-                          <div className="flex flex-col gap-1">
-                            <p className="text-xl font-semibold text-primary">
-                              {savedProposalDetails.projectTitle}
+                          {savedProposalDetails.projectSubtype ? (
+                            <p className="text-xs uppercase tracking-[0.25em] text-primary/70">
+                              {savedProposalDetails.projectSubtype}
                             </p>
-                            {savedProposalDetails.projectSubtype ? (
-                              <p className="text-xs uppercase tracking-[0.25em] text-primary/70">
-                                {savedProposalDetails.projectSubtype}
-                              </p>
-                            ) : null}
-                            <p className="text-xs text-muted-foreground">
-                              Service: {savedProposalDetails.service}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="grid gap-4 text-sm sm:grid-cols-3">
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold uppercase text-primary/70">
-                              Prepared for
-                            </p>
-                            <p className="text-foreground">
-                              {savedProposalDetails.preparedFor}
-                            </p>
-                          </div>
-                          {savedProposalDetails.budget ? (
-                            <div className="space-y-1">
-                              <p className="text-xs font-semibold uppercase text-primary/70">
-                                Budget
-                              </p>
-                              <p className="text-foreground">
-                                {savedProposalDetails.budget}
-                              </p>
-                            </div>
                           ) : null}
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold uppercase text-primary/70">
-                              Created
-                            </p>
-                            <p className="text-foreground">
-                              {savedProposalDetails.createdAtDisplay}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground">
-                          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                            Proposal Overview
+                          <p className="text-xs text-muted-foreground">
+                            Service: {savedProposalDetails.service}
                           </p>
-                          <div className="max-h-80 overflow-y-auto pr-2 scrollbar-thin">
-                            <pre className="whitespace-pre-wrap font-sans text-[14px] leading-7 text-foreground">
-                              {savedProposalDetails.summary ||
-                                "Proposal details recovered from your previous session."}
-                            </pre>
-                          </div>
                         </div>
                       </div>
-                    ) : (
-                      <p className="mt-4 text-sm text-muted-foreground">
-                        Draft a proposal from the services page and we&apos;ll keep a copy here so you can send it once you sign in.
-                      </p>
-                    )}
-                  </div>
+                      <div className="grid gap-4 text-sm sm:grid-cols-3">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase text-primary/70">
+                            Prepared for
+                          </p>
+                          <p className="text-foreground">
+                            {savedProposalDetails.preparedFor}
+                          </p>
+                        </div>
+                        {savedProposalDetails.budget ? (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold uppercase text-primary/70">
+                              Budget
+                            </p>
+                            <p className="text-foreground">
+                              {savedProposalDetails.budget}
+                            </p>
+                          </div>
+                        ) : null}
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase text-primary/70">
+                            Created
+                          </p>
+                          <p className="text-foreground">
+                            {savedProposalDetails.createdAtDisplay}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground">
+                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                          Proposal Overview
+                        </p>
+                        <div className="max-h-80 overflow-y-auto pr-2 scrollbar-thin">
+                          <pre className="whitespace-pre-wrap font-sans text-[14px] leading-7 text-foreground">
+                            {savedProposalDetails.summary ||
+                              "Proposal details recovered from your previous session."}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Draft a proposal from the services page and we&apos;ll
+                      keep a copy here so you can send it once you sign in.
+                    </p>
+                  )}
                 </div>
+              </div>
               <div className="flex flex-wrap gap-3">
                 <Button
                   variant="outline"
                   size="lg"
                   className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10"
                   onClick={handleDuplicateProposal}
-                  disabled={!hasSavedProposal}>
+                  disabled={!hasSavedProposal}
+                >
                   <Copy className="h-4 w-4" />
                   Duplicate
                 </Button>
@@ -734,7 +848,8 @@ const ClientDashboardContent = () => {
                   size="lg"
                   className="h-11 flex-1 min-w-[160px] gap-2 rounded-full bg-primary text-black hover:bg-primary/90 disabled:opacity-30"
                   onClick={handleSendProposal}
-                  disabled={!hasSavedProposal}>
+                  disabled={!hasSavedProposal}
+                >
                   <Send className="h-4 w-4" />
                   Send to Freelancer
                 </Button>
@@ -743,7 +858,8 @@ const ClientDashboardContent = () => {
                   variant="secondary"
                   className="h-11 flex-1 min-w-[120px] gap-2 rounded-full border border-white/10 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30"
                   onClick={handleSaveProposalToDashboard}
-                  disabled={!hasSavedProposal}>
+                  disabled={!hasSavedProposal}
+                >
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
@@ -751,50 +867,67 @@ const ClientDashboardContent = () => {
             </CardContent>
           </Card>
         </section>
-        <Dialog open={isFreelancerModalOpen} onOpenChange={setIsFreelancerModalOpen}>
+        <Dialog
+          open={isFreelancerModalOpen}
+          onOpenChange={setIsFreelancerModalOpen}
+        >
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
               <DialogTitle>Send to a freelancer</DialogTitle>
               <DialogDescription>
-                Based on this proposal, here are freelancers that fit. Pick one to send the proposal.
+                Based on this proposal, here are freelancers that fit. Pick one
+                to send the proposal.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
-              {(matchingFreelancers.length ? matchingFreelancers : recommendedFreelancers).map(
-                (freelancer, idx) => {
-                  const canSend = Boolean(freelancer.id);
-                  return (
-                    <div
-                      key={`${freelancer.name}-${idx}`}
-                      className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="text-base font-semibold text-foreground">{freelancer.name}</p>
-                        <p className="text-sm text-muted-foreground">{freelancer.specialty}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-semibold text-primary">★ {freelancer.rating}</span>
-                          <span>•</span>
-                          <span>{freelancer.projects} projects</span>
-                          <span>•</span>
-                          <span>{freelancer.availability}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          View profile
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={!canSend}
-                          onClick={() => canSend && sendProposalToFreelancer(freelancer)}>
-                          Send
-                        </Button>
+              {(matchingFreelancers.length
+                ? matchingFreelancers
+                : recommendedFreelancers
+              ).map((freelancer, idx) => {
+                const canSend = Boolean(freelancer.id);
+                return (
+                  <div
+                    key={`${freelancer.name}-${idx}`}
+                    className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">
+                        {freelancer.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {freelancer.specialty}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-primary">
+                          ★ {freelancer.rating}
+                        </span>
+                        <span>•</span>
+                        <span>{freelancer.projects} projects</span>
+                        <span>•</span>
+                        <span>{freelancer.availability}</span>
                       </div>
                     </div>
-                  );
-                }
-              )}
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm">
+                        View profile
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={!canSend}
+                        onClick={() =>
+                          canSend && sendProposalToFreelancer(freelancer)
+                        }
+                      >
+                        Send
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
               {freelancersLoading && (
-                <p className="text-sm text-muted-foreground">Loading freelancers...</p>
+                <p className="text-sm text-muted-foreground">
+                  Loading freelancers...
+                </p>
               )}
               {!matchingFreelancers.length && (
                 <p className="text-sm text-muted-foreground">
@@ -803,7 +936,10 @@ const ClientDashboardContent = () => {
               )}
             </div>
             <DialogFooter className="justify-end">
-              <Button variant="ghost" onClick={() => setIsFreelancerModalOpen(false)}>
+              <Button
+                variant="ghost"
+                onClick={() => setIsFreelancerModalOpen(false)}
+              >
                 Close
               </Button>
             </DialogFooter>
@@ -823,4 +959,3 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
-
