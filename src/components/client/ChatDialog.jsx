@@ -79,7 +79,8 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         const conversation = await apiClient.createChatConversation({
           service: serviceKey,
           mode: "assistant",
-          ephemeral: true
+          // Persist conversations in production; only ephemeral for local dev.
+          ephemeral: isLocalhost
         });
 
         if (!cancelled && conversation?.id) {
@@ -208,10 +209,10 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       content: msgContent,
       service: serviceKey,
       senderId: user?.id || null,
-      senderRole: user?.role || "GUEST",
+      senderRole: user?.role || null,
       skipAssistant: false,
       mode: "assistant",
-      ephemeral: true,
+      ephemeral: isLocalhost,
       history: messages.slice(-10).map((m) => ({
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content
