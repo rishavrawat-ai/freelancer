@@ -32,16 +32,18 @@ export const API_BASE_URL =
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
 
-// Only enable sockets when explicitly configured or on localhost for dev.
-const inferredSocketUrl =
-  envSocketUrl ||
-  (safeWindow && safeWindow.location.hostname === "localhost"
-    ? API_BASE_URL.replace(/\/api$/, "")
-    : null);
+// Enable sockets when explicitly configured, otherwise only on localhost.
+const allowSockets =
+  Boolean(envSocketUrl) ||
+  (safeWindow && safeWindow.location && safeWindow.location.hostname === "localhost");
 
-const inferredSocketPath = envSocketPath || "/socket.io";
+const inferredSocketUrl = allowSockets
+  ? envSocketUrl || API_BASE_URL.replace(/\/api$/, "")
+  : null;
 
-export const SOCKET_IO_URL = inferredSocketUrl;
+const inferredSocketPath = allowSockets ? envSocketPath || "/socket.io" : null;
+
+export const SOCKET_IO_URL = inferredSocketUrl || null;
 export const SOCKET_ENABLED = Boolean(inferredSocketUrl);
 export const SOCKET_OPTIONS = {
   transports: ["polling"], // prevent websocket upgrade on hosts that do not support it (e.g., Vercel serverless)
