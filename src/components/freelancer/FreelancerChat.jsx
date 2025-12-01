@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
-import { SendHorizontal, Paperclip, Loader2, Clock4, Bot, User } from "lucide-react";
+import { SendHorizontal, Paperclip, Loader2, Clock4 } from "lucide-react";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 
@@ -131,12 +131,6 @@ const ChatArea = ({
                 style={bubbleStyle}
                 role="group"
               >
-                <div className="flex items-center gap-2 text-[11px] font-medium opacity-80">
-                  {isAssistant ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                  <span className="capitalize">
-                    {isAssistant ? "Assistant" : isClient ? "Client" : "Freelancer"}
-                  </span>
-                </div>
                 {isDeleted ? (
                   <>
                     <Clock4 className="h-4 w-4 flex-shrink-0 opacity-70" />
@@ -149,7 +143,7 @@ const ChatArea = ({
                     className="leading-relaxed whitespace-pre-wrap flex-1"
                     style={{
                       overflowWrap: "break-word",
-                      wordBreak: "break-word"
+                      wordBreak: "break-all"
                     }}
                   >
                     {message.content}
@@ -508,22 +502,19 @@ const FreelancerChatContent = () => {
   const activeMessages = useMemo(() => messages, [messages]);
 
   return (
-    <div className="flex h-screen flex-col gap-6 overflow-hidden p-6">
+    <div className="flex h-screen flex-col gap-4 overflow-hidden p-2">
       <FreelancerTopBar />
 
-      <div className="grid h-full gap-6 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid h-full gap-4 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="border border-border/50 bg-card/70">
           <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
-            <div className="space-y-1">
+            <div className="flex items-center justify-between border-b border-border/40 pb-4">
               <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
                 Conversations
               </p>
-              <p className="text-lg font-semibold">
-                {selectedConversation?.name || "Chats"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Chat with your clients/assistant threads.
-              </p>
+              {selectedConversation?.name ? (
+                <p className="text-lg font-semibold">{selectedConversation.name}</p>
+              ) : null}
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {loading ? (
@@ -547,8 +538,8 @@ const FreelancerChatContent = () => {
                       onClick={() => setSelectedConversation(conversation)}
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                         isActive
-                          ? "border-primary/40 bg-primary/10"
-                          : "border-border/50 hover:border-primary/30"
+                        ? "border-primary/40 bg-primary"
+                        : "border-border/50 hover:border-primary/30"
                       }`}
                     >
                       <Avatar className="h-10 w-10">
@@ -556,7 +547,7 @@ const FreelancerChatContent = () => {
                           src={conversation.avatar || "/placeholder.svg"}
                           alt={conversation.name}
                         />
-                        <AvatarFallback className="bg-primary/20 text-primary">
+                        <AvatarFallback className="bg-primary/30 text-primary">
                           {conversation.name?.[0] || "C"}
                         </AvatarFallback>
                       </Avatar>
@@ -570,18 +561,6 @@ const FreelancerChatContent = () => {
                   );
                 })
               )}
-            </div>
-            <div className="mt-2 space-y-2 rounded-2xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-              <p>Role color key:</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
-                  Client
-                </Badge>
-                <Badge className="bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50">
-                  Freelancer
-                </Badge>
-                <Badge variant="secondary">Assistant</Badge>
-              </div>
             </div>
           </CardContent>
         </Card>

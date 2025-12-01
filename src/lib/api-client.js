@@ -10,18 +10,21 @@ const envBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 const envSocketUrl = normalizeBaseUrl(import.meta.env.VITE_SOCKET_URL);
 const envSocketPath = import.meta.env.VITE_SOCKET_PATH;
 
+const isLocal5173 = safeWindow && safeWindow.location.origin === "http://localhost:5173";
+const isLocal5174 = safeWindow && safeWindow.location.origin === "http://localhost:5174";
+
 const sameOriginBaseUrl =
-  safeWindow && safeWindow.location.origin && safeWindow.location.origin !== "http://localhost:5173"
+  safeWindow && safeWindow.location.origin && !isLocal5173 && !isLocal5174
     ? `${safeWindow.location.origin}/api`
     : null;
 
 const localDevBaseUrl =
-  safeWindow && safeWindow.location.origin === "http://localhost:5173"
+  safeWindow && (isLocal5173 || isLocal5174)
     ? "http://localhost:5000/api"
     : null;
 
 export const API_BASE_URL =
-  (safeWindow && safeWindow.location.origin === "http://localhost:5173"
+  (safeWindow && (isLocal5173 || isLocal5174)
     ? normalizeBaseUrl(localDevBaseUrl)
     : null) ||
   envBaseUrl ||

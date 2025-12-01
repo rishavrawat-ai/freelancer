@@ -23,6 +23,7 @@ export const createApp = () => {
 
   const defaultOrigins = [
     "http://localhost:5173",
+    "http://localhost:5174",
     "https://freelancer-self.vercel.app"
   ];
 
