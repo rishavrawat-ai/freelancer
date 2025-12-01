@@ -268,9 +268,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
   const resolveSenderChip = (msg) => {
     if (msg.role === "assistant") return "Assistant";
-    if (msg.senderId && user?.id && msg.senderId === user.id) return "You";
-    if (msg.senderRole) return msg.senderRole;
-    return user?.role === "CLIENT" ? "Freelancer" : "Client";
+    return "You";
   };
 
   useEffect(() => {
