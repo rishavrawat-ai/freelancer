@@ -4,7 +4,6 @@ import { prisma } from "./prisma.js";
 import { generateChatReply } from "../controllers/chat.controller.js";
 import {
   ensureConversation,
-  findConversationByService,
   createConversation as createInMemoryConversation,
   addMessage,
   listMessages,
@@ -80,20 +79,6 @@ export const initSocket = (server) => {
         if (!conversation && conversationId) {
           conversation = await prisma.chatConversation.findUnique({
             where: { id: conversationId }
-          });
-        }
-
-        if (!conversation && serviceKey) {
-          const memByService = findConversationByService(serviceKey);
-          if (memByService) {
-            conversation = memByService;
-            useMemory = true;
-          }
-        }
-
-        if (!conversation && serviceKey) {
-          conversation = await prisma.chatConversation.findFirst({
-            where: { service: serviceKey }
           });
         }
 
@@ -231,12 +216,6 @@ export const initSocket = (server) => {
           if (conversationId) {
             conversation = await prisma.chatConversation.findUnique({
               where: { id: conversationId }
-            });
-          }
-
-          if (!conversation && serviceKey) {
-            conversation = await prisma.chatConversation.findFirst({
-              where: { service: serviceKey }
             });
           }
 

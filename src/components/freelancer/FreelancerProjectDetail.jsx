@@ -97,6 +97,8 @@ const FreelancerProjectDetailContent = () => {
   const [isFallback, setIsFallback] = useState(true);
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
+  const [conversationId, setConversationId] = useState(null);
+  const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -161,28 +163,123 @@ const FreelancerProjectDetailContent = () => {
     };
   }, [authFetch, isAuthenticated, projectId]);
 
-  const handleSendMessage = () => {
-    if (!input.trim()) return;
+  // Create or reuse a chat conversation for this project
+  useEffect(() => {
+    if (!project || !authFetch) return;
+    const storageKey = `freelancer:projectChat:${project.id}`;
+    let cancelled = false;
 
+    const ensureConversation = async () => {
+      try {
+        const existing =
+          typeof window !== "undefined"
+            ? window.localStorage.getItem(storageKey)
+            : null;
+        if (existing) {
+          setConversationId(existing);
+          return;
+        }
+
+        const response = await authFetch("/chat/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service: `project:${project.id}`,
+            forceNew: false
+          })
+        });
+
+        const payload = await response.json().catch(() => null);
+        const convo = payload?.data || payload;
+        if (convo?.id && !cancelled) {
+          setConversationId(convo.id);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(storageKey, convo.id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to create project chat conversation", error);
+      }
+    };
+
+    ensureConversation();
+    return () => {
+      cancelled = true;
+    };
+  }, [authFetch, project]);
+
+  // Load chat history
+  useEffect(() => {
+    if (!conversationId || !authFetch) return;
+    let cancelled = false;
+    const loadMessages = async () => {
+      try {
+        const response = await authFetch(`/chat/conversations/${conversationId}/messages`);
+        const payload = await response.json().catch(() => null);
+        const list = Array.isArray(payload?.data?.messages)
+          ? payload.data.messages
+          : payload?.messages || [];
+        if (!cancelled) {
+          const normalized = list.map((msg) => ({
+            id: msg.id || `${msg.createdAt}-${msg.content?.slice(0, 5)}`,
+            sender: msg.role === "assistant" ? "assistant" : "user",
+            text: msg.content,
+            timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date()
+          }));
+          setMessages(normalized.length ? normalized : initialMessages);
+        }
+      } catch (error) {
+        console.error("Failed to load project chat messages", error);
+      }
+    };
+    loadMessages();
+    return () => {
+      cancelled = true;
+    };
+  }, [authFetch, conversationId]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || !conversationId || !authFetch) return;
     const userMessage = {
       id: Date.now().toString(),
       sender: "user",
       text: input,
       timestamp: new Date()
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setIsSending(true);
 
-    setTimeout(() => {
-      const assistantMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: "assistant",
-        text: "Got it. I'll keep you updated.",
-        timestamp: new Date()
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    }, 500);
+    try {
+      const response = await authFetch(`/chat/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: userMessage.text,
+            service: `project:${project?.id || projectId}`,
+            senderRole: "FREELANCER",
+            skipAssistant: true
+          })
+        });
+
+      const payload = await response.json().catch(() => null);
+      const apiMessage = payload?.data?.message || payload?.message || null;
+      if (apiMessage?.content) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: apiMessage.id || `${Date.now()}-api`,
+            sender: apiMessage.role === "assistant" ? "assistant" : "user",
+            text: apiMessage.content,
+            timestamp: apiMessage.createdAt ? new Date(apiMessage.createdAt) : new Date()
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to send project chat message", error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleFileUpload = (e) => {

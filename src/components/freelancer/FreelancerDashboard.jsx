@@ -4,6 +4,7 @@ import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { getSession } from "@/lib/auth-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
+import { useAuth } from "@/context/AuthContext";
 
 const dashboardTemplates = {
   FREELANCER: {
@@ -101,6 +102,8 @@ const dashboardTemplates = {
 
 export const DashboardContent = ({ roleOverride }) => {
   const [sessionUser, setSessionUser] = useState(null);
+  const { authFetch } = useAuth();
+  const [metrics, setMetrics] = useState(dashboardTemplates.FREELANCER.metrics || []);
 
   useEffect(() => {
     const session = getSession();
@@ -124,9 +127,64 @@ export const DashboardContent = ({ roleOverride }) => {
     return dashboardTemplates[roleKey] ?? dashboardTemplates.FREELANCER;
   }, [effectiveRole]);
 
-  const {
-    metrics = [],
-  } = template;
+  const templateMetrics = template.metrics || [];
+
+  useEffect(() => {
+    const loadMetrics = async () => {
+      // Only run when authenticated fetch is available
+      if (!authFetch) return;
+      try {
+        const response = await authFetch("/proposals?as=freelancer");
+        const payload = await response.json().catch(() => null);
+        const list = Array.isArray(payload?.data) ? payload.data : [];
+
+        const pending = list.filter(
+          (p) => (p.status || "").toUpperCase() === "PENDING"
+        );
+        const accepted = list.filter(
+          (p) => (p.status || "").toUpperCase() === "ACCEPTED"
+        );
+        const activeProjects = accepted.length;
+        const proposalsReceived = list.length;
+        const earnings = accepted.reduce(
+          (acc, p) => acc + (Number(p.amount) || 0),
+          0
+        );
+
+        setMetrics([
+          {
+            label: "Active Projects",
+            value: String(activeProjects),
+            trend: `${pending.length} pending decisions`,
+            icon: Briefcase,
+          },
+          {
+            label: "Proposals Received",
+            value: String(proposalsReceived),
+            trend: `${pending.length} awaiting reply`,
+            icon: Sparkles,
+          },
+          {
+            label: "Accepted Proposals",
+            value: String(accepted.length),
+            trend: accepted.length ? "Keep momentum going" : "No wins yet",
+            icon: Clock,
+          },
+          {
+            label: "Total Earnings",
+            value: earnings ? `₹${earnings.toLocaleString()}` : "₹0",
+            trend: accepted.length ? "Based on accepted proposals" : "Close a deal to start earning",
+            icon: Banknote,
+          },
+        ]);
+      } catch (error) {
+        console.error("Failed to load freelancer metrics", error);
+        setMetrics(templateMetrics);
+      }
+    };
+
+    loadMetrics();
+  }, [authFetch, templateMetrics]);
 
   return (
     <>

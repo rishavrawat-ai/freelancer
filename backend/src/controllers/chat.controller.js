@@ -11,7 +11,6 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import {
     ensureConversation,
-    findConversationByService,
     createConversation as createInMemoryConversation,
     getConversation,
     listMessages,
@@ -338,11 +337,6 @@ export const createConversation = asyncHandler(async (req, res) => {
     const ephemeral = req.body?.mode === "assistant" || req.body?.ephemeral === true;
 
     if (ephemeral) {
-        const existing = !forceNew && serviceKey ? findConversationByService(serviceKey) : null;
-        if (existing) {
-            res.status(200).json({ data: existing });
-            return;
-        }
         const conversation = createInMemoryConversation({
             service: serviceKey,
             createdById
