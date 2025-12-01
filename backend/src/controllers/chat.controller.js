@@ -413,7 +413,8 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
         senderId,
         senderRole,
         senderName,
-        skipAssistant = false
+        skipAssistant = false,
+        history: clientHistory
     } = req.body || {};
 
     if (!content) {
@@ -443,14 +444,16 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
         let assistantMessage = null;
 
         if (!skipAssistant) {
-            const dbHistory = listMessages(conversation.id, 20);
+        const dbHistory = Array.isArray(clientHistory)
+            ? clientHistory.map(toHistoryMessage)
+            : listMessages(conversation.id, 20).map(toHistoryMessage);
 
-            try {
-                const assistantReply = await generateChatReply({
-                    message: content,
-                    service: service || conversation.service || "",
-                    history: dbHistory.map(toHistoryMessage)
-                });
+        try {
+            const assistantReply = await generateChatReply({
+                message: content,
+                service: service || conversation.service || "",
+                history: dbHistory
+            });
 
                 assistantMessage = addMessage({
                     conversationId: conversation.id,

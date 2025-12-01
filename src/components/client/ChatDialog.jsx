@@ -42,7 +42,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
-  const [useSocket] = useState(SOCKET_ENABLED);
+  const safeWindow = typeof window === "undefined" ? null : window;
+  const isLocalhost = safeWindow?.location?.hostname === "localhost";
+  const [useSocket] = useState(SOCKET_ENABLED && isLocalhost);
   const { user } = useAuth();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -209,7 +211,11 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       senderRole: user?.role || "GUEST",
       skipAssistant: false,
       mode: "assistant",
-      ephemeral: true
+      ephemeral: true,
+      history: messages.slice(-10).map((m) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: m.content
+      }))
     };
 
     if (useSocket && socketRef.current) {
