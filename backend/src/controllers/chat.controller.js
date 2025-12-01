@@ -9,9 +9,18 @@ import {
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
+import {
+    ensureConversation,
+    findConversationByService,
+    createConversation as createInMemoryConversation,
+    getConversation,
+    listMessages,
+    addMessage
+} from "../lib/chat-store.js";
 
 const MIN_WEBSITE_PRICE = 10000;
 const MIN_WEBSITE_PRICE_DISPLAY = "INR 10,000";
+const MAX_COMPLETION_TOKENS = 900;
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
@@ -73,6 +82,15 @@ const getWebsitePolicy = (service) =>
 - Hosting and domain must be purchased and owned by the client (Hostinger/domain handled on the client side).
 - Minimum website project price: ${MIN_WEBSITE_PRICE_DISPLAY}. If budget is lower, propose a reduced scope or phased delivery.`
         : "";
+
+// Ensure proposals always include the closing tag so the UI can parse them,
+// even if the model truncates the response.
+const normalizeProposalTags = (content = "") => {
+    if (!content.includes("[PROPOSAL_DATA]") || content.includes("[/PROPOSAL_DATA]")) {
+        return content;
+    }
+    return `${content.trim()}\n[/PROPOSAL_DATA]`;
+};
 
 const getCounterQuestion = () => `Counter question (ask first):
 - Ask: "To get started, please share 1) a brief project summary, 2) must-have features, 3) expected timeline."
@@ -255,7 +273,7 @@ export const generateChatReply = async ({ message, service, history }) => {
         completion = await openai.chat.completions.create({
             model: env.OPENROUTER_MODEL,
             messages,
-            max_tokens: 320,
+            max_tokens: MAX_COMPLETION_TOKENS,
             temperature: 0.2
         });
     } catch (error) {
@@ -266,7 +284,7 @@ export const generateChatReply = async ({ message, service, history }) => {
             completion = await openai.chat.completions.create({
                 model: env.OPENROUTER_MODEL_FALLBACK,
                 messages,
-                max_tokens: 320,
+                max_tokens: MAX_COMPLETION_TOKENS,
                 temperature: 0.2
             });
         } else {
@@ -275,10 +293,11 @@ export const generateChatReply = async ({ message, service, history }) => {
         }
     }
 
-    return (
+    const rawContent =
         completion?.choices?.[0]?.message?.content ||
-        "I'm here-please share a bit more so I can prepare your quick proposal."
-    );
+        "I'm here-please share a bit more so I can prepare your quick proposal.";
+
+    return normalizeProposalTags(rawContent);
 };
 
 export const chatController = async (req, res) => {
@@ -316,9 +335,23 @@ export const createConversation = asyncHandler(async (req, res) => {
     const createdById = req.user?.sub || null;
     const serviceKey = normalizeService(req.body?.service);
     const forceNew = req.body?.forceNew === true;
+    const ephemeral = req.body?.mode === "assistant" || req.body?.ephemeral === true;
 
-    // Reuse existing conversation if the same service key already exists, unless forced new.
-    const existing = (serviceKey && !forceNew)
+    if (ephemeral) {
+        const existing = !forceNew && serviceKey ? findConversationByService(serviceKey) : null;
+        if (existing) {
+            res.status(200).json({ data: existing });
+            return;
+        }
+        const conversation = createInMemoryConversation({
+            service: serviceKey,
+            createdById
+        });
+        res.status(201).json({ data: conversation });
+        return;
+    }
+
+    const existing = !forceNew && serviceKey
         ? await prisma.chatConversation.findFirst({
             where: { service: serviceKey },
             orderBy: { createdAt: "desc" }
@@ -336,11 +369,25 @@ export const createConversation = asyncHandler(async (req, res) => {
             createdById
         }
     });
+
     res.status(201).json({ data: conversation });
 });
 
 export const getConversationMessages = asyncHandler(async (req, res) => {
     const conversationId = req.params?.id;
+
+    // Prefer in-memory conversation if present (AI chat), otherwise fall back to DB.
+    const memoryConversation = getConversation(conversationId);
+    if (memoryConversation) {
+        const messages = listMessages(conversationId, 100);
+        res.json({
+            data: {
+                conversation: memoryConversation,
+                messages
+            }
+        });
+        return;
+    }
 
     const conversation = await prisma.chatConversation.findUnique({
         where: { id: conversationId }
@@ -380,6 +427,59 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     }
 
     const serviceKey = normalizeService(service);
+    const useEphemeral = !skipAssistant || req.body?.mode === "assistant" || req.body?.ephemeral === true;
+
+    // Assistant chat path: keep everything in memory/local only.
+    if (useEphemeral) {
+        const conversation = ensureConversation({
+            id: conversationId,
+            service: serviceKey,
+            createdById: senderId || null
+        });
+
+        const userMessage = addMessage({
+            conversationId: conversation.id,
+            senderId: senderId || null,
+            senderName: senderName || null,
+            senderRole: senderRole || null,
+            role: "user",
+            content
+        });
+
+        let assistantMessage = null;
+
+        if (!skipAssistant) {
+            const dbHistory = listMessages(conversation.id, 20);
+
+            try {
+                const assistantReply = await generateChatReply({
+                    message: content,
+                    service: service || conversation.service || "",
+                    history: dbHistory.map(toHistoryMessage)
+                });
+
+                assistantMessage = addMessage({
+                    conversationId: conversation.id,
+                    senderName: "Assistant",
+                    senderRole: "assistant",
+                    role: "assistant",
+                    content: assistantReply
+                });
+            } catch (error) {
+                console.error("Assistant generation failed (HTTP):", error);
+            }
+        }
+
+        res.status(201).json({
+            data: {
+                message: serializeMessage(userMessage),
+                assistant: assistantMessage ? serializeMessage(assistantMessage) : null
+            }
+        });
+        return;
+    }
+
+    // Persisted chat path (client & freelancer conversations)
     let conversation = null;
 
     if (conversationId) {
@@ -414,40 +514,10 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
         }
     });
 
-    let assistantMessage = null;
-
-    if (!skipAssistant) {
-        const dbHistory = await prisma.chatMessage.findMany({
-            where: { conversationId: conversation.id },
-            orderBy: { createdAt: "asc" },
-            take: 20
-        });
-
-        try {
-            const assistantReply = await generateChatReply({
-                message: content,
-                service: service || conversation.service || "",
-                history: dbHistory.map(toHistoryMessage)
-            });
-
-            assistantMessage = await prisma.chatMessage.create({
-                data: {
-                    conversationId: conversation.id,
-                    senderName: "Assistant",
-                    senderRole: "assistant",
-                    role: "assistant",
-                    content: assistantReply
-                }
-            });
-        } catch (error) {
-            console.error("Assistant generation failed (HTTP):", error);
-        }
-    }
-
     res.status(201).json({
         data: {
             message: serializeMessage(userMessage),
-            assistant: assistantMessage ? serializeMessage(assistantMessage) : null
+            assistant: null
         }
     });
 });

@@ -14,7 +14,6 @@ import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/
 import { useAuth } from "@/context/AuthContext";
 import { io } from "socket.io-client";
 import ProposalPanel from "./ProposalPanel";
-import { toast } from "sonner";
 
 const getMessageStorageKey = (serviceKey) =>
   serviceKey ? `markify:chatMessages:${serviceKey}` : null;
@@ -277,28 +276,18 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const handleResetChat = () => {
     const storageKey = `markify:chatConversationId:${serviceKey}`;
 
-    const performReset = () => {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(storageKey);
-        window.localStorage.removeItem(messageStorageKey);
-      }
-      setConversationId(null);
-      setMessages([]);
-      apiClient.createChatConversation({ service: serviceKey, forceNew: true, mode: "assistant", ephemeral: true }).then(conversation => {
-        if (conversation?.id) {
-          setConversationId(conversation.id);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(storageKey, conversation.id);
-          }
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(storageKey);
+      window.localStorage.removeItem(messageStorageKey);
+    }
+    setConversationId(null);
+    setMessages([]);
+    apiClient.createChatConversation({ service: serviceKey, forceNew: true, mode: "assistant", ephemeral: true }).then(conversation => {
+      if (conversation?.id) {
+        setConversationId(conversation.id);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(storageKey, conversation.id);
         }
-      });
-    };
-
-    toast.warning("Start a new chat?", {
-      description: "This will clear the current conversation.",
-      action: {
-        label: "Yes, reset",
-        onClick: performReset
       }
     });
   };

@@ -543,7 +543,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                     Budget
                   </p>
                   <p className="font-semibold text-foreground">
-                    {selectedProposal.budget ? `$${selectedProposal.budget}` : "Not specified"}
+                    {selectedProposal.budget ? `₹ ${selectedProposal.budget}` : "Not specified"}
                   </p>
                 </div>
               </div>
@@ -562,9 +562,6 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
           )}
 
           <DialogFooter className="flex items-center justify-end gap-2">
-            <Button variant="outline" onClick={handleCloseProposal}>
-              Close
-            </Button>
             {selectedProposal?.status === "received" && (
               <Button
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
