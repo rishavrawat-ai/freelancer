@@ -45,12 +45,365 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const safeWindow = typeof window === "undefined" ? null : window;
   const isLocalhost = safeWindow?.location?.hostname === "localhost";
   const [useSocket] = useState(SOCKET_ENABLED && isLocalhost);
+  const [answeredOptions, setAnsweredOptions] = useState({});
+  const [pricingSelections, setPricingSelections] = useState({});
   const { user } = useAuth();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const socketRef = useRef(null);
   const serviceKey = service?.title || "Project";
   const messageStorageKey = useMemo(() => getMessageStorageKey(serviceKey), [serviceKey]);
+  const getMessageKey = (msg, index) => msg?.id || msg?._id || msg?.createdAt || index;
+
+  const PRICING_FEATURES = [
+    {
+      match: ["cgi videos", "cgi video", "cgi", "product cgi"],
+      label: "CGI Videos - Rs 10,000 (up to 15s)",
+      features: [
+        "High-Precision 1–2 Product Models",
+        "Ultra-Realistic Texturing",
+        "Dynamic Product Animation",
+        "Cinematic Camera Angles & Movements",
+        "Studio-Grade Lighting & Rendering",
+        "Impactful Text & Graphic Overlays",
+        "Engaging Sound Design",
+        "1–2 Rounds of Creative Revisions"
+      ]
+    },
+    {
+      match: ["ugc videos", "ugc video", "ugc"],
+      label: "UGC Videos - Rs 7,000 (up to 30s)",
+      features: [
+        "Real People, Authentic Reactions",
+        "Scriptwriting focused on relatability & conversion",
+        "Brand integration in a natural tone",
+        "Voiceover or on-camera dialogue options",
+        "Vertical format optimized for Reels & Shorts",
+        "Fast-paced editing with jump cuts",
+        "On-screen text & captions"
+      ]
+    },
+    {
+      match: ["gmb optimisation", "gmb optimization", "google my business", "gmb"],
+      label: "Google My Business Optimisation - Rs 25,000 (3 months)",
+      features: [
+        "Profile optimization & products/services updates",
+        "Graphics posts for your service/product",
+        "Local SEO with 7 keywords",
+        "Citations (NAP) & content optimization",
+        "Online reputation management",
+        "Track traffic and phone calls",
+        "Analyze GMB insights (views, clicks, calls)",
+        "Improve Google ranking"
+      ]
+    },
+    {
+      match: ["gmb indian review"],
+      label: "GMB Indian Reviews - Rs 80/review",
+      features: ["Reputation uplift with local reviews"]
+    },
+    {
+      match: ["gmb international review", "gmb intl review"],
+      label: "GMB International Reviews - Rs 150/review",
+      features: ["Reputation uplift with international reviews"]
+    },
+    {
+      match: ["seo", "search engine optimisation", "search engine optimization", "search engine"],
+      label: "Search Engine Optimisation - Rs 12,000/month",
+      features: [
+        "SEO audit and analysis",
+        "Website bugs fix & tag updates",
+        "12 keyword optimization",
+        "200+ backlinks",
+        "6-7 blogs every month",
+        "Content optimization",
+        "Competitor analysis & research",
+        "On-page & off-page SEO",
+        "ORM & reviews"
+      ]
+    },
+    {
+      match: ["social media marketing", "smm", "social media"],
+      label: "Social Media Marketing - Rs 18,000/month",
+      features: [
+        "Brand tone & strategy definition",
+        "10 static posts & 6 quality reels",
+        "Content calendar & creative designs",
+        "Video ideation & designing",
+        "Cross-platform integration",
+        "Analytics and reporting"
+      ]
+    },
+    {
+      match: ["meta ads", "facebook", "instagram", "fb ads", "ig ads", "meta"],
+      label: "Meta Ads (Facebook/Instagram) - Rs 10,000/month",
+      features: [
+        "Campaign strategy development",
+        "Detailed audience targeting",
+        "Engaging & persuasive ad copy",
+        "Ad spend allocation & management",
+        "Retargeting & re-engagement",
+        "A/B testing for improvement",
+        "Performance tracking & reporting"
+      ]
+    },
+    {
+      match: ["google ads", "google adwords", "adwords"],
+      label: "Google Ads - Rs 10,000/month",
+      features: [
+        "High-performing keyword research",
+        "Text, display, and video ads",
+        "Bid optimization for ROI",
+        "Ad extensions setup",
+        "Conversion tracking",
+        "Ongoing optimization & reporting"
+      ]
+    },
+    {
+      match: ["landing page", "lp"],
+      label: "Landing Page - Rs 10,000",
+      features: [
+        "Website development & design",
+        "Content, graphics, and videos",
+        "Responsive design",
+        "Performance optimization",
+        "Forms & surveys",
+        "Social media integration"
+      ]
+    },
+    {
+      match: [
+        "informative (upto 5 pages)",
+        "informative (up to 5 pages)",
+        "informative website",
+        "basic website",
+        "5 page website"
+      ],
+      label: "Informative Website (up to 5 pages) - Rs 20,000",
+      features: [
+        "Content & graphics",
+        "Responsive design",
+        "API integration",
+        "Performance optimization",
+        "Social media integration",
+        "Forms & surveys"
+      ]
+    },
+    {
+      match: [
+        "informative (3d on wordpress)",
+        "3d informative wordpress",
+        "3d informative"
+      ],
+      label: "Informative 3D on Wordpress - Rs 35,000",
+      features: [
+        "3D visuals on Wordpress",
+        "Content & graphics",
+        "Responsive design",
+        "Performance optimization",
+        "Forms & surveys"
+      ]
+    },
+    {
+      match: ["custom - rs 60,000", "custom website", "bespoke website"],
+      label: "Custom Website - Rs 60,000",
+      features: [
+        "Custom design & development",
+        "Content & graphics",
+        "Responsive design",
+        "Performance optimization",
+        "Social media integration"
+      ]
+    },
+    {
+      match: [
+        "3d website (framer",
+        "3d website (webflow",
+        "3d website (framer/webflow)",
+        "framer website",
+        "webflow website",
+        "3d framer",
+        "3d webflow"
+      ],
+      label: "3D Website (Framer/WebFlow) - Rs 80,000",
+      features: [
+        "3D interactive experience",
+        "Responsive design",
+        "Performance optimization",
+        "Content & graphics"
+      ]
+    },
+    {
+      match: ["3d custom", "3d custom website"],
+      label: "3D Custom Website - Rs 1,00,000",
+      features: [
+        "Fully custom 3D experience",
+        "Responsive design",
+        "Performance optimization",
+        "Content & graphics"
+      ]
+    },
+    {
+      match: [
+        "e-commerce wordpress",
+        "ecommerce wordpress",
+        "wordpress store",
+        "woocommerce",
+        "wordpress - rs 30,000"
+      ],
+      label: "E-Commerce (Wordpress) - Rs 30,000",
+      features: [
+        "Product pages & cart/checkout",
+        "Payment gateway integration",
+        "Shipping & logistics integration",
+        "CMS & social integration",
+        "Legal compliance"
+      ]
+    },
+    {
+      match: [
+        "3d wordpress",
+        "3d wordpress store",
+        "3d woocommerce"
+      ],
+      label: "E-Commerce (3D Wordpress) - Rs 45,000",
+      features: [
+        "3D enhanced storefront",
+        "Payment gateway integration",
+        "Shipping & logistics integration",
+        "CMS & social integration"
+      ]
+    },
+    {
+      match: ["wordpress", "word press", "wp"],
+      label: "WordPress Website - Rs 20,000 - 45,000",
+      features: [
+        "Informative site (up to 5 pages) ~ Rs 20,000",
+        "WooCommerce store ~ Rs 30,000",
+        "3D-enhanced WordPress experience ~ Rs 45,000",
+        "Responsive, performance tuned, SEO basics"
+      ]
+    },
+    {
+      match: [
+        "shopify - rs 30,000",
+        "shopify",
+        "shopify store",
+        "shopify ecommerce"
+      ],
+      label: "E-Commerce (Shopify) - Rs 30,000",
+      features: [
+        "Shopify setup with product pages",
+        "Payment gateway integration",
+        "Shipping & logistics integration",
+        "Cart & checkout",
+        "Support integration"
+      ]
+    },
+    {
+      match: [
+        "custom(shopify)",
+        "custom (shopify)",
+        "custom shopify",
+        "shopify custom"
+      ],
+      label: "E-Commerce Custom (Shopify) - Rs 80,000",
+      features: [
+        "Custom Shopify theme",
+        "Payment gateway integration",
+        "Shipping & logistics integration",
+        "Cart & checkout",
+        "Support integration"
+      ]
+    },
+    {
+      match: [
+        "react store",
+        "next store",
+        "react ecommerce",
+        "react e-commerce",
+        "next ecommerce",
+        "next e-commerce",
+        "mern ecommerce",
+        "mern e-commerce",
+        "mern store",
+        "custom react store",
+        "custom(react store",
+        "custom (react store",
+        "custom react ecommerce",
+        "custom react e-commerce",
+        "react commerce",
+        "next commerce"
+      ],
+      label: "E-Commerce Custom (ReactJS + NodeJS) - Rs 1,50,000",
+      features: [
+        "Custom React + Node build",
+        "Payment gateway integration",
+        "Shipping & logistics integration",
+        "Cart & checkout",
+        "Support integration"
+      ]
+    },
+    {
+      match: ["react/next", "react + next", "react next", "next.js", "nextjs", "next js", "react"],
+      label: "React/Next.js Website - Rs 60,000 - 1,00,000",
+      features: [
+        "Custom UI/UX with animations",
+        "API-driven architecture (Node/Express/Next API routes)",
+        "Performance & SEO tuned for web/app experiences",
+        "Responsive across devices",
+        "Can extend to 3D/immersive if needed"
+      ]
+    },
+    {
+      match: ["node.js", "nodejs", "node js"],
+      label: "Node.js Backend/API - Rs 60,000 - 1,50,000",
+      features: [
+        "REST/GraphQL APIs with auth & RBAC",
+        "Database schema, migrations, and seed data",
+        "Integrations (payments, CRM, analytics)",
+        "Scalable deployment (cloud/serverless)",
+        "Pair with React/Next frontend if required"
+      ]
+    },
+    {
+      match: ["laravel"],
+      label: "Laravel Web App - Rs 50,000 - 1,20,000",
+      features: [
+        "Blade/SPA frontends with auth",
+        "CRUD dashboards & validation",
+        "Queues, mailers, and payments",
+        "Testing & deployment pipelines",
+        "API-first option for mobile/web"
+      ]
+    },
+    {
+      match: [
+        "3d website (custom",
+        "3d website (custom)",
+        "3d ecommerce",
+        "3d e-commerce",
+        "3d custom store"
+      ],
+      label: "E-Commerce 3D Custom - Rs 1,00,000 - 4,00,000",
+      features: [
+        "Custom 3D commerce experience",
+        "Payment gateway integration",
+        "Shipping & logistics integration",
+        "Cart & checkout",
+        "Support integration"
+      ]
+    }
+  ];
+
+  const resolvePricingDetails = (option) => {
+    if (!option) return null;
+    const lower = option.toLowerCase();
+    const match = PRICING_FEATURES.find((item) =>
+      item.match.some((m) => lower.includes(m))
+    );
+    return match || null;
+  };
 
   const formatTime = (value) => {
     if (!value) return "";
@@ -163,20 +516,49 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   useEffect(() => {
     if (!isOpen || !conversationId || useSocket) return;
 
+    const storageKey = `markify:chatConversationId:${serviceKey}`;
+
     const load = async () => {
       try {
         const payload = await apiClient.fetchChatMessages(conversationId);
-      const nextMessages =
-        payload?.data?.messages || payload?.messages || [];
-      setMessages(nextMessages);
-      persistMessagesToStorage(messageStorageKey, nextMessages);
-    } catch (error) {
-      console.error("Failed to load messages (HTTP):", error);
-    }
-  };
+        const nextMessages =
+          payload?.data?.messages || payload?.messages || [];
+        setMessages(nextMessages);
+        persistMessagesToStorage(messageStorageKey, nextMessages);
+      } catch (error) {
+        console.error("Failed to load messages (HTTP):", error);
+        const notFound = (error?.message || "").toLowerCase().includes("not found");
 
-  load();
-  }, [conversationId, isOpen, useSocket, messageStorageKey]);
+        if (notFound) {
+          try {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(storageKey);
+              window.localStorage.removeItem(messageStorageKey);
+            }
+            setConversationId(null);
+            setMessages([]);
+
+            const conversation = await apiClient.createChatConversation({
+              service: serviceKey,
+              mode: "assistant",
+              ephemeral: isLocalhost
+            });
+
+            if (conversation?.id) {
+              setConversationId(conversation.id);
+              if (typeof window !== "undefined") {
+                window.localStorage.setItem(storageKey, conversation.id);
+              }
+            }
+          } catch (recoveryError) {
+            console.error("Failed to recover chat conversation:", recoveryError);
+          }
+        }
+      }
+    };
+
+    load();
+  }, [conversationId, isOpen, useSocket, messageStorageKey, serviceKey, isLocalhost]);
 
   // Seed an opening prompt if there is no history.
   useEffect(() => {
@@ -262,6 +644,18 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       });
   };
 
+  const handleSuggestionSelect = (option, msgKey) => {
+    setAnsweredOptions((prev) => ({ ...prev, [msgKey]: option }));
+    const pricing = resolvePricingDetails(option);
+    if (pricing) {
+      setPricingSelections((prev) => ({
+        ...prev,
+        [msgKey]: pricing
+      }));
+    }
+    handleSend(option);
+  };
+
   const proposalMessage = useMemo(() => {
     return [...messages].reverse().find(m => m.content && m.content.includes("PROJECT PROPOSAL"));
   }, [messages]);
@@ -319,6 +713,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
             <ScrollArea className="flex-1 h-full pr-4">
               <div className="space-y-4 min-w-0 pb-4">
                 {messages.map((msg, index) => {
+                  const msgKey = getMessageKey(msg, index);
                   const isSelf = msg.senderId && user?.id && msg.senderId === user.id;
                   const isAssistant = msg.role === "assistant";
                   const alignment =
@@ -405,13 +800,17 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                       </div>
 
                       {/* Render Single Select Suggestions */}
-                      {suggestions.length > 0 && (
+                      {suggestions.length > 0 &&
+                        msg.role === "assistant" &&
+                        !isLoading &&
+                        !answeredOptions[msgKey] && (
                         <div className="flex flex-wrap gap-2 pl-12">
                           {suggestions.map((suggestion, idx) => (
                             <button
                               key={idx}
-                              onClick={() => handleSend(suggestion)}
-                              className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-full transition-colors border border-primary/20"
+                              onClick={() => handleSuggestionSelect(suggestion, msgKey)}
+                              className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-full transition-colors border border-primary/20 disabled:opacity-40 disabled:pointer-events-none"
+                              disabled={isLoading}
                             >
                               {suggestion}
                             </button>
@@ -419,8 +818,28 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                         </div>
                       )}
 
+                      {answeredOptions[msgKey] && (
+                        <div className="pl-12 space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            Selected: {answeredOptions[msgKey]}
+                          </div>
+                          {pricingSelections[msgKey]?.features?.length ? (
+                            <div className="rounded-md border border-border/60 bg-muted/40 p-3 text-xs text-foreground space-y-1">
+                              <div className="font-semibold">
+                                {pricingSelections[msgKey].label}
+                              </div>
+                              <ul className="list-disc ml-4 space-y-0.5">
+                                {pricingSelections[msgKey].features.map((feat, i) => (
+                                  <li key={i}>{feat}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
                       {/* Render Multi-Select Options */}
-                      {multiSelectOptions.length > 0 && (
+                      {multiSelectOptions.length > 0 && msg.role === "assistant" && !isLoading && (
                         <div className="flex flex-col gap-2 pl-12 w-full max-w-sm">
                           <div className="flex flex-wrap gap-2">
                             {multiSelectOptions.map((option, idx) => {
