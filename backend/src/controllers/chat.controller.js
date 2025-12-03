@@ -22,12 +22,12 @@ const MIN_WEBSITE_PRICE_DISPLAY = "INR 10,000";
 const MAX_COMPLETION_TOKENS = 900;
 // Stack-specific minimum viable budgets (in INR) to steer users toward realistic options.
 const STACK_BUDGET_FLOORS = {
-    "React/Next.js": 60000,
-    "Node.js": 60000,
-    Laravel: 40000,
-    WordPress: 15000,
-    "Web Application/SaaS": 75000,
-    "E-Commerce Platform": 75000
+  "React/Next.js": 60000,
+  "Node.js": 60000,
+  Laravel: 40000,
+  WordPress: 15000,
+  "Web Application/SaaS": 75000,
+  "E-Commerce Platform": 75000,
 };
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
@@ -93,16 +93,16 @@ const needsWebsitePolicy = (service = "") =>
   service.toLowerCase().includes("web");
 
 const getWebsitePolicy = (service) =>
-    needsWebsitePolicy(service)
-        ? `Website projects policy:
+  needsWebsitePolicy(service)
+    ? `Website projects policy:
 - Hosting and domain must be purchased and owned by the client (Hostinger/domain handled on the client side).
 - Minimum website project price: ${MIN_WEBSITE_PRICE_DISPLAY}. If budget is lower, propose a reduced scope or phased delivery.`
-        : "";
+    : "";
 
 const formatStackBudgetFloors = () =>
-    Object.entries(STACK_BUDGET_FLOORS)
-        .map(([stack, amount]) => `${stack}: INR ${amount.toLocaleString("en-IN")}`)
-        .join(" | ");
+  Object.entries(STACK_BUDGET_FLOORS)
+    .map(([stack, amount]) => `${stack}: INR ${amount.toLocaleString("en-IN")}`)
+    .join(" | ");
 
 // Ensure proposals always include the closing tag so the UI can parse them,
 // even if the model truncates the response.
@@ -193,8 +193,12 @@ Kickoff meeting to gather assets & finalize schedule.
 Generated from questionnaire answers - edit if you'd like to add more specifics before saving.
 [/PROPOSAL_DATA]`;
 
+// Remove identity-only prompts so we lead with project context immediately.
+const filterIdentityQuestions = (questions = []) =>
+  questions.filter((q) => q.key !== "name");
+
 const getQuestionsForService = (service = "") =>
-  SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS;
+  filterIdentityQuestions(SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS);
 
 const getInstructions = () => {
   try {
@@ -221,7 +225,9 @@ const buildSystemPrompt = (service) => {
   const counterQuestion = getCounterQuestion();
   const questions = getQuestionsForService(service);
   const instructions = getInstructions();
-  const questionLines = questions.map((q, idx) => `${idx + 1}) ${q.text}`).join("\n");
+  const questionLines = questions
+    .map((q, idx) => `${idx + 1}) ${q.text}`)
+    .join("\n");
 
   return `You are a professional consultant for FreelanceHub helping clients with "${service}" projects.
 
