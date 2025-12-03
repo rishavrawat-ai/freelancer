@@ -193,12 +193,8 @@ Kickoff meeting to gather assets & finalize schedule.
 Generated from questionnaire answers - edit if you'd like to add more specifics before saving.
 [/PROPOSAL_DATA]`;
 
-// Remove identity-only prompts so we lead with project context immediately.
-const filterIdentityQuestions = (questions = []) =>
-  questions.filter((q) => q.key !== "name");
-
 const getQuestionsForService = (service = "") =>
-  filterIdentityQuestions(SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS);
+  SERVICE_QUESTION_SETS[service] || DEFAULT_QUESTIONS;
 
 const getInstructions = () => {
   try {
