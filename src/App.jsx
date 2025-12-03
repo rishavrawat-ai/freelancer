@@ -4,6 +4,7 @@ import Home from "@/components/home/Home.jsx";
 import Client from "@/components/client/Client.jsx";
 import ClientDashboard from "@/components/client/ClientDashboard.jsx";
 import ClientProposal from "@/components/client/ClientProposal.jsx";
+import ProposalDrafts from "@/components/client/ProposalDrafts.jsx";
 import ClientProjects from "@/components/client/ClientProjects.jsx";
 import ClientProjectDetail from "@/components/client/ClientProjectDetail.jsx";
 import ClientChat from "@/components/client/ClientChat.jsx";
@@ -76,6 +77,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ClientProposal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/proposal/drafts"
+            element={
+              <ProtectedRoute>
+                <ProposalDrafts />
               </ProtectedRoute>
             }
           />

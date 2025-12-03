@@ -19,6 +19,36 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+const stripUnavailableSections = (text = "") => {
+  const withoutTags = text.replace(/\[PROPOSAL_DATA\]|\[\/PROPOSAL_DATA\]/g, "");
+  const filtered = [];
+
+  const shouldDropLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    if (/not provided/i.test(trimmed) || /not specified/i.test(trimmed)) return true;
+    // Drop leftover placeholder tokens like [Portfolio]
+    if (/^\[[^\]]+\]$/.test(trimmed)) return true;
+    return false;
+  };
+
+  withoutTags.split("\n").forEach((line) => {
+    if (shouldDropLine(line)) return;
+
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      if (filtered[filtered.length - 1] === "") return;
+      filtered.push("");
+      return;
+    }
+
+    filtered.push(trimmed);
+  });
+
+  return filtered.join("\n").trim();
+};
+
 const statusConfig = {
   pending: {
     label: "Pending",
@@ -107,12 +137,13 @@ const mapApiProposal = (proposal = {}) => {
       proposal.avatar ||
       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
     budget: proposal.amount || null,
-    content:
+    content: stripUnavailableSections(
       proposal.content ||
-      proposal.description ||
-      proposal.summary ||
-      proposal.project?.description ||
-      "",
+        proposal.description ||
+        proposal.summary ||
+        proposal.project?.description ||
+        ""
+    ),
   };
 };
 
@@ -286,7 +317,7 @@ const mapLocalProposal = (proposal = {}) => ({
     proposal.avatar ||
     "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
   budget: proposal.budget || null,
-  content: proposal.content || "",
+  content: stripUnavailableSections(proposal.content || ""),
   isLocal: true,
 });
 

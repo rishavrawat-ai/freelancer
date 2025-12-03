@@ -1,44 +1,120 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { CheckCircle2, Clock, FileText, MoreVertical, XCircle } from "lucide-react";
+import { Trash2, ExternalLink } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
-const statusConfig = {
-  pending: {
-    label: "Pending",
-    icon: Clock,
-    className:
-      "bg-yellow-500/15 text-yellow-700 border-yellow-200 dark:text-yellow-400 dark:border-yellow-500/30",
-    dotColor: "bg-yellow-500"
-  },
-  accepted: {
-    label: "Accepted",
-    icon: CheckCircle2,
-    className:
-      "bg-green-500/15 text-green-700 border-green-200 dark:text-green-400 dark:border-green-500/30",
-    dotColor: "bg-green-500"
-  },
-  sent: {
-    label: "Sent",
-    icon: FileText,
-    className:
-      "bg-blue-500/15 text-blue-700 border-blue-200 dark:text-blue-400 dark:border-blue-500/30",
-    dotColor: "bg-blue-500"
-  },
-  rejected: {
-    label: "Rejected",
-    icon: XCircle,
-    className:
-      "bg-red-500/15 text-red-700 border-red-200 dark:text-red-400 dark:border-red-500/30",
-    dotColor: "bg-red-500"
-  }
+const StatusBadge = ({ status = "pending" }) => {
+  const variants = {
+    pending: "bg-amber-500/10 text-amber-500 border-amber-200/40",
+    sent: "bg-blue-500/10 text-blue-500 border-blue-200/40",
+    accepted: "bg-emerald-500/10 text-emerald-500 border-emerald-200/40",
+    rejected: "bg-red-500/10 text-red-500 border-red-200/40",
+  };
+
+  const labels = {
+    pending: "Pending",
+    sent: "Sent",
+    accepted: "Accepted",
+    rejected: "Rejected",
+  };
+
+  return (
+    <Badge className={`${variants[status] || variants.pending} border`}>
+      {labels[status] || labels.pending}
+    </Badge>
+  );
+};
+
+const ProposalCard = ({ proposal, onDelete, onOpen }) => {
+  return (
+    <Card className="group relative overflow-hidden border-border/50 bg-card/60 backdrop-blur hover:border-border transition-all duration-200">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          {/* Left Section */}
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Avatar */}
+            <div className="relative flex-shrink-0">
+              <img
+                src={proposal.avatar || "/placeholder.svg"}
+                alt={proposal.recipientName}
+                className="h-12 w-12 rounded-lg object-cover ring-1 ring-border/50"
+              />
+              <div
+                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ring-2 ring-card ${
+                  proposal.status === "accepted"
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                }`}
+              />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <h3 className="font-semibold text-foreground text-base truncate">
+                  {proposal.title}
+                </h3>
+                <StatusBadge status={proposal.status} />
+              </div>
+
+              <div className="flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.2em]">
+                    Freelancer
+                  </p>
+                  <p className="text-foreground font-medium whitespace-nowrap">
+                    {proposal.recipientName}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.2em]">
+                    Submitted
+                  </p>
+                  <p className="text-foreground font-medium whitespace-nowrap">
+                    {proposal.submittedDate}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => onOpen?.(proposal)}
+            >
+              <ExternalLink className="w-4 h-4 mr-1" />
+              Open
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => onDelete?.(proposal.id)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 const normalizeProposalStatus = (status = "") => {
@@ -69,7 +145,9 @@ const mapApiProposal = (proposal = {}) => {
   return {
     id: proposal.id,
     title: proposal.project?.title || proposal.title || "Proposal",
-    category: proposal.project?.description ? "Project" : proposal.category || "General",
+    category: proposal.project?.description
+      ? "Project"
+      : proposal.category || "General",
     status: normalizeProposalStatus(proposal.status || "PENDING"),
     recipientName: freelancerName,
     recipientId: proposal.freelancer?.id || "FREELANCER",
@@ -81,84 +159,22 @@ const mapApiProposal = (proposal = {}) => {
     proposalId: proposal.id
       ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
-    avatar: freelancerAvatar
+    avatar: freelancerAvatar,
+    content:
+      proposal.content ||
+      proposal.description ||
+      proposal.summary ||
+      proposal.project?.description ||
+      "",
   };
-};
-
-const ProposalCard = ({ proposal, onDelete }) => {
-  const config = statusConfig[proposal.status] || statusConfig.sent;
-  const StatusIcon = config.icon;
-
-  return (
-    <Card className="group overflow-hidden border border-border/50 bg-card/70 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
-      <CardContent className="p-5 lg:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-          <div className="relative h-16 w-16 flex-shrink-0 rounded-2xl border border-border/50 bg-muted/60 shadow-inner">
-            <img
-              src={proposal.avatar}
-              alt={proposal.recipientName}
-              className="h-full w-full rounded-2xl object-cover"
-            />
-            <span
-              className={`absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full ring-2 ring-card ${config.dotColor}`}
-            />
-          </div>
-
-          <div className="flex-1 min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-lg font-semibold text-foreground">
-                {proposal.title}
-              </h3>
-              <Badge
-                variant="outline"
-                className={`flex items-center gap-1 border px-2 py-0.5 text-xs font-medium ${config.className}`}
-              >
-                <StatusIcon className="h-3 w-3" />
-                {config.label}
-              </Badge>
-            </div>
-
-            <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="uppercase tracking-widest text-[10px]">Freelancer</p>
-                <p className="font-medium text-foreground">{proposal.recipientName}</p>
-              </div>
-              <div>
-                <p className="uppercase tracking-widest text-[10px]">Submitted</p>
-                <p className="font-medium text-foreground">{proposal.submittedDate}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-shrink-0 flex-col items-center gap-2 self-start lg:self-auto">
-            <Button
-              asChild
-              size="sm"
-              className="hidden sm:inline-flex bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Link to={`/client/proposal/${proposal.id}`}>Open</Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-border bg-transparent hover:bg-muted"
-              onClick={() => onDelete?.(proposal.id)}
-            >
-              Delete
-            </Button>
-            <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden">
-              <MoreVertical className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 };
 
 const ClientProposalContent = () => {
   const { isAuthenticated, authFetch } = useAuth();
   const [proposals, setProposals] = useState([]);
+  const [activeProposal, setActiveProposal] = useState(null);
+  const [isViewing, setIsViewing] = useState(false);
+  const [isLoadingProposal, setIsLoadingProposal] = useState(false);
 
   const fetchProposals = useCallback(async () => {
     try {
@@ -170,7 +186,9 @@ const ClientProposalContent = () => {
         (acc, proposal) => {
           const key =
             proposal.id ||
-            `${proposal.projectId || "project"}-${proposal.freelancerId || proposal.recipientId}`;
+            `${proposal.projectId || "project"}-${
+              proposal.freelancerId || proposal.recipientId
+            }`;
           if (!key || acc.seen.has(key)) return acc;
           acc.seen.add(key);
           acc.list.push(proposal);
@@ -207,13 +225,16 @@ const ClientProposalContent = () => {
   const handleDelete = useCallback(
     async (id) => {
       try {
-        const response = await authFetch(`/proposals/${id}`, { method: "DELETE" });
+        const response = await authFetch(`/proposals/${id}`, {
+          method: "DELETE",
+        });
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const message = payload?.message || "Unable to delete proposal.";
           throw new Error(message);
         }
         setProposals((prev) => prev.filter((proposal) => proposal.id !== id));
+        toast.success("Proposal deleted.");
       } catch (error) {
         console.error("Failed to delete proposal:", error);
         toast.error(error?.message || "Unable to delete proposal right now.");
@@ -225,48 +246,153 @@ const ClientProposalContent = () => {
   const grouped = useMemo(() => {
     return proposals.reduce(
       (acc, proposal) => {
-        const bucket = proposal.status === "accepted" ? "accepted" : "sent";
-        acc[bucket] = [...(acc[bucket] || []), proposal];
+        const normalized = ["accepted", "rejected"].includes(proposal.status)
+          ? proposal.status
+          : "sent";
+        acc[normalized] = [...(acc[normalized] || []), proposal];
         return acc;
       },
-      { sent: [], accepted: [] }
+      { sent: [], accepted: [], rejected: [] }
     );
   }, [proposals]);
 
-  const sectionsToRender = [
-    { key: "sent", title: "Sent" },
-    { key: "accepted", title: "Accepted" }
-  ];
+  const sentList = grouped.sent || [];
+
+  const handleOpenProposal = useCallback(
+    async (proposal) => {
+      setIsViewing(true);
+      setActiveProposal(proposal);
+
+      if (proposal?.content) return;
+      if (!proposal?.id) return;
+
+      try {
+        setIsLoadingProposal(true);
+        const response = await authFetch(`/proposals/${proposal.id}`);
+        const payload = await response.json().catch(() => null);
+        const mapped = payload?.data ? mapApiProposal(payload.data) : null;
+        if (mapped) {
+          setActiveProposal(mapped);
+          // also hydrate list entry
+          setProposals((prev) =>
+            prev.map((item) => (item.id === mapped.id ? { ...item, content: mapped.content } : item))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load proposal detail", error);
+        toast.error("Unable to load proposal details.");
+      } finally {
+        setIsLoadingProposal(false);
+      }
+    },
+    [authFetch]
+  );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-10 p-6 w-full">
       <ClientTopBar />
 
-      <div className="space-y-6">
-        {sectionsToRender.map(({ key, title }) => (
-          <div key={key} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{title}</h2>
-              <Badge variant="outline">{grouped[key]?.length || 0}</Badge>
+      <div className="space-y-12 w-full">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-1">Sent</h2>
+              <p className="text-sm text-muted-foreground">
+                Projects awaiting freelancer response
+              </p>
             </div>
-            {grouped[key]?.length ? (
-              <div className="space-y-4">
-                {grouped[key].map((proposal) => (
-                  <ProposalCard
-                    key={proposal.id}
-                    proposal={proposal}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
-                No {title.toLowerCase()} proposals yet.
-              </div>
-            )}
+            <Badge
+              variant="secondary"
+              className="text-lg font-semibold px-3 py-1 rounded-full"
+            >
+              {sentList.length}
+            </Badge>
           </div>
-        ))}
+          {sentList.length ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {sentList.map((proposal) => (
+                <ProposalCard
+                  key={proposal.id}
+                  proposal={proposal}
+                  onDelete={handleDelete}
+                  onOpen={handleOpenProposal}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
+              No sent proposals yet.
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-1">
+                Accepted
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Projects successfully accepted
+              </p>
+            </div>
+            <Badge
+              variant="secondary"
+              className="text-lg font-semibold px-3 py-1 rounded-full"
+            >
+              {grouped.accepted.length}
+            </Badge>
+          </div>
+          {grouped.accepted.length ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {grouped.accepted.map((proposal) => (
+                <ProposalCard
+                  key={proposal.id}
+                  proposal={proposal}
+                  onDelete={handleDelete}
+                  onOpen={handleOpenProposal}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
+              No accepted proposals yet.
+            </div>
+          )}
+        </section>
       </div>
+
+        <Dialog
+          open={isViewing}
+          onOpenChange={(open) => {
+            setIsViewing(open);
+            if (!open) setActiveProposal(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] p-0 overflow-hidden">
+            <div className="p-5 border-b border-border/60">
+              <DialogTitle className="text-xl font-semibold">
+                {activeProposal?.title || "Proposal"}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {activeProposal?.recipientName
+                  ? `Submitted to ${activeProposal.recipientName}`
+                  : "Proposal details"}
+              </DialogDescription>
+            </div>
+            <div className="p-5">
+              <div className="max-h-[70vh] overflow-auto pr-2">
+                {isLoadingProposal ? (
+                  <p className="text-sm text-muted-foreground">Loading proposal...</p>
+                ) : (
+                  <div className="rounded-lg border border-border/60 bg-background p-4 text-sm leading-6 text-foreground whitespace-pre-wrap">
+                    {activeProposal?.content?.trim() || "No content available for this proposal."}
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 };

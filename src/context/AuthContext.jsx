@@ -167,8 +167,14 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      if (response.status >= 500) {
+        console.warn("Profile endpoint returned a server error; skipping verification.");
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error("Token verification failed");
+        console.warn(`Profile verification failed with status ${response.status}.`);
+        return;
       }
 
       const payload = await response.json().catch(() => null);

@@ -150,21 +150,20 @@ const recommendedFreelancers = [
   },
 ];
 
-const PROPOSAL_STORAGE_KEYS = [
+const SAVED_PROPOSAL_STORAGE_KEYS = [
   "markify:savedProposal",
-  "markify:pendingProposal",
-  "pendingProposal",
   "savedProposal",
 ];
 
-const PRIMARY_PROPOSAL_STORAGE_KEY = PROPOSAL_STORAGE_KEYS[0];
+const PRIMARY_PROPOSAL_STORAGE_KEY = SAVED_PROPOSAL_STORAGE_KEYS[0];
+const PROPOSAL_DRAFT_STORAGE_KEY = "markify:pendingProposal";
 
 const loadSavedProposalFromStorage = () => {
   if (typeof window === "undefined") {
     return null;
   }
 
-  for (const storageKey of PROPOSAL_STORAGE_KEYS) {
+  for (const storageKey of SAVED_PROPOSAL_STORAGE_KEYS) {
     const rawValue = window.localStorage.getItem(storageKey);
     if (!rawValue) continue;
     try {
@@ -188,14 +187,26 @@ const persistSavedProposalToStorage = (proposal) => {
   );
 };
 
+const persistProposalDraftToStorage = (proposal) => {
+  if (typeof window === "undefined" || !proposal) {
+    return;
+  }
+  window.localStorage.setItem(
+    PROPOSAL_DRAFT_STORAGE_KEY,
+    JSON.stringify(proposal)
+  );
+};
+
 const clearSavedProposalFromStorage = () => {
   if (typeof window === "undefined") {
     return;
   }
 
-  PROPOSAL_STORAGE_KEYS.forEach((storageKey) =>
-    window.localStorage.removeItem(storageKey)
-  );
+  SAVED_PROPOSAL_STORAGE_KEYS.forEach((storageKey) => {
+    window.localStorage.removeItem(storageKey);
+  });
+  // keep drafts (markify:pendingProposal) intact so they remain available on drafts page
+  window.localStorage.removeItem("markify:savedProposalSynced");
 };
 
 const templateMetrics = dashboardTemplate.metrics || [];
@@ -204,7 +215,12 @@ const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const [savedProposal, setSavedProposal] = useState(null);
   const [proposalDeliveryState, setProposalDeliveryState] = useState("idle");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [proposalDraft, setProposalDraft] = useState("");
+  const [proposalDraftContent, setProposalDraftContent] = useState("");
   const [isFreelancerModalOpen, setIsFreelancerModalOpen] = useState(false);
+  const [pendingSendFreelancer, setPendingSendFreelancer] = useState(null);
+  const [isSendConfirmOpen, setIsSendConfirmOpen] = useState(false);
   const [freelancers, setFreelancers] = useState([]);
   const [freelancersLoading, setFreelancersLoading] = useState(false);
   const { authFetch } = useAuth();
@@ -295,7 +311,7 @@ const ClientDashboardContent = () => {
     }
 
     const handleStorageChange = (event) => {
-      if (event?.key && !PROPOSAL_STORAGE_KEYS.includes(event.key)) {
+      if (event?.key && !SAVED_PROPOSAL_STORAGE_KEYS.includes(event.key)) {
         return;
       }
       setSavedProposal(loadSavedProposalFromStorage());
@@ -592,6 +608,23 @@ const ClientDashboardContent = () => {
     setIsFreelancerModalOpen(true);
   };
 
+  const requestSendToFreelancer = (freelancer) => {
+    setPendingSendFreelancer(freelancer);
+    setIsSendConfirmOpen(true);
+  };
+
+  const handleConfirmSend = async () => {
+    if (!pendingSendFreelancer) return;
+    await sendProposalToFreelancer(pendingSendFreelancer);
+    setPendingSendFreelancer(null);
+    setIsSendConfirmOpen(false);
+  };
+
+  const handleCancelSend = () => {
+    setPendingSendFreelancer(null);
+    setIsSendConfirmOpen(false);
+  };
+
   useEffect(() => {
     const fetchFreelancers = async () => {
       try {
@@ -651,17 +684,31 @@ const ClientDashboardContent = () => {
     setNotificationsChecked(true);
   }, [notificationsChecked]);
 
-  const handleDuplicateProposal = () => {
-    if (!savedProposal) {
-      return;
-    }
-    const duplicatedProposal = {
+  const handleOpenProposalEditor = () => {
+    if (!savedProposalDetails) return;
+    const draft =
+      savedProposalDetails.summary ||
+      savedProposalDetails.raw?.content ||
+      savedProposalDetails.raw?.summary ||
+      "";
+    setProposalDraft(draft);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProposalEdit = () => {
+    if (!savedProposal) return;
+    const updatedProposal = {
       ...savedProposal,
-      duplicatedAt: new Date().toISOString(),
+      summary: proposalDraft,
+      content: proposalDraft,
+      updatedAt: new Date().toISOString(),
     };
-    persistSavedProposalToStorage(duplicatedProposal);
-    setSavedProposal(duplicatedProposal);
+    persistSavedProposalToStorage(updatedProposal);
+    persistProposalDraftToStorage(updatedProposal);
+    setSavedProposal(updatedProposal);
     setProposalDeliveryState("saved");
+    setIsEditModalOpen(false);
+    toast.success("Proposal updated.");
   };
 
   return (
@@ -838,11 +885,11 @@ const ClientDashboardContent = () => {
                   variant="outline"
                   size="lg"
                   className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10"
-                  onClick={handleDuplicateProposal}
+                  onClick={handleOpenProposalEditor}
                   disabled={!hasSavedProposal}
                 >
                   <Copy className="h-4 w-4" />
-                  Duplicate
+                  Edit your proposal
                 </Button>
                 <Button
                   size="lg"
@@ -869,7 +916,10 @@ const ClientDashboardContent = () => {
         </section>
         <Dialog
           open={isFreelancerModalOpen}
-          onOpenChange={setIsFreelancerModalOpen}
+          onOpenChange={(open) => {
+            setIsFreelancerModalOpen(open);
+            if (!open) setPendingSendFreelancer(null);
+          }}
         >
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
@@ -914,9 +964,7 @@ const ClientDashboardContent = () => {
                       <Button
                         size="sm"
                         disabled={!canSend}
-                        onClick={() =>
-                          canSend && sendProposalToFreelancer(freelancer)
-                        }
+                        onClick={() => canSend && requestSendToFreelancer(freelancer)}
                       >
                         Send
                       </Button>
@@ -941,6 +989,52 @@ const ClientDashboardContent = () => {
                 onClick={() => setIsFreelancerModalOpen(false)}
               >
                 Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-[860px]">
+            <DialogHeader>
+              <DialogTitle>Edit proposal</DialogTitle>
+              <DialogDescription>
+                Adjust the proposal content before sending. Changes are saved to your browser.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">
+                Proposal content
+              </label>
+              <textarea
+                className="w-full min-h-[460px] resize-vertical rounded-md border border-border bg-background p-4 text-base text-foreground leading-6"
+                value={proposalDraft}
+                onChange={(e) => setProposalDraft(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveProposalEdit} disabled={!proposalDraft.trim()}>
+                Save changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isSendConfirmOpen} onOpenChange={handleCancelSend}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Send this proposal?</DialogTitle>
+              <DialogDescription>
+                This will send the proposal to {pendingSendFreelancer?.name || "the selected freelancer"}.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="justify-end gap-2">
+              <Button variant="ghost" onClick={handleCancelSend}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmSend} disabled={!pendingSendFreelancer}>
+                Send now
               </Button>
             </DialogFooter>
           </DialogContent>

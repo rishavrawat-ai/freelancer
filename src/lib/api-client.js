@@ -1,3 +1,5 @@
+import { getSession } from "@/lib/auth-storage";
+
 const normalizeBaseUrl = (url) => {
   if (!url) return null;
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -59,10 +61,16 @@ const defaultHeaders = {
 };
 
 const request = async (path, options = {}) => {
+  const session = getSession();
+  const authHeaders = session?.accessToken
+    ? { Authorization: `Bearer ${session.accessToken}` }
+    : {};
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       ...defaultHeaders,
+      ...authHeaders,
       ...(options.headers || {})
     }
   });

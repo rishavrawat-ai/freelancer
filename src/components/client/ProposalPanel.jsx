@@ -5,15 +5,42 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
+const stripUnavailableSections = (text = "") => {
+    const withoutTags = text.replace(/\[PROPOSAL_DATA\]|\[\/PROPOSAL_DATA\]/g, "");
+    const filtered = [];
+
+    const shouldDropLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return false;
+        if (/not provided/i.test(trimmed) || /not specified/i.test(trimmed)) return true;
+        // Drop leftover placeholder tokens like [Portfolio]
+        if (/^\[[^\]]+\]$/.test(trimmed)) return true;
+        return false;
+    };
+
+    withoutTags.split("\n").forEach((line) => {
+        if (shouldDropLine(line)) return;
+
+        const trimmed = line.trim();
+        if (!trimmed) {
+            if (filtered[filtered.length - 1] === "") return;
+            filtered.push("");
+            return;
+        }
+
+        filtered.push(trimmed);
+    });
+
+    return filtered.join("\n").trim();
+};
+
 const ProposalPanel = ({ content }) => {
     if (!content) return null;
 
     const navigate = useNavigate();
     const { user } = useAuth();
 
-    // Simple parsing to make it look a bit better
-    const cleanContent = content.replace(/\[PROPOSAL_DATA\]|\[\/PROPOSAL_DATA\]/g, "").trim();
-    const lines = cleanContent.split("\n").map((line) => line.trim());
+    const cleanContent = useMemo(() => stripUnavailableSections(content), [content]);
 
     const parsed = useMemo(() => {
         const getValue = (label) => {
