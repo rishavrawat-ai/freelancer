@@ -2,23 +2,26 @@
 // Keep questions concise and ordered by impact: summary -> scope -> constraints -> assets -> extras.
 export const SERVICE_QUESTION_SETS = {
   "Development & Tech": [
-    { key: "name", text: "Could you please provide your first name?", type: "text" },
+    {
+      key: "summary",
+      text: "In one line, what are you building? (e.g., landing page, SaaS dashboard, e-commerce store)",
+      type: "text"
+    },
     {
       key: "service_type",
-      text: "What specific type of development service do you require?",
+      text: "Which category fits best for your build?",
       type: "suggestion",
       suggestions: ["Website", "Web Application/SaaS", "Mobile Application", "E-Commerce Platform", "Other"],
     },
     {
       key: "project_stage",
-      text: "Is this a new project or an existing one?",
+      text: "Is this a new project or are we updating an existing one?",
       type: "suggestion",
       suggestions: ["New Project", "Existing Project"],
     },
-    { key: "summary", text: "Please provide a brief summary of the project (1-2 sentences).", type: "text" },
     {
       key: "must_haves",
-      text: "What are the essential features or pages required? Tailor this to your project type (e.g., e-commerce: product pages/cart; SaaS: auth/dashboard; 3D site: 3D models/interactions). (Output options as [MULTI_SELECT: ...])",
+      text: "What are the essential features/pages? (Use the chips or type your own) [MULTI_SELECT: ...]",
       type: "multi_select",
       suggestions: [
         "Home",
@@ -41,27 +44,33 @@ export const SERVICE_QUESTION_SETS = {
     },
     {
       key: "design",
-      text: "Do you have existing designs or wireframes?",
+      text: "Do you already have designs or wireframes?",
       type: "suggestion",
       suggestions: ["Yes, designs are ready", "No, need design services", "Partial designs available"],
     },
     {
       key: "tech_stack",
-      text: "Do you have a preferred technology stack?",
+      text: "Preferred tech stack/platform?",
       type: "suggestion",
       suggestions: ["React/Next.js", "Node.js", "Laravel", "WordPress", "No preference"],
     },
     {
+      key: "integrations",
+      text: "Any specific integrations needed (payments, auth, analytics, CRM)?",
+      type: "suggestion",
+      suggestions: ["Payments", "Social Login/Auth", "Analytics", "CRM", "Maps", "Not sure"]
+    },
+    {
       key: "budget",
-      text: "What is your estimated budget? Please enter a single amount in INR.",
+      text: "What is your estimated budget? One INR amount is enough.",
       type: "text",
     },
     {
       key: "timeline",
-      text: "What is your target go-live date or timeframe? (e.g., by a specific date or within X weeks)",
+      text: "What is your target go-live date or timeframe? (e.g., by May 30 or within 6 weeks)",
       type: "text",
     },
-    { key: "references", text: "Please share any reference links or repositories if available.", type: "text" },
+    { key: "references", text: "Any reference links or repos to share?", type: "text" },
   ],
 
   "Lead Generation": [
