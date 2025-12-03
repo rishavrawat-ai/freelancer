@@ -158,6 +158,7 @@ const PROPOSAL_STORAGE_KEYS = [
 ];
 
 const PRIMARY_PROPOSAL_STORAGE_KEY = PROPOSAL_STORAGE_KEYS[0];
+const PROPOSAL_DRAFT_STORAGE_KEY = "markify:pendingProposal";
 
 const loadSavedProposalFromStorage = () => {
   if (typeof window === "undefined") {
@@ -188,6 +189,16 @@ const persistSavedProposalToStorage = (proposal) => {
   );
 };
 
+const persistProposalDraftToStorage = (proposal) => {
+  if (typeof window === "undefined" || !proposal) {
+    return;
+  }
+  window.localStorage.setItem(
+    PROPOSAL_DRAFT_STORAGE_KEY,
+    JSON.stringify(proposal)
+  );
+};
+
 const clearSavedProposalFromStorage = () => {
   if (typeof window === "undefined") {
     return;
@@ -204,6 +215,9 @@ const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const [savedProposal, setSavedProposal] = useState(null);
   const [proposalDeliveryState, setProposalDeliveryState] = useState("idle");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [proposalDraft, setProposalDraft] = useState("");
+  const [proposalDraftContent, setProposalDraftContent] = useState("");
   const [isFreelancerModalOpen, setIsFreelancerModalOpen] = useState(false);
   const [freelancers, setFreelancers] = useState([]);
   const [freelancersLoading, setFreelancersLoading] = useState(false);
@@ -315,6 +329,16 @@ const ClientDashboardContent = () => {
       setProposalDeliveryState("idle");
     }
   }, [savedProposal, proposalDeliveryState]);
+
+  useEffect(() => {
+    // keep inline draft textarea in sync when proposal changes
+    const draft =
+      savedProposalDetails?.summary ||
+      savedProposalDetails?.raw?.content ||
+      savedProposalDetails?.raw?.summary ||
+      "";
+    setProposalDraftContent(draft);
+  }, [savedProposalDetails]);
 
   const roleLabel = useMemo(() => {
     const baseRole = sessionUser?.role ?? "CLIENT";
@@ -651,17 +675,46 @@ const ClientDashboardContent = () => {
     setNotificationsChecked(true);
   }, [notificationsChecked]);
 
-  const handleDuplicateProposal = () => {
-    if (!savedProposal) {
-      return;
-    }
-    const duplicatedProposal = {
+  const handleOpenProposalEditor = () => {
+    if (!savedProposalDetails) return;
+    const draft =
+      savedProposalDetails.summary ||
+      savedProposalDetails.raw?.content ||
+      savedProposalDetails.raw?.summary ||
+      "";
+    setProposalDraft(draft);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProposalEdit = () => {
+    if (!savedProposal) return;
+    const updatedProposal = {
       ...savedProposal,
-      duplicatedAt: new Date().toISOString(),
+      summary: proposalDraft,
+      content: proposalDraft,
+      updatedAt: new Date().toISOString(),
     };
-    persistSavedProposalToStorage(duplicatedProposal);
-    setSavedProposal(duplicatedProposal);
+    persistSavedProposalToStorage(updatedProposal);
+    persistProposalDraftToStorage(updatedProposal);
+    setSavedProposal(updatedProposal);
+    setProposalDraftContent(proposalDraft);
     setProposalDeliveryState("saved");
+    setIsEditModalOpen(false);
+    toast.success("Proposal updated.");
+  };
+
+  const handleSaveDraftInline = () => {
+    if (!savedProposal) return;
+    const updatedProposal = {
+      ...savedProposal,
+      summary: proposalDraftContent,
+      content: proposalDraftContent,
+      updatedAt: new Date().toISOString(),
+    };
+    persistSavedProposalToStorage(updatedProposal);
+    persistProposalDraftToStorage(updatedProposal);
+    setSavedProposal(updatedProposal);
+    toast.success("Draft saved.");
   };
 
   return (
@@ -749,6 +802,34 @@ const ClientDashboardContent = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
+              {hasSavedProposal && (
+                <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.35em] text-primary/70">
+                        Proposal draft
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Quick edits save to your browser as a draft.
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="border border-primary/30"
+                      onClick={handleSaveDraftInline}
+                      disabled={!proposalDraftContent.trim()}
+                    >
+                      Save draft
+                    </Button>
+                  </div>
+                  <textarea
+                    className="w-full min-h-[280px] resize-vertical rounded-lg border border-border bg-background p-4 text-sm text-foreground leading-6"
+                    value={proposalDraftContent}
+                    onChange={(e) => setProposalDraftContent(e.target.value)}
+                  />
+                </div>
+              )}
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
                   Project details
@@ -838,11 +919,11 @@ const ClientDashboardContent = () => {
                   variant="outline"
                   size="lg"
                   className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10"
-                  onClick={handleDuplicateProposal}
+                  onClick={handleOpenProposalEditor}
                   disabled={!hasSavedProposal}
                 >
                   <Copy className="h-4 w-4" />
-                  Duplicate
+                  Edit your proposal
                 </Button>
                 <Button
                   size="lg"
@@ -941,6 +1022,34 @@ const ClientDashboardContent = () => {
                 onClick={() => setIsFreelancerModalOpen(false)}
               >
                 Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-[860px]">
+            <DialogHeader>
+              <DialogTitle>Edit proposal</DialogTitle>
+              <DialogDescription>
+                Adjust the proposal content before sending. Changes are saved to your browser.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">
+                Proposal content
+              </label>
+              <textarea
+                className="w-full min-h-[460px] resize-vertical rounded-md border border-border bg-background p-4 text-base text-foreground leading-6"
+                value={proposalDraft}
+                onChange={(e) => setProposalDraft(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveProposalEdit} disabled={!proposalDraft.trim()}>
+                Save changes
               </Button>
             </DialogFooter>
           </DialogContent>
