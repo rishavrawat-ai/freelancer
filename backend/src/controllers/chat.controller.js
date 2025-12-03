@@ -395,12 +395,26 @@ export const createConversation = asyncHandler(async (req, res) => {
   }
 
   // Always start a fresh persisted conversation to avoid reusing old threads on refresh.
-  const conversation = await prisma.chatConversation.create({
-    data: {
-      service: serviceKey,
-      createdById,
-    },
-  });
+  // For client/freelancer chat we should keep one thread per service + creator
+  // so history stays intact across refreshes.
+  let conversation =
+    (serviceKey || createdById) &&
+    (await prisma.chatConversation.findFirst({
+      where: {
+        service: serviceKey,
+        createdById,
+      },
+      orderBy: { createdAt: "desc" },
+    }));
+
+  if (!conversation) {
+    conversation = await prisma.chatConversation.create({
+      data: {
+        service: serviceKey,
+        createdById,
+      },
+    });
+  }
 
   res.status(201).json({ data: conversation });
 });
@@ -528,7 +542,19 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     });
   }
 
-  // If no conversation was found, always create a new one instead of reusing by service.
+  if (!conversation) {
+    conversation =
+      (serviceKey || senderId) &&
+      (await prisma.chatConversation.findFirst({
+        where: {
+          service: serviceKey,
+          createdById: senderId || null,
+        },
+        orderBy: { createdAt: "desc" },
+      }));
+  }
+
+  // If still no conversation was found, create a new one.
   if (!conversation) {
     conversation = await prisma.chatConversation.create({
       data: {
