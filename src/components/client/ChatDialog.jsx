@@ -430,10 +430,18 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const ensureConversation = async () => {
       try {
         const storageKey = `markify:chatConversationId:${serviceKey}`;
-        const stored =
-          typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
 
-        if (stored) {
+        // In production, always start a fresh conversation to avoid stale IDs that 404 after deploys.
+        if (!isLocalhost && typeof window !== "undefined") {
+          window.localStorage.removeItem(storageKey);
+        }
+
+        const stored =
+          isLocalhost && typeof window !== "undefined"
+            ? window.localStorage.getItem(storageKey)
+            : null;
+
+        if (stored && isLocalhost) {
           setConversationId(stored);
           return;
         }
