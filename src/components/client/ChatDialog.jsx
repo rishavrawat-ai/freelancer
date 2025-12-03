@@ -837,7 +837,9 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                           <div className="text-xs text-muted-foreground">
                             Selected: {answeredOptions[msgKey]}
                           </div>
-                          {hasSelectedStack && pricingSelections[msgKey]?.features?.length ? (
+                          {hasSelectedStack &&
+                            !proposalMessage &&
+                            pricingSelections[msgKey]?.features?.length ? (
                             <div className="rounded-md border border-border/60 bg-muted/40 p-3 text-xs text-foreground space-y-1">
                               <div className="font-semibold">
                                 {pricingSelections[msgKey].label}
