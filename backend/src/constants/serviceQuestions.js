@@ -3,6 +3,16 @@
 export const SERVICE_QUESTION_SETS = {
   "Development & Tech": [
     {
+      key: "name",
+      text: "What’s your first name?",
+      type: "text"
+    },
+    {
+      key: "company",
+      text: "What’s your company or project name?",
+      type: "text"
+    },
+    {
       key: "summary",
       text: "In one line, what are you building? (e.g., landing page, SaaS dashboard, e-commerce store)",
       type: "text"
