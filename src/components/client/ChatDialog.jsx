@@ -405,6 +405,15 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     return match || null;
   };
 
+  // Show pricing only after a tech stack has been selected to avoid premature pricing.
+  const hasSelectedStack = useMemo(() => {
+    const stackKeywords = ["react", "next", "wordpress", "shopify", "laravel", "node"];
+    return Object.values(answeredOptions).some((value) => {
+      const lower = (value || "").toLowerCase();
+      return stackKeywords.some((kw) => lower.includes(kw));
+    });
+  }, [answeredOptions]);
+
   const formatTime = (value) => {
     if (!value) return "";
     const date = value instanceof Date ? value : new Date(value);
@@ -828,7 +837,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                           <div className="text-xs text-muted-foreground">
                             Selected: {answeredOptions[msgKey]}
                           </div>
-                          {pricingSelections[msgKey]?.features?.length ? (
+                          {hasSelectedStack && pricingSelections[msgKey]?.features?.length ? (
                             <div className="rounded-md border border-border/60 bg-muted/40 p-3 text-xs text-foreground space-y-1">
                               <div className="font-semibold">
                                 {pricingSelections[msgKey].label}
