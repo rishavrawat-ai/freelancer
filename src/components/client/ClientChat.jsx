@@ -283,56 +283,43 @@ const ClientChatContent = () => {
         const payload = await response.json().catch(() => null);
         const items = Array.isArray(payload?.data) ? payload.data : [];
 
-        const deduped = new Map();
         const clientId = user?.id || "client";
 
-        // Show one conversation per freelancer; keep the latest proposal as the label.
-        const sortedItems = [...items].sort(
-          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        );
+        // One conversation per proposal to avoid cross-user bleed.
+        const uniqueFinal = items
+          .filter((item) => (item.status || "").toUpperCase() === "ACCEPTED")
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+          .map((item) => {
+            const freelancer = item.freelancer || {};
+            const freelancerEmail = (freelancer.email || item.freelancerEmail || "")
+              .toString()
+              .trim()
+              .toLowerCase();
+            const clientEmail = (user?.email || "").toString().trim().toLowerCase();
+            if (
+              (freelancer.id && user?.id && freelancer.id === user.id) ||
+              (freelancerEmail && clientEmail && freelancerEmail === clientEmail)
+            ) {
+              return null;
+            }
+            const freelancerName = (freelancer.fullName || freelancer.name || freelancerEmail || "Freelancer")
+              .toString()
+              .trim();
+            const serviceKey = `CHAT:${clientId}:PROPOSAL:${item.id}`;
 
-        for (const item of sortedItems) {
-          if ((item.status || "").toUpperCase() !== "ACCEPTED") continue;
-          const freelancer = item.freelancer || {};
-          const freelancerId = freelancer.id || item.freelancerId || null;
-          const freelancerEmail = (freelancer.email || item.freelancerEmail || "")
-            .toString()
-            .trim()
-            .toLowerCase();
-          const clientEmail = (user?.email || "").toString().trim().toLowerCase();
-          // Skip any records that point to the client themselves.
-          if (
-            (freelancerId && user?.id && freelancerId === user.id) ||
-            (freelancerEmail && clientEmail && freelancerEmail === clientEmail)
-          ) {
-            continue;
-          }
-          const freelancerName = (freelancer.fullName || freelancer.name || freelancerEmail || "Freelancer")
-            .toString()
-            .trim();
+            return {
+              id: serviceKey,
+              name: freelancerName,
+              avatar:
+                freelancer.avatar ||
+                "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
+              label: item.title || `Project with ${freelancerName}`,
+              serviceKey,
+              accepted: true
+            };
+          })
+          .filter(Boolean);
 
-          const dedupeKey =
-            freelancerId ||
-            freelancerEmail ||
-            freelancerName.toLowerCase() ||
-            Math.random().toString(36).slice(2);
-
-          const sharedKey = `CHAT:${clientId}:${dedupeKey}`;
-          if (deduped.has(sharedKey)) continue;
-
-          deduped.set(sharedKey, {
-            id: sharedKey,
-            name: freelancerName,
-            avatar:
-              freelancer.avatar ||
-              "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
-            label: `Project with ${freelancerName}`,
-            serviceKey: sharedKey,
-            accepted: true
-          });
-        }
-
-        const uniqueFinal = deduped.size ? Array.from(deduped.values()) : [];
         if (!cancelled) {
           setConversations(uniqueFinal);
           setSelectedConversation(uniqueFinal[0] || null);
