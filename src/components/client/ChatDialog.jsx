@@ -630,7 +630,12 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         const assistant =
           response?.data?.assistant || response?.assistant || null;
         setMessages((prev) => {
-          const next = assistant ? [...prev, userMsg, assistant] : [...prev, userMsg];
+          const withoutPending = prev.filter(
+            (msg) => !(msg.pending && msg.role === "user" && msg.content === msgContent)
+          );
+          const next = assistant
+            ? [...withoutPending, userMsg, assistant]
+            : [...withoutPending, userMsg];
           persistMessagesToStorage(messageStorageKey, next);
           return next;
         });
