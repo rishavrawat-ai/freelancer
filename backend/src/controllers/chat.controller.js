@@ -390,31 +390,88 @@ export const listUserConversations = asyncHandler(async (req, res) => {
     throw new AppError("Unauthorized", 401);
   }
 
-  const conversations = await prisma.chatConversation.findMany({
-    where: { createdById: userId },
-    orderBy: { updatedAt: "desc" },
-    take: 100,
-    include: {
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
+  // Gather proposals for projects owned by this user (accepted) to derive project-specific chat threads.
+  const proposals = await prisma.proposal.findMany({
+    where: {
+      project: { ownerId: userId },
+      freelancerId: { not: userId },
+      status: { in: ["ACCEPTED"] }, // ProposalStatus enum values
     },
+    include: { freelancer: true, project: true },
+    orderBy: { createdAt: "desc" },
+    take: 200,
   });
 
-  const data = conversations.map((c) => ({
-    id: c.id,
-    service: c.service,
-    createdAt: c.createdAt,
-    updatedAt: c.updatedAt,
-    createdById: c.createdById,
-    lastMessage: c.messages?.[0]
-      ? serializeMessage({
-          ...c.messages[0],
-          createdAt: c.messages[0].createdAt,
-        })
-      : null,
-  }));
+  // Build a lookup of serviceKey -> meta from proposals
+  const serviceMeta = new Map();
+  const serviceKeys = [];
+  for (const proposal of proposals) {
+    const projectId = proposal.project?.id;
+    if (!projectId) continue;
+    const freelancer = proposal.freelancer || {};
+    const freelancerKey =
+      freelancer.id ||
+      (freelancer.email || "").toString().trim().toLowerCase() ||
+      (freelancer.fullName || freelancer.name || "").toLowerCase() ||
+      "freelancer";
+    const serviceKey = `project:${projectId}:freelancer:${freelancerKey}`;
+    serviceKeys.push(serviceKey);
+    serviceMeta.set(serviceKey, {
+      freelancerName:
+        freelancer.fullName || freelancer.name || freelancer.email || "Freelancer",
+      projectTitle: proposal.project?.title || "Project Chat",
+    });
+  }
+
+  // Pull conversations that match the project+freelancer service keys.
+  const conversations = serviceKeys.length
+    ? await prisma.chatConversation.findMany({
+        where: { service: { in: serviceKeys } },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          messages: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      })
+    : [];
+
+  // Ensure a conversation exists for each service key.
+  const byService = new Map();
+  for (const convo of conversations) {
+    if (convo.service) {
+      byService.set(convo.service, convo);
+    }
+  }
+
+  for (const key of serviceKeys) {
+    if (!byService.has(key)) {
+      const convo = await prisma.chatConversation.create({
+        data: { service: key, createdById: userId },
+      });
+      byService.set(key, { ...convo, messages: [] });
+    }
+  }
+
+  // Build response sorted by updatedAt desc.
+  const data = Array.from(byService.values())
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+    .map((conversation) => {
+      const meta = serviceMeta.get(conversation.service) || {};
+      return {
+        id: conversation.id,
+        service: conversation.service,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        createdById: conversation.createdById,
+        freelancerName: meta.freelancerName || "Freelancer",
+        projectTitle: meta.projectTitle || conversation.service || "Conversation",
+        lastMessage: conversation.messages?.[0]
+          ? serializeMessage(conversation.messages[0])
+          : null,
+      };
+    });
 
   res.json({ data });
 });
@@ -656,4 +713,3 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     },
   });
 });
-
