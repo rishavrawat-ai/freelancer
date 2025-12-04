@@ -530,15 +530,15 @@ const FreelancerChatContent = () => {
                   const isActive =
                     (conversation.serviceKey || conversation.id) ===
                     (selectedConversation?.serviceKey || selectedConversation?.id);
-                  const nameClass = isActive ? "text-neutral-900" : "text-foreground";
-                  const labelClass = isActive ? "text-neutral-800" : "text-muted-foreground";
+                  const nameClass = isActive ? "text-foreground" : "text-foreground";
+                  const labelClass = isActive ? "text-muted-foreground" : "text-muted-foreground";
                   return (
                     <button
                       key={conversation.serviceKey || conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                         isActive
-                        ? "border-primary/40 bg-primary"
+                        ? "border-primary/40 bg-primary/10"
                         : "border-border/50 hover:border-primary/30"
                       }`}
                     >
@@ -566,7 +566,7 @@ const FreelancerChatContent = () => {
         </Card>
 
         <ChatArea
-          conversationName={selectedConversation?.label || SERVICE_LABEL}
+          conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
           messages={activeMessages}
           messageInput={messageInput}
           onMessageInputChange={handleInputChange}

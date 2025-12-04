@@ -68,6 +68,7 @@ export const initSocket = (server) => {
     };
 
     socket.on("chat:join", async ({ conversationId, service, senderId }) => {
+      console.log(`[Socket] chat:join request:`, { conversationId, service, senderId, socketId: socket.id });
       try {
         const serviceKey = service ? service.toString().trim() : null;
         let useMemory = false;
@@ -97,11 +98,13 @@ export const initSocket = (server) => {
 
         if (!conversation) {
           // Default to persisted conversation for client/freelancer chat.
+          console.log(`[Socket] Creating new conversation for service: ${serviceKey}`);
           conversation = await prisma.chatConversation.create({
             data: { service: serviceKey || null, createdById: senderId || null }
           });
         }
 
+        console.log(`[Socket] Joining conversation: ${conversation.id} for service: ${serviceKey}`);
         socket.join(conversation.id);
         socket.emit("chat:joined", { conversationId: conversation.id });
         joinedConversations.add(conversation.id);

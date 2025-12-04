@@ -37,6 +37,7 @@ export const API_BASE_URL =
 // Enable sockets when explicitly configured, otherwise only on localhost.
 const allowSockets =
   Boolean(envSocketUrl) ||
+  Boolean(API_BASE_URL) ||
   (safeWindow && safeWindow.location && safeWindow.location.hostname === "localhost");
 
 const inferredSocketUrl = allowSockets
