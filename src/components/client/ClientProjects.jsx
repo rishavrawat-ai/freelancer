@@ -92,7 +92,7 @@ const ProjectCard = ({ project }) => {
                 Budget
               </p>
               <p className="text-2xl font-semibold text-foreground">
-                {budgetValue ? `$${budgetValue.toLocaleString()}` : "TBD"}
+                {budgetValue ? `₹${budgetValue.toLocaleString()}` : "TBD"}
               </p>
             </div>
             <div>

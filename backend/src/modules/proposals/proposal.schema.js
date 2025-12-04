@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const proposalStatusEnum = z.enum(["PENDING", "ACCEPTED", "REJECTED"]);
+const proposalStatusEnum = z.enum(["PENDING", "ACCEPTED", "REJECTED", "DRAFT"]);
 
 export const createProposalSchema = z.object({
   body: z.object({

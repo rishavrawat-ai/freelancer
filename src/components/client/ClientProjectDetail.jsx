@@ -378,15 +378,15 @@ const ProjectDashboard = () => {
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
                     <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">${totalBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-foreground">₹{totalBudget.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
                     <span>Spent</span>
-                    <span className="font-semibold text-emerald-600">${spentBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-emerald-600">₹{spentBudget.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Remaining</span>
-                    <span className="font-semibold text-foreground">${remainingBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-foreground">₹{remainingBudget.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>

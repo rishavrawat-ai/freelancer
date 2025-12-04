@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+ import React, { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   CalendarRange,
@@ -10,11 +10,20 @@ import {
   Banknote,
   Save,
   Send,
+
+  Star,
+  MapPin,
+  CheckCircle,
+  Heart,
+  ChevronRight,
+  Zap,
+  X,
 } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -210,6 +219,144 @@ const clearSavedProposalFromStorage = () => {
 };
 
 const templateMetrics = dashboardTemplate.metrics || [];
+
+const FreelancerCard = ({ freelancer, onSend, canSend }) => {
+  return (
+    <Card className="group w-full hover:shadow-xl hover:border-primary/20 flex flex-col h-full overflow-hidden bg-card transition-all duration-300">
+      {/* Header Section */}
+      <div className="p-6 pb-2">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex gap-4">
+            <div className="relative">
+              <div className="relative flex h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-background shadow-sm ring-1 ring-border">
+                {freelancer.avatar ? (
+                  <img
+                    className="aspect-square h-full w-full object-cover transition-transform duration-500 hover:scale-110"
+                    src={freelancer.avatar}
+                    alt={freelancer.name}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground font-bold text-lg">
+                    {freelancer.name?.charAt(0) || "F"}
+                  </div>
+                )}
+              </div>
+              {/* Simulated verified badge for demo purposes or if data exists */}
+              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-[2px] shadow-sm ring-1 ring-border">
+              </div>
+            </div>
+            <div className="pt-1">
+              <h3 className="font-bold text-xl leading-none tracking-tight text-foreground flex items-center gap-2 group-hover:text-primary transition-colors">
+                {freelancer.name}
+              </h3>
+              <p className="text-sm font-medium text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-muted-foreground/70" />
+                {freelancer.specialty}
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground/70 font-medium">
+                <MapPin className="w-3 h-3" />
+                {freelancer.availability}
+              </div>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+            <Heart className="w-5 h-5" />
+          </Button>
+        </div>
+        
+        {/* Stats Row */}
+        <div className="flex items-center justify-center text-sm mt-5 bg-muted/50 p-3 rounded-lg border border-border/50 group-hover:bg-primary/5 group-hover:border-primary/10 transition-colors">
+          <div className="flex flex-col items-center px-2">
+            <span className="font-bold text-foreground flex items-center gap-1.5 text-base">
+              {freelancer.rating} <Star className="w-3.5 h-3.5 fill-primary text-primary" />
+            </span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">Rating</span>
+          </div>
+          <div className="w-px h-8 bg-border/60 mx-4"></div>
+          <div className="flex flex-col items-center px-2">
+             <span className="font-bold text-foreground flex items-center gap-1.5 text-base">
+              {freelancer.projects}
+            </span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">Projects</span>
+          </div>
+        </div>
+      </div>
+
+      <CardContent className="flex-grow pt-3 px-5">
+        {/* Styled "Outline Box" */}
+        <div className="relative overflow-hidden rounded-xl bg-muted/30 border border-border/50 p-5 text-foreground transition-all duration-300">
+            
+            <div className="flex justify-between items-center mb-3 relative z-10">
+                <div className="flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-primary" />
+                    <h4 className="font-semibold text-xs uppercase tracking-widest text-muted-foreground">About Me</h4>
+                </div>
+            </div>
+
+            <p className="text-[13px] text-muted-foreground line-clamp-3 mb-5 leading-relaxed relative z-10 font-normal tracking-wide">
+                {freelancer.bio || `Experienced ${freelancer.specialty} professional ready to help with your project.`}
+            </p>
+          
+            <div className="flex flex-wrap gap-2 relative z-10">
+                {(freelancer.skills || []).slice(0, 3).map((skill, index) => (
+                <Badge key={index} variant="outline" className="bg-background/50 hover:bg-background">
+                    {skill}
+                </Badge>
+                ))}
+            </div>
+        </div>
+      </CardContent>
+
+      <div className="px-6 pb-6 mt-auto">
+         <div className="h-px w-full bg-border/50 my-4"></div>
+         <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" className="w-full font-semibold">
+              View Profile
+            </Button>
+            <Button 
+              className="w-full gap-2 font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => onSend(freelancer)}
+              disabled={!canSend}
+            >
+              Proposal <ChevronRight className="w-4 h-4" />
+            </Button>
+         </div>
+      </div>
+    </Card>
+  );
+};
+
+const FreelancerCardSkeleton = () => (
+  <Card className="w-full h-full flex flex-col overflow-hidden bg-card">
+    <div className="p-6 pb-2">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex gap-4 w-full">
+          <Skeleton className="h-16 w-16 rounded-full shrink-0" />
+          <div className="pt-1 flex-1 space-y-2">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 p-3 border border-border/50 rounded-lg flex justify-center gap-4 bg-muted/50">
+         <Skeleton className="h-8 w-16" />
+         <div className="w-px h-8 bg-border/60"></div>
+         <Skeleton className="h-8 w-16" />
+      </div>
+    </div>
+    <CardContent className="flex-grow pt-3 px-5">
+        <Skeleton className="h-32 w-full rounded-xl" />
+    </CardContent>
+    <div className="px-6 pb-6 mt-auto">
+        <div className="h-px w-full bg-border/50 my-4"></div>
+        <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+        </div>
+    </div>
+  </Card>
+);
 
 const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
@@ -449,7 +596,7 @@ const ClientDashboardContent = () => {
       projectSubtype,
       budget:
         typeof budgetValue === "number"
-          ? `$${budgetValue.toLocaleString()}`
+          ? `₹${budgetValue.toLocaleString()}`
           : budgetValue,
       createdAtDisplay: createdAtDisplay ?? new Date().toLocaleString(),
       freelancerName,
@@ -644,7 +791,7 @@ const ClientDashboardContent = () => {
                 projects: f.projects || "4+",
                 availability:
                   f.availability ||
-                  (f.hourlyRate ? `${f.hourlyRate}/hr` : "Available"),
+                  (f.hourlyRate ? `₹${f.hourlyRate}/hr` : "Available"),
                 serviceMatch: skillsText || "Freelancer",
                 avatar:
                   f.avatar ||
@@ -715,7 +862,7 @@ const ClientDashboardContent = () => {
     <>
       <div className="flex flex-col gap-6 p-6">
         <ClientTopBar label={dashboardLabel} />
-        <header className="flex flex-col gap-4 pt-12 lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Today</p>
             <h1 className="text-2xl font-semibold leading-tight">
@@ -768,10 +915,10 @@ const ClientDashboardContent = () => {
                     <Briefcase className="h-4 w-4" />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl font-semibold text-white">
+                    <CardTitle className="text-2xl font-semibold text-foreground">
                       Saved Proposal
                     </CardTitle>
-                    <p className="text-xs text-white/70">
+                    <p className="text-xs text-muted-foreground">
                       {hasSavedProposal
                         ? `${savedProposalDetails.service} • Created ${savedProposalDetails.createdAtDisplay}`
                         : "Save a proposal before logging in and it will appear here."}
@@ -785,7 +932,7 @@ const ClientDashboardContent = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-white/70 hover:text-white"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={handleClearSavedProposal}
                     disabled={!hasSavedProposal}
                     aria-label="Clear saved proposal"
@@ -884,7 +1031,7 @@ const ClientDashboardContent = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10"
+                  className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground"
                   onClick={handleOpenProposalEditor}
                   disabled={!hasSavedProposal}
                 >
@@ -893,7 +1040,7 @@ const ClientDashboardContent = () => {
                 </Button>
                 <Button
                   size="lg"
-                  className="h-11 flex-1 min-w-[160px] gap-2 rounded-full bg-primary text-black hover:bg-primary/90 disabled:opacity-30"
+                  className="h-11 flex-1 min-w-[160px] gap-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
                   onClick={handleSendProposal}
                   disabled={!hasSavedProposal}
                 >
@@ -903,7 +1050,7 @@ const ClientDashboardContent = () => {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="h-11 flex-1 min-w-[120px] gap-2 rounded-full border border-white/10 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30"
+                  className="h-11 flex-1 min-w-[120px] gap-2 rounded-full border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-30"
                   onClick={handleSaveProposalToDashboard}
                   disabled={!hasSavedProposal}
                 >
@@ -921,7 +1068,7 @@ const ClientDashboardContent = () => {
             if (!open) setPendingSendFreelancer(null);
           }}
         >
-          <DialogContent className="sm:max-w-[560px]">
+          <DialogContent className="sm:max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Send to a freelancer</DialogTitle>
               <DialogDescription>
@@ -929,56 +1076,39 @@ const ClientDashboardContent = () => {
                 to send the proposal.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
+            <div className="p-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {(matchingFreelancers.length
                 ? matchingFreelancers
                 : recommendedFreelancers
               ).map((freelancer, idx) => {
                 const canSend = Boolean(freelancer.id);
+                // Ensure skills array exists for the card
+                const enrichedFreelancer = {
+                    ...freelancer,
+                    skills: Array.isArray(freelancer.skills) ? freelancer.skills : (freelancer.specialty ? freelancer.specialty.split("•").map(s => s.trim()) : []),
+                    bio: freelancer.bio || "Professional freelancer ready to work."
+                };
+                
                 return (
-                  <div
-                    key={`${freelancer.name}-${idx}`}
-                    className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-base font-semibold text-foreground">
-                        {freelancer.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {freelancer.specialty}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-semibold text-primary">
-                          ★ {freelancer.rating}
-                        </span>
-                        <span>•</span>
-                        <span>{freelancer.projects} projects</span>
-                        <span>•</span>
-                        <span>{freelancer.availability}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        View profile
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={!canSend}
-                        onClick={() => canSend && requestSendToFreelancer(freelancer)}
-                      >
-                        Send
-                      </Button>
-                    </div>
-                  </div>
+                  <FreelancerCard 
+                    key={`${freelancer.name}-${idx}`} 
+                    freelancer={enrichedFreelancer} 
+                    onSend={requestSendToFreelancer}
+                    canSend={canSend}
+                  />
                 );
               })}
+              </div>
               {freelancersLoading && (
-                <p className="text-sm text-muted-foreground">
-                  Loading freelancers...
-                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                  {[1, 2, 3].map((i) => (
+                    <FreelancerCardSkeleton key={i} />
+                  ))}
+                </div>
               )}
-              {!matchingFreelancers.length && (
-                <p className="text-sm text-muted-foreground">
+              {!matchingFreelancers.length && !freelancersLoading && (
+                <p className="text-sm text-muted-foreground mt-4 text-center">
                   Showing recommended freelancers across all services.
                 </p>
               )}

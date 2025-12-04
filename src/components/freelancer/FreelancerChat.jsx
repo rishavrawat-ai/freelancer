@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { SendHorizontal, Paperclip, Loader2, Clock4 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 
@@ -580,6 +581,32 @@ const FreelancerChatContent = () => {
     </div>
   );
 };
+
+const ChatSkeleton = () => (
+  <div className="flex h-full flex-1 flex-col overflow-hidden rounded-3xl border border-border/40 bg-background/50">
+    <div className="flex items-center gap-4 border-b border-border/40 px-8 py-5">
+      <Skeleton className="h-12 w-12 rounded-full" />
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+    </div>
+    <div className="flex-1 space-y-6 p-6">
+      <div className="flex justify-start">
+        <Skeleton className="h-12 w-64 rounded-2xl rounded-tl-none" />
+      </div>
+      <div className="flex justify-end">
+        <Skeleton className="h-16 w-72 rounded-2xl rounded-tr-none" />
+      </div>
+      <div className="flex justify-start">
+        <Skeleton className="h-10 w-48 rounded-2xl rounded-tl-none" />
+      </div>
+    </div>
+    <div className="p-4">
+        <Skeleton className="h-14 w-full rounded-full" />
+    </div>
+  </div>
+);
 
 const FreelancerChat = () => {
   return (

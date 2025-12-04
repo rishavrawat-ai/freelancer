@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { SendHorizontal, Paperclip, Bot, User, Loader2, Clock4 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
