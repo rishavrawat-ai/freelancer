@@ -453,7 +453,7 @@ const FreelancerChatContent = () => {
       }
       socketRef.current = null;
     };
-  }, [conversationId, selectedConversation, useSocket]);
+  }, [conversationId, selectedConversation, useSocket, user?.id]);
 
   const handleSendMessage = () => {
     if (!messageInput.trim()) return;

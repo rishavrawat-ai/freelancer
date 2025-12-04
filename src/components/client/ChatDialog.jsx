@@ -51,6 +51,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const socketRef = useRef(null);
+  const loadingSinceRef = useRef(null);
   const serviceKey = service?.title || "Project";
   const messageStorageKey = useMemo(() => getMessageStorageKey(serviceKey), [serviceKey]);
   const getMessageKey = (msg, index) => msg?.id || msg?._id || msg?.createdAt || index;
@@ -512,9 +513,26 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
             msg.content !== message?.content ||
             msg.role !== message?.role
         );
-        const next = [...filtered, message];
-        persistMessagesToStorage(messageStorageKey, next);
-        return next;
+        const finish = () => {
+          const next = [...filtered, message];
+          persistMessagesToStorage(messageStorageKey, next);
+          setIsLoading(false);
+          return next;
+        };
+        if (message?.role === "assistant") {
+          const minDelay = 700;
+          const elapsed = loadingSinceRef.current
+            ? Date.now() - loadingSinceRef.current
+            : 0;
+          const delay = Math.max(0, minDelay - elapsed);
+          if (delay > 0) {
+            setTimeout(() => {
+              setMessages((prevInner) => finish(prevInner));
+            }, delay);
+            return filtered;
+          }
+        }
+        return finish();
       });
     });
 
@@ -625,6 +643,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       ]);
       if (!contentOverride) setInput("");
       setIsLoading(true);
+      loadingSinceRef.current = Date.now();
       socketRef.current.emit("chat:message", payload);
       queueMicrotask(() => {
         inputRef.current?.focus();
@@ -639,6 +658,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     ]);
     if (!contentOverride) setInput("");
     setIsLoading(true);
+    loadingSinceRef.current = Date.now();
     apiClient
       .sendChatMessage(payload)
       .then((response) => {
@@ -646,22 +666,31 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
           response?.data?.message || response?.message || payload;
         const assistant =
           response?.data?.assistant || response?.assistant || null;
-        setMessages((prev) => {
-          const withoutPending = prev.filter(
-            (msg) => !(msg.pending && msg.role === "user" && msg.content === msgContent)
-          );
-          const next = assistant
-            ? [...withoutPending, userMsg, assistant]
-            : [...withoutPending, userMsg];
-          persistMessagesToStorage(messageStorageKey, next);
-          return next;
-        });
+        const finish = () => {
+          setMessages((prev) => {
+            const withoutPending = prev.filter(
+              (msg) => !(msg.pending && msg.role === "user" && msg.content === msgContent)
+            );
+            const next = assistant
+              ? [...withoutPending, userMsg, assistant]
+              : [...withoutPending, userMsg];
+            persistMessagesToStorage(messageStorageKey, next);
+            return next;
+          });
+          setIsLoading(false);
+        };
+
+        const minDelay = 700; // ms to simulate "thinking"
+        const elapsed = loadingSinceRef.current
+          ? Date.now() - loadingSinceRef.current
+          : 0;
+        const delay = Math.max(0, minDelay - elapsed);
+        setTimeout(finish, delay);
       })
       .catch((error) => {
         console.error("Failed to send chat via HTTP:", error);
       })
       .finally(() => {
-        setIsLoading(false);
         queueMicrotask(() => inputRef.current?.focus());
       });
   };

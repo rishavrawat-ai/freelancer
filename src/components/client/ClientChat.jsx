@@ -204,7 +204,7 @@ const ChatArea = ({
 };
 
 const ClientChatContent = () => {
-  const { user, authFetch } = useAuth();
+  const { user, authFetch, token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState("");
@@ -238,10 +238,24 @@ const ClientChatContent = () => {
   const fetchMessages = async () => {
     if (!conversationId) return;
     try {
-      const payload = await apiClient.fetchChatMessages(conversationId);
-      const nextMessages =
-        payload?.data?.messages || payload?.messages || [];
-      setMessages(filterAssistantMessages(nextMessages));
+      if (token && isAuthenticated && authFetch) {
+        const response = await authFetch(`/chat/conversations/${conversationId}/messages`, {
+          method: "GET",
+          skipLogoutOn401: true
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch messages (status ${response.status})`);
+        }
+        const payload = await response.json().catch(() => null);
+        const nextMessages =
+          payload?.data?.messages || payload?.messages || [];
+        setMessages(filterAssistantMessages(nextMessages));
+      } else {
+        const payload = await apiClient.fetchChatMessages(conversationId);
+        const nextMessages =
+          payload?.data?.messages || payload?.messages || [];
+        setMessages(filterAssistantMessages(nextMessages));
+      }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
@@ -273,36 +287,78 @@ const ClientChatContent = () => {
     pollRef.current = setInterval(fetchMessages, 5000);
   };
 
-  // Load conversations for the current user from the backend (Neon DB).
+  // Load conversations based on proposals (active freelancers)
   useEffect(() => {
     let cancelled = false;
     const loadConversations = async () => {
+      if (!authFetch || !token || !isAuthenticated || authLoading) {
+        setLoading(false);
+        return;
+      }
       try {
-        const payload = await apiClient.fetchChatConversations();
-        const items = Array.isArray(payload?.data) ? payload.data : [];
-
-        const mapped = items.map((item) => {
-          const lastSender = item.lastMessage?.senderName || item.lastMessage?.senderRole || "";
-          const selfId = user?.id;
-          const showName =
-            item.lastMessage && item.lastMessage.senderId && selfId && item.lastMessage.senderId !== selfId
-              ? lastSender
-              : item.service || "Conversation";
-
-          return {
-            id: item.id,
-            name: showName || "Conversation",
-            label: item.service || SERVICE_LABEL,
-            avatar: "/placeholder.svg",
-            serviceKey: item.service || item.id
-          };
+        // Fetch proposals where I am the owner of the project
+        const response = await authFetch("/proposals?as=owner", {
+          skipLogoutOn401: true
         });
 
-        const uniqueById = Array.from(new Map(mapped.map((c) => [c.id, c])).values());
+        if (response.status === 401) {
+          if (!cancelled) {
+            setConversations([]);
+            setSelectedConversation(null);
+          }
+          return;
+        }
+
+        const payload = await response.json().catch(() => null);
+        const items = Array.isArray(payload?.data) ? payload.data : [];
+
+        const uniq = [];
+        const seen = new Set();
+
+        for (const item of items) {
+          // Filter: Only show accepted proposals (active projects)
+          if (item.status !== "ACCEPTED") continue;
+
+          const freelancer = item.freelancer;
+          if (!freelancer?.id) continue;
+
+          // Filter: Exclude self if the current user is listed as the freelancer
+          if (freelancer.id === user?.id) continue;
+          
+          // Dedupe by freelancer ID
+          // Matching FreelancerChat logic: CHAT:CLIENT_ID:FREELANCER_ID
+          const sharedKey = `CHAT:${user?.id}:${freelancer.id}`;
+          
+          if (seen.has(sharedKey)) continue;
+          seen.add(sharedKey);
+
+          uniq.push({
+            id: freelancer.id,
+            name: freelancer.fullName || freelancer.name || freelancer.email || "Freelancer",
+            avatar: freelancer.avatar || "/placeholder.svg",
+            label: item.project?.title || "Project Chat",
+            serviceKey: sharedKey
+          });
+        }
+
+        const fallback = [
+          {
+            id: "assistant",
+            name: "Project Assistant",
+            avatar: "/placeholder.svg",
+            label: "General Assistant",
+            serviceKey: "assistant"
+          }
+        ];
+
+        const finalList = uniq.length ? uniq : fallback;
 
         if (!cancelled) {
-          setConversations(uniqueById);
-          setSelectedConversation(uniqueById[0] || null);
+          setConversations(finalList);
+          // Default to first conversation if none selected
+          if (!selectedConversation) {
+             setSelectedConversation(finalList[0]);
+          }
         }
       } catch (error) {
         console.error("Failed to load conversations:", error);
@@ -315,7 +371,7 @@ const ClientChatContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [authFetch, user?.id, token, isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (!selectedConversation) return;
@@ -326,25 +382,31 @@ const ClientChatContent = () => {
       const storageKey = `markify:chatConversationId:${baseKey}`;
 
       try {
-        // Prefer the conversation id from DB.
-        if (selectedConversation.id) {
-          setConversationId(selectedConversation.id);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(storageKey, selectedConversation.id);
-          }
-          return;
-        }
-
         const stored =
           typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+        
         if (stored) {
           setConversationId(stored);
           return;
         }
 
-        const conversation = await apiClient.createChatConversation({
-          service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+        if (!authFetch || !token || !isAuthenticated) {
+          return;
+        }
+
+        const response = await authFetch("/chat/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+          }),
+          skipLogoutOn401: true
         });
+        if (response.status === 401) {
+          return;
+        }
+        const payload = await response.json().catch(() => null);
+        const conversation = payload?.data || payload;
         if (!cancelled && conversation?.id) {
           setConversationId(conversation.id);
           if (typeof window !== "undefined") {
@@ -475,7 +537,7 @@ const ClientChatContent = () => {
       }
       socketRef.current = null;
     };
-  }, [conversationId, selectedConversation, useSocket]);
+  }, [conversationId, selectedConversation, useSocket, user?.id]);
 
   const handleSendMessage = () => {
     if (!messageInput.trim()) return;
@@ -496,11 +558,25 @@ const ClientChatContent = () => {
     if (useSocket && socketRef.current) {
       socketRef.current.emit("chat:message", payload);
     } else {
-      apiClient
-        .sendChatMessage({ ...payload, conversationId })
-        .then((response) => {
-          const userMsg =
-            response?.data?.message || response?.message || payload;
+      const sender = token && isAuthenticated && authFetch
+        ? authFetch(`/chat/conversations/${conversationId}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...payload, conversationId }),
+            skipLogoutOn401: true
+          }).then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`Send failed (status ${response.status})`);
+            }
+            const resPayload = await response.json().catch(() => null);
+            return resPayload?.data?.message || resPayload?.message || payload;
+          })
+        : apiClient
+            .sendChatMessage({ ...payload, conversationId })
+            .then((res) => res?.data?.message || res?.message || payload);
+
+      sender
+        .then((userMsg) => {
           setMessages((prev) => {
             const filtered = prev.filter(
               (msg) =>
@@ -557,14 +633,14 @@ const ClientChatContent = () => {
                   const isActive =
                     (conversation.serviceKey || conversation.id) ===
                     (selectedConversation?.serviceKey || selectedConversation?.id);
-                  const nameClass = isActive ? "text-neutral-900" : "text-foreground";
-                  const labelClass = isActive ? "text-neutral-800" : "text-muted-foreground";
+                  const nameClass = isActive ? "text-foreground" : "text-foreground";
+                  const labelClass = isActive ? "text-muted-foreground" : "text-muted-foreground";
                   return (
                     <button
                       key={conversation.serviceKey || conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${isActive
-                        ? "border-primary/40 bg-primary"
+                        ? "border-primary/40 bg-primary/10"
                         : "border-border/50 hover:border-primary/30"
                         }`}
                     >
@@ -592,7 +668,7 @@ const ClientChatContent = () => {
         </Card>
 
         <ChatArea
-          conversationName={selectedConversation?.label || SERVICE_LABEL}
+          conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
           messages={activeMessages}
           messageInput={messageInput}
           onMessageInputChange={handleInputChange}

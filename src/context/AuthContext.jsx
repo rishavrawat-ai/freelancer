@@ -121,9 +121,14 @@ export const AuthProvider = ({ children }) => {
         });
 
         if (response.status === 401) {
-          toast.error("Session expired. Please log in again.");
-          logout();
-          throw new Error("Unauthorized");
+          if (!options.skipLogoutOn401) {
+            toast.error("Session expired. Please log in again.");
+            logout();
+          }
+          const unauthorizedError = new Error("Unauthorized");
+          unauthorizedError.code = 401;
+          unauthorizedError.skipLogout = Boolean(options.skipLogoutOn401);
+          throw unauthorizedError;
         }
 
         return response;
@@ -133,6 +138,10 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
 
+        if (error.code === 401 && error.skipLogout) {
+          // Suppress toast/logout for caller-handled unauthorized cases.
+          throw error;
+        }
         console.error("Auth fetch failed:", error);
         toast.error("Network error. Please try again.");
         throw error;

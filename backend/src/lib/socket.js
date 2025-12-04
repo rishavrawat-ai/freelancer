@@ -83,6 +83,19 @@ export const initSocket = (server) => {
         }
 
         if (!conversation) {
+          if (serviceKey) {
+            const candidates = await prisma.chatConversation.findMany({
+              where: { service: serviceKey },
+              include: {
+                _count: { select: { messages: true } }
+              },
+              orderBy: { updatedAt: "desc" }
+            });
+            conversation = candidates.find(c => c._count.messages > 0) || candidates[0];
+          }
+        }
+
+        if (!conversation) {
           // Default to persisted conversation for client/freelancer chat.
           conversation = await prisma.chatConversation.create({
             data: { service: serviceKey || null, createdById: senderId || null }
@@ -217,6 +230,19 @@ export const initSocket = (server) => {
             conversation = await prisma.chatConversation.findUnique({
               where: { id: conversationId }
             });
+          }
+
+          if (!conversation) {
+            if (serviceKey) {
+              const candidates = await prisma.chatConversation.findMany({
+                where: { service: serviceKey },
+                include: {
+                  _count: { select: { messages: true } }
+                },
+                orderBy: { updatedAt: "desc" }
+              });
+              conversation = candidates.find(c => c._count.messages > 0) || candidates[0];
+            }
           }
 
           if (!conversation) {

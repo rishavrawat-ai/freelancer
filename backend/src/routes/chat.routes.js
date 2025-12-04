@@ -6,11 +6,13 @@ import {
   getConversationMessages,
   addConversationMessage
 } from "../controllers/chat.controller.js";
+import { requireAuth } from "../middlewares/require-auth.js";
 
 export const chatRouter = Router();
 
 chatRouter.post("/", chatController);
-chatRouter.get("/conversations", listUserConversations);
-chatRouter.post("/conversations", createConversation);
-chatRouter.get("/conversations/:id/messages", getConversationMessages);
-chatRouter.post("/conversations/:id/messages", addConversationMessage);
+// Protected conversation routes
+chatRouter.get("/conversations", requireAuth, listUserConversations);
+chatRouter.post("/conversations", requireAuth, createConversation);
+chatRouter.get("/conversations/:id/messages", requireAuth, getConversationMessages);
+chatRouter.post("/conversations/:id/messages", requireAuth, addConversationMessage);
