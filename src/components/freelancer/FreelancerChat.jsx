@@ -25,6 +25,7 @@ const formatTime = (value) => {
 
 const ChatArea = ({
   conversationName,
+  avatar,
   messages,
   messageInput,
   onMessageInputChange,
@@ -48,21 +49,22 @@ const ChatArea = ({
   };
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-br from-background to-background/70">
+    <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-br from-background to-background/70">
+      <div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(circle at 1px 1px, var(--grid-line-color) 1px, transparent 0)",
+          backgroundSize: "20px 20px",
+        }}
+      />
       <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-border/40 bg-card/60 px-8 py-5 backdrop-blur-xl">
         <div className="relative">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={"/placeholder.svg"} alt={conversationName} />
-            <AvatarFallback className="bg-primary/20 text-primary">
+            <AvatarImage src={avatar} alt={conversationName} />
+            <AvatarFallback className="bg-primary text-primary-foreground font-bold">
               {conversationName?.[0] || "C"}
             </AvatarFallback>
           </Avatar>
-          <span
-            className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-card ${
-              online ? "bg-emerald-500" : "bg-muted-foreground/40"
-            }`}
-            aria-label={online ? "Online" : "Offline"}
-          />
         </div>
         <div>
           <p className="text-lg font-semibold">{conversationName}</p>
@@ -82,54 +84,26 @@ const ChatArea = ({
           const isClient = message.senderRole === "CLIENT";
           const isFreelancer = message.senderRole === "FREELANCER";
 
-          const bubbleStyle = (() => {
+          const bubbleClass = (() => {
             if (isAssistant) {
-              return {
-                backgroundColor: "var(--chat-bubble-assistant)",
-                color: "var(--chat-bubble-assistant-text)",
-                border: `1px solid var(--chat-bubble-border)`
-              };
+              return "bg-muted/50 text-muted-foreground border border-border/50";
             }
             if (isDeleted) {
-              return {
-                backgroundColor: "var(--chat-bubble-assistant)",
-                color: "var(--chat-bubble-assistant-text)",
-                border: `1px solid var(--chat-bubble-border)`
-              };
-            }
-            if (isClient) {
-              return {
-                backgroundColor: "var(--chat-bubble-client)",
-                color: "var(--chat-bubble-client-text)",
-                border: `1px solid var(--chat-bubble-border)`
-              };
-            }
-            if (isFreelancer) {
-              return {
-                backgroundColor: "var(--chat-bubble-freelancer)",
-                color: "var(--chat-bubble-freelancer-text)",
-                border: `1px solid var(--chat-bubble-border)`
-              };
+              return "bg-muted/30 text-muted-foreground border border-border/50 italic";
             }
             if (isSelf) {
-              return {
-                backgroundColor: "var(--chat-bubble-self)",
-                color: "var(--chat-bubble-self-text)",
-                border: `1px solid var(--chat-bubble-border)`
-              };
+              return "bg-card text-card-foreground border border-border/50 shadow-sm";
             }
-            return {
-              backgroundColor: "var(--chat-bubble-assistant)",
-              color: "var(--chat-bubble-assistant-text)",
-              border: `1px solid var(--chat-bubble-border)`
-            };
+            // Received messages -- NOW PRIMARY
+            return "bg-primary text-neutral-900 shadow-sm border-none shadow-sm";
           })();
 
           return (
             <div key={message.id || index} className={`flex ${align}`}>
               <div
-                className="max-w-[85%] md:max-w-[85%] rounded-sm px-4 py-1.5 text-sm flex items-baseline gap-2 overflow-hidden"
-                style={bubbleStyle}
+                className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-2.5 text-sm flex items-baseline gap-2 overflow-hidden ${
+                   isSelf ? "rounded-tr-sm" : "rounded-tl-sm"
+                } ${bubbleClass}`}
                 role="group"
               >
                 {isDeleted ? (
@@ -207,7 +181,7 @@ const ChatArea = ({
 };
 
 const FreelancerChatContent = () => {
-  const { user, authFetch } = useAuth();
+  const { user, authFetch, token } = useAuth();
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState("");
@@ -232,7 +206,14 @@ const FreelancerChatContent = () => {
   const fetchMessages = async () => {
     if (!conversationId) return;
     try {
-      const payload = await apiClient.fetchChatMessages(conversationId);
+      const response = await authFetch(`/chat/conversations/${conversationId}/messages`, {
+        method: "GET",
+        skipLogoutOn401: true
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch messages (status ${response.status})`);
+      }
+      const payload = await response.json().catch(() => null);
       const nextMessages =
         payload?.data?.messages || payload?.messages || [];
       setMessages(nextMessages);
@@ -296,9 +277,7 @@ const FreelancerChatContent = () => {
           uniq.push({
             id: owner.id,
             name: owner.fullName || owner.name || owner.email || "Client",
-            avatar:
-              owner.avatar ||
-              "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
+            avatar: owner.avatar,
             label: item.project?.title || "Client Project",
             serviceKey: sharedKey
           });
@@ -308,7 +287,7 @@ const FreelancerChatContent = () => {
           {
             id: "assistant",
             name: "Project Assistant",
-            avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80",
+            avatar: null,
             label: "General Assistant",
             serviceKey: "assistant"
           }
@@ -345,9 +324,20 @@ const FreelancerChatContent = () => {
           setConversationId(stored);
           return;
         }
-        const conversation = await apiClient.createChatConversation({
-          service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+        if (!authFetch || !token) return;
+        const response = await authFetch("/chat/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+          }),
+          skipLogoutOn401: true
         });
+        if (!response.ok) {
+          throw new Error(`Failed to start conversation (status ${response.status})`);
+        }
+        const payload = await response.json().catch(() => null);
+        const conversation = payload?.data || payload;
         if (!cancelled && conversation?.id) {
           setConversationId(conversation.id);
           if (typeof window !== "undefined") {
@@ -477,16 +467,34 @@ const FreelancerChatContent = () => {
     if (useSocket && socketRef.current) {
       socketRef.current.emit("chat:message", payload);
     } else {
-      apiClient
-        .sendChatMessage({ ...payload, conversationId })
-        .then((response) => {
-          const userMsg =
-            response?.data?.message || response?.message || payload;
-          const assistant =
-            response?.data?.assistant || response?.assistant || null;
-          setMessages((prev) =>
-            assistant ? [...prev, userMsg, assistant] : [...prev, userMsg]
-          );
+      const sender = authFetch
+        ? authFetch(`/chat/conversations/${conversationId}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            skipLogoutOn401: true
+          }).then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`Send failed (status ${response.status})`);
+            }
+            const resPayload = await response.json().catch(() => null);
+            return resPayload?.data?.message || resPayload?.message || payload;
+          })
+        : apiClient
+            .sendChatMessage({ ...payload, conversationId })
+            .then((response) => response?.data?.message || response?.message || payload);
+
+      sender
+        .then((userMsg) => {
+          setMessages((prev) => {
+            const filtered = prev.filter(
+              (msg) =>
+                !msg.pending ||
+                msg.content !== payload.content ||
+                msg.role !== "user"
+            );
+            return [...filtered, userMsg];
+          });
         })
         .catch((error) => {
           console.error("Failed to send message via HTTP:", error);
@@ -531,24 +539,24 @@ const FreelancerChatContent = () => {
                   const isActive =
                     (conversation.serviceKey || conversation.id) ===
                     (selectedConversation?.serviceKey || selectedConversation?.id);
-                  const nameClass = isActive ? "text-foreground" : "text-foreground";
-                  const labelClass = isActive ? "text-muted-foreground" : "text-muted-foreground";
+                  const nameClass = isActive ? "text-black font-bold" : "text-foreground";
+                  const labelClass = isActive ? "text-gray-800" : "text-muted-foreground";
                   return (
                     <button
                       key={conversation.serviceKey || conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                         isActive
-                        ? "border-primary/40 bg-primary/10"
-                        : "border-border/50 hover:border-primary/30"
+                        ? "bg-primary border-primary shadow-sm"
+                        : "border-border/50 hover:border-primary/30 hover:bg-muted/50"
                       }`}
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarImage
-                          src={conversation.avatar || "/placeholder.svg"}
+                          src={conversation.avatar}
                           alt={conversation.name}
                         />
-                        <AvatarFallback className="bg-primary/30 text-primary">
+                        <AvatarFallback className={`${isActive ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"} font-bold`}>
                           {conversation.name?.[0] || "C"}
                         </AvatarFallback>
                       </Avatar>
@@ -568,6 +576,7 @@ const FreelancerChatContent = () => {
 
         <ChatArea
           conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
+          avatar={selectedConversation?.avatar}
           messages={activeMessages}
           messageInput={messageInput}
           onMessageInputChange={handleInputChange}

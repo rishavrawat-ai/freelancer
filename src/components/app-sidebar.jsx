@@ -7,6 +7,7 @@ import {
   FileText,
   LayoutDashboard,
   MessageSquare,
+  User,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -103,6 +104,12 @@ const navConfigs = {
       title: "Messages",
       url: "/client/messages",
       icon: MessageSquare,
+      isActive: true,
+    },
+    {
+      title: "Profile",
+      url: "/client/profile",
+      icon: User,
       isActive: true,
     },
   ],

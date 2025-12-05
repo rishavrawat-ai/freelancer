@@ -8,6 +8,7 @@ import ProposalDrafts from "@/components/client/ProposalDrafts.jsx";
 import ClientProjects from "@/components/client/ClientProjects.jsx";
 import ClientProjectDetail from "@/components/client/ClientProjectDetail.jsx";
 import ClientChat from "@/components/client/ClientChat.jsx";
+import ClientProfile from "@/components/client/ClientProfile.jsx";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
@@ -93,6 +94,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ClientChat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/profile"
+            element={
+              <ProtectedRoute>
+                <ClientProfile />
               </ProtectedRoute>
             }
           />

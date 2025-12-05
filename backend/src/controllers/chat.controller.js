@@ -513,6 +513,10 @@ export const createConversation = asyncHandler(async (req, res) => {
   const ephemeral =
     req.body?.mode === "assistant" || req.body?.ephemeral === true;
 
+  if (!ephemeral && !createdById) {
+    throw new AppError("Authentication required", 401);
+  }
+
   if (ephemeral) {
     const conversation = createInMemoryConversation({
       service: serviceKey,
@@ -568,6 +572,10 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
     return;
   }
 
+  if (!req.user?.sub) {
+    throw new AppError("Authentication required", 401);
+  }
+
   const conversation = await prisma.chatConversation.findUnique({
     where: { id: conversationId },
   });
@@ -611,6 +619,10 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     !skipAssistant ||
     req.body?.mode === "assistant" ||
     req.body?.ephemeral === true;
+
+  if (!useEphemeral && !req.user?.sub) {
+    throw new AppError("Authentication required", 401);
+  }
 
   // Assistant chat path: keep everything in memory/local only.
   if (useEphemeral) {

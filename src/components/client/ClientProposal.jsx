@@ -49,7 +49,7 @@ const ProposalCard = ({ proposal, onDelete, onOpen }) => {
             {/* Avatar */}
             <div className="relative flex-shrink-0">
               <img
-                src={proposal.avatar || "/placeholder.svg"}
+                src={proposal.avatar || "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=64&q=80"}
                 alt={proposal.recipientName}
                 className="h-12 w-12 rounded-lg object-cover ring-1 ring-border/50"
               />

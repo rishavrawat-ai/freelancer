@@ -41,24 +41,41 @@ export const getProfile = asyncHandler(async (req, res) => {
 });
 
 export const saveProfile = asyncHandler(async (req, res) => {
-  const { personal, skills, workExperience, services } = req.body;
-  if (!personal?.email) {
-    throw new AppError("Personal email is required", 400);
+  // Support both flat structure (new) and nested structure (legacy)
+  const payload = req.body;
+  const email = payload.email || payload.personal?.email;
+
+  if (!email) {
+    throw new AppError("Email is required to update profile", 400);
   }
-  const extras = {
-    phone: personal.phone,
-    location: personal.location,
-    workExperience: workExperience ?? [],
-    services: services ?? []
-  };
+
+  // Prepare update data
+  const updateData = {};
+
+  // Handle Full Name
+  if (payload.fullName) updateData.fullName = payload.fullName;
+  else if (payload.personal?.name) updateData.fullName = payload.personal.name;
+
+  // Handle Bio
+  // If sent from new frontend, payload.bio is already a JSON string containing text+extras
+  if (payload.bio !== undefined) {
+    updateData.bio = payload.bio;
+  } else if (payload.personal) {
+    // Legacy mapping logic
+    const { personal, skills, workExperience, services } = payload;
+    const extras = {
+        phone: personal.phone,
+        location: personal.location,
+        workExperience: workExperience ?? [],
+        services: services ?? []
+    };
+    updateData.skills = skills ?? [];
+    updateData.bio = JSON.stringify(extras);
+  }
 
   await prisma.user.update({
-    where: { email: personal.email },
-    data: {
-      fullName: personal.name ?? undefined,
-      skills: skills ?? [],
-      bio: JSON.stringify(extras)
-    }
+    where: { email },
+    data: updateData
   });
 
   res.json({ data: { success: true } });
