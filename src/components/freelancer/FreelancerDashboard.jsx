@@ -145,7 +145,8 @@ export const DashboardContent = ({ roleOverride }) => {
           (p) => (p.status || "").toUpperCase() === "ACCEPTED"
         );
         const activeProjects = accepted.length;
-        const proposalsReceived = list.length;
+        // MARKIFY: Only show pending proposals in the "Proposals Received" count
+        const proposalsReceived = pending.length;
         const earnings = accepted.reduce(
           (acc, p) => acc + (Number(p.amount) || 0),
           0

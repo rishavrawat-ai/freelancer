@@ -54,6 +54,7 @@ const normalizeService = (service = "") => {
 
 const serializeMessage = (message) => ({
   ...message,
+  attachment: message.attachment, // Include attachment
   createdAt:
     message.createdAt instanceof Date
       ? message.createdAt.toISOString()
@@ -587,7 +588,7 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
   const messages = await prisma.chatMessage.findMany({
     where: { conversationId },
     orderBy: { createdAt: "asc" },
-    take: 100,
+    take: 5000,
   });
 
   res.json({
@@ -711,6 +712,9 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     });
   }
 
+  // Extract attachment from request body
+  const { attachment } = req.body || {};
+
   const userMessage = await prisma.chatMessage.create({
     data: {
       conversationId: conversation.id,
@@ -719,6 +723,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
       senderRole: senderRole || null,
       role: "user",
       content,
+      attachment: attachment ? attachment : undefined,
     },
   });
 

@@ -167,6 +167,44 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       }
     });
 
+    // MARKIFY: If status is ACCEPTED (by freelancer), send an automated chat message to the client.
+    if (normalizedStatus === "ACCEPTED" && isFreelancer) {
+      try {
+        const ownerId = updated.project.ownerId;
+        const freelancerId = updated.freelancerId;
+        const serviceKey = `CHAT:${ownerId}:${freelancerId}`;
+
+        // 1. Find or create conversation
+        let conversation = await prisma.chatConversation.findFirst({
+          where: { service: serviceKey }
+        });
+
+        if (!conversation) {
+          conversation = await prisma.chatConversation.create({
+            data: {
+              service: serviceKey,
+              createdById: freelancerId
+            }
+          });
+        }
+
+        // 2. Create the message
+        await prisma.chatMessage.create({
+          data: {
+            conversationId: conversation.id,
+            senderId: freelancerId,
+            senderName: updated.freelancer.fullName || updated.freelancer.name || updated.freelancer.email || "Freelancer",
+            senderRole: "FREELANCER",
+            role: "user",
+            content: `I have accepted your proposal for "${updated.project.title}". I'm ready to start!`
+          }
+        });
+      } catch (chatError) {
+        console.error("Failed to send automated acceptance message:", chatError);
+        // Don't fail the request, just log it.
+      }
+    }
+
     res.json({ data: updated });
   } catch (error) {
     console.error("Failed to update proposal status", {

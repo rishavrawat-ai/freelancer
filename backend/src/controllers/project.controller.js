@@ -62,6 +62,8 @@ const normalizeBudget = (value) => {
   return null;
 };
 
+// ... (previous imports)
+
 export const createProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
 
@@ -77,6 +79,7 @@ export const createProject = asyncHandler(async (req, res) => {
       description,
       budget: normalizeBudget(budget),
       status: status || "DRAFT",
+      progress: 0, // Initialize progress to 0
       ownerId: userId
     }
   });
@@ -126,4 +129,65 @@ export const listProjects = asyncHandler(async (req, res) => {
   });
 
   res.json({ data: projects });
+});
+
+export const getProject = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      proposals: {
+        include: {
+          freelancer: true
+        },
+        orderBy: { createdAt: "desc" }
+      }
+    }
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  // TODO: Add refined permission check if needed (e.g. check if user is owner or freelancer)
+  // For now, allow if authenticated (or maybe just restrict to owner?)
+  // if (project.ownerId !== userId) { ... }
+
+  res.json({ data: project });
+});
+
+export const updateProject = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  const updates = req.body;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  // Check existence and ownership
+  const existing = await prisma.project.findUnique({
+    where: { id }
+  });
+
+  if (!existing) {
+    throw new AppError("Project not found", 404);
+  }
+  
+  if (existing.ownerId !== userId) {
+     throw new AppError("Permission denied", 403);
+  }
+
+  const project = await prisma.project.update({
+    where: { id },
+    data: updates
+  });
+
+  res.json({ data: project });
 });
