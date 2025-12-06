@@ -16,41 +16,8 @@ import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload }
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
+import { SOP_TEMPLATES } from "@/data/sopTemplates";
 import { useAuth } from "@/context/AuthContext";
-
-const initialPhases = [
-  {
-    id: "1",
-    name: "Requirements & Planning",
-    status: "completed",
-    progress: 100
-  },
-  {
-    id: "2",
-    name: "Design & Architecture",
-    status: "in-progress",
-    progress: 65
-  },
-  {
-    id: "3",
-    name: "Development",
-    status: "pending",
-    progress: 0
-  },
-  {
-    id: "4",
-    name: "Testing & Deployment",
-    status: "pending",
-    progress: 0
-  }
-];
-
-const initialTasks = [
-  { id: "1", title: "Define project requirements", phase: "1", status: "completed" },
-  { id: "2", title: "Create system architecture", phase: "2", status: "completed" },
-  { id: "3", title: "Design UI mockups", phase: "2", status: "in-progress" },
-  { id: "4", title: "API specification", phase: "2", status: "pending" }
-];
 
 const initialMessages = [
   {
@@ -185,6 +152,128 @@ const ProjectDashboard = () => {
     }
   };
 
+  const activeSOP = useMemo(() => {
+    if (!project?.title) return SOP_TEMPLATES.WEBSITE;
+    const title = project.title.toLowerCase();
+    if (
+      title.includes("app") ||
+      title.includes("mobile") ||
+      title.includes("ios") ||
+      title.includes("android")
+    ) {
+      return SOP_TEMPLATES.APP;
+    }
+    if (title.includes("software") || title.includes("platform") || title.includes("system") || title.includes("crm")) {
+      return SOP_TEMPLATES.SOFTWARE;
+    }
+    if (
+      title.includes("security") ||
+      title.includes("audit") ||
+      title.includes("penetration") ||
+      title.includes("cyber") ||
+      title.includes("iso") ||
+      title.includes("gdpr")
+    ) {
+      return SOP_TEMPLATES.CYBERSECURITY;
+    }
+    if (
+      title.includes("brand") ||
+      title.includes("strategy") ||
+      title.includes("identity") ||
+      title.includes("positioning")
+    ) {
+      return SOP_TEMPLATES.BRAND_STRATEGY;
+    }
+    if (title.includes("pr") || title.includes("public relations")) {
+      return SOP_TEMPLATES.PUBLIC_RELATIONS;
+    }
+    if (title.includes("seo") || title.includes("search engine")) {
+      return SOP_TEMPLATES.SEO;
+    }
+    if (title.includes("smo") || title.includes("social media")) {
+      return SOP_TEMPLATES.SMO;
+    }
+    if (
+      title.includes("lead generation") ||
+      title.includes("sales") ||
+      title.includes("prospecting")
+    ) {
+      return SOP_TEMPLATES.LEAD_GENERATION;
+    }
+    if (title.includes("qualification") || title.includes("scoring")) {
+      return SOP_TEMPLATES.LEAD_QUALIFICATION;
+    }
+    if (title.includes("business leads") || title.includes("b2b leads")) {
+      return SOP_TEMPLATES.BUSINESS_LEADS;
+    }
+    if (title.includes("content marketing") || title.includes("inbound")) {
+      return SOP_TEMPLATES.CONTENT_MARKETING;
+    }
+    if (
+      title.includes("social lead") ||
+      title.includes("paid social") ||
+      title.includes("social ads")
+    ) {
+      return SOP_TEMPLATES.SOCIAL_MEDIA_LEAD_GEN;
+    }
+    if (title.includes("customer support") || title.includes("helpdesk")) {
+      return SOP_TEMPLATES.CUSTOMER_SUPPORT;
+    }
+    if (title.includes("technical support") || title.includes("it support")) {
+      return SOP_TEMPLATES.TECHNICAL_SUPPORT;
+    }
+    if (
+      title.includes("project management") ||
+      title.includes("pm") ||
+      title.includes("coordination")
+    ) {
+      return SOP_TEMPLATES.PROJECT_MANAGEMENT;
+    }
+    if (
+      title.includes("data entry") ||
+      title.includes("typing") ||
+      title.includes("excel") ||
+      title.includes("spreadsheet")
+    ) {
+      return SOP_TEMPLATES.DATA_ENTRY;
+    }
+    if (title.includes("transcription") || title.includes("transcribe")) {
+      return SOP_TEMPLATES.TRANSCRIPTION;
+    }
+    if (title.includes("translation") || title.includes("translate")) {
+      return SOP_TEMPLATES.TRANSLATION;
+    }
+    if (
+      title.includes("tutoring") ||
+      title.includes("tutor") ||
+      title.includes("teaching")
+    ) {
+      return SOP_TEMPLATES.TUTORING;
+    }
+    if (title.includes("coaching") || title.includes("coach")) {
+      return SOP_TEMPLATES.COACHING;
+    }
+    if (title.includes("course") || title.includes("curriculum")) {
+      return SOP_TEMPLATES.COURSE_DEVELOPMENT;
+    }
+    if (
+      title.includes("legal") ||
+      title.includes("law") ||
+      title.includes("contract")
+    ) {
+      return SOP_TEMPLATES.LEGAL_CONSULTING;
+    }
+    if (
+      title.includes("intellectual property") ||
+      title.includes("trademark") ||
+      title.includes("patent") ||
+      title.includes("copyright")
+    ) {
+      return SOP_TEMPLATES.IP_SERVICES;
+    }
+    return SOP_TEMPLATES.WEBSITE;
+  }, [project]);
+
   const overallProgress = useMemo(() => {
     if (project?.progress !== undefined && project?.progress !== null) {
       const value = Number(project.progress);
@@ -197,8 +286,9 @@ const ProjectDashboard = () => {
   }, [project]);
 
   const derivedPhases = useMemo(() => {
-    const step = 100 / initialPhases.length;
-    return initialPhases.map((phase, index) => {
+    const phases = activeSOP.phases;
+    const step = 100 / phases.length;
+    return phases.map((phase, index) => {
       const phaseValue = Math.max(0, Math.min(step, overallProgress - index * step));
       const normalized = Math.round((phaseValue / step) * 100);
       let status = "pending";
@@ -210,20 +300,38 @@ const ProjectDashboard = () => {
         progress: normalized
       };
     });
-  }, [overallProgress]);
+  }, [overallProgress, activeSOP]);
 
-  const derivedTasks = useMemo(() => {
-    return initialTasks.map((task) => {
-      const phaseStatus = derivedPhases.find((p) => p.id === task.phase)?.status || task.status;
-      if (phaseStatus === "completed") {
-        return { ...task, status: "completed" };
+  // MARKIFY: Progressive Disclosure Logic
+  // Show all completed phases + the first non-completed phase.
+  // Hide all subsequent phases.
+  const visiblePhases = useMemo(() => {
+    let foundCurrent = false;
+    return derivedPhases.filter((phase) => {
+      if (foundCurrent) return false; // Hide future phases
+      if (phase.status !== "completed") {
+        foundCurrent = true; // Found the active/pending phase
+        return true; // Show it
       }
-      if (phaseStatus === "in-progress" && task.status === "completed") {
-        return task;
-      }
-      return { ...task, status: phaseStatus === "in-progress" ? "in-progress" : "pending" };
+      return true; // Show completed phases
     });
   }, [derivedPhases]);
+
+  const derivedTasks = useMemo(() => {
+    const tasks = activeSOP.tasks;
+    return tasks
+      .filter((task) => visiblePhases.some((p) => p.id === task.phase)) // Only show tasks for visible phases
+      .map((task) => {
+        const phaseStatus = derivedPhases.find((p) => p.id === task.phase)?.status || task.status;
+        if (phaseStatus === "completed") {
+          return { ...task, status: "completed" };
+        }
+        if (phaseStatus === "in-progress" && task.status === "completed") {
+          return task;
+        }
+        return { ...task, status: phaseStatus === "in-progress" ? "in-progress" : "pending" };
+      });
+  }, [derivedPhases, visiblePhases, activeSOP]);
 
   const completedPhases = derivedPhases.filter((p) => p.status === "completed").length;
   const pageTitle = project?.title ? `Project: ${project.title}` : "Project Dashboard";
@@ -276,7 +384,7 @@ const ProjectDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-semibold text-foreground">
-                  {completedPhases}/{derivedPhases.length}
+                  {completedPhases}/{activeSOP.phases.length}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">phases completed</p>
               </CardContent>
@@ -321,7 +429,9 @@ const ProjectDashboard = () => {
 
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">Tasks & Checklist</CardTitle>
+                  <CardTitle className="text-lg text-foreground">
+                    {visiblePhases[visiblePhases.length - 1]?.name || "Project Tasks"}
+                  </CardTitle>
                   <CardDescription className="text-muted-foreground">
                     {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} tasks completed
                   </CardDescription>
@@ -344,9 +454,6 @@ const ProjectDashboard = () => {
                       >
                         {task.title}
                       </span>
-                      <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
-                        Phase {task.phase}
-                      </Badge>
                     </div>
                   ))}
                 </CardContent>

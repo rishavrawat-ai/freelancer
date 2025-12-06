@@ -283,20 +283,16 @@ const FreelancerChatContent = () => {
           });
         }
 
-        const fallback = [
-          {
-            id: "assistant",
-            name: "Project Assistant",
-            avatar: null,
-            label: "General Assistant",
-            serviceKey: "assistant"
-          }
-        ];
-
-        const finalList = uniq.length ? uniq : fallback;
+        const finalList = uniq;
         if (!cancelled) {
           setConversations(finalList);
-          setSelectedConversation(finalList[0]);
+          // If we have conversations, select the first one by default.
+          // Otherwise, select null so we show the "empty state".
+          if (finalList.length > 0) {
+            setSelectedConversation(finalList[0]);
+          } else {
+            setSelectedConversation(null);
+          }
         }
       } catch (error) {
         console.error("Failed to load conversations:", error);
@@ -531,8 +527,14 @@ const FreelancerChatContent = () => {
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading chats...
                 </div>
               ) : conversations.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  No conversations yet.
+                <div className="flex flex-col items-center justify-center space-y-3 py-10 text-center text-sm text-muted-foreground">
+                  <div className="rounded-full bg-muted p-3">
+                    <SendHorizontal className="h-6 w-6 opacity-30" />
+                  </div>
+                  <p>No conversations yet.</p>
+                  <p className="text-xs opacity-60">
+                    Proposals or active projects will appear here.
+                  </p>
                 </div>
               ) : (
                 conversations.map((conversation) => {
@@ -574,18 +576,32 @@ const FreelancerChatContent = () => {
           </CardContent>
         </Card>
 
-        <ChatArea
-          conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
-          avatar={selectedConversation?.avatar}
-          messages={activeMessages}
-          messageInput={messageInput}
-          onMessageInputChange={handleInputChange}
-          onSendMessage={handleSendMessage}
-          sending={sending}
-          currentUser={user}
-          typingUsers={typingUsers.map((u) => u.name)}
-          online={online}
-        />
+        {selectedConversation ? (
+          <ChatArea
+            conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
+            avatar={selectedConversation?.avatar}
+            messages={activeMessages}
+            messageInput={messageInput}
+            onMessageInputChange={handleInputChange}
+            onSendMessage={handleSendMessage}
+            sending={sending}
+            currentUser={user}
+            typingUsers={typingUsers.map((u) => u.name)}
+            online={online}
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-4 rounded-3xl border border-border/40 bg-card/30 p-8 text-center backdrop-blur-sm">
+            <div className="rounded-full bg-muted/50 p-6">
+              <Paperclip className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">No Chat Selected</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
+                Select a conversation from the sidebar to send messages or view project history.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
