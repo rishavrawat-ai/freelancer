@@ -187,7 +187,8 @@ const FreelancerProjectDetailContent = () => {
              // If senderId == my id, it's me.
              // If senderRole == 'FREELANCER', it's me.
              // Everything else (Client/Assistant) is 'other'.
-             const isMe = (user?.id && msg.senderId === user.id) || msg.senderRole === "FREELANCER";
+             const isMe = (user?.id && String(msg.senderId) === String(user.id)) || 
+                          msg.senderRole === "FREELANCER"; // Check for explicit role
              
              return {
                 id: msg.id,
@@ -202,8 +203,13 @@ const FreelancerProjectDetailContent = () => {
           // Merge logic to keep pending messages
           setMessages(prev => {
              const pending = prev.filter(m => m.pending);
-             const backendIds = new Set(normalized.map(m => m.id));
-             const stillPending = pending.filter(p => !backendIds.has(p.id));
+             // Dedupe based on signature (sender + text) as ID might change from temp to DB
+             const backendSignatures = new Set(normalized.map(m => `${m.sender}:${m.text}`));
+             
+             const stillPending = pending.filter(p => {
+                const signature = `${p.sender}:${p.text}`;
+                return !backendSignatures.has(signature);
+             });
              return [...normalized, ...stillPending];
           });
         }

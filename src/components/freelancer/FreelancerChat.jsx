@@ -77,7 +77,9 @@ const ChatArea = ({
 
       <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-6 py-4">
         {messages.map((message, index) => {
-          const isSelf = message.senderId && currentUser?.id && message.senderId === currentUser.id;
+          const isSelf =
+            (currentUser?.id && String(message.senderId) === String(currentUser.id)) ||
+            message.senderRole === "FREELANCER";
           const isAssistant = message.role === "assistant";
           const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
           const isDeleted = message.deleted || message.isDeleted;
