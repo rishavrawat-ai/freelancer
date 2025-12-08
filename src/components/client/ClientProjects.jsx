@@ -161,6 +161,20 @@ const ClientProjectsContent = () => {
               (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
             );
             if (!accepted) return null; // only surface projects with an accepted freelancer
+            
+            // Calculate progress - use project.progress if available, default to 0
+            const projectProgress = typeof p.progress === "number" 
+              ? p.progress 
+              : 0;
+            
+            // Determine status based on progress
+            let projectStatus = "pending";
+            if (projectProgress === 100) {
+              projectStatus = "completed";
+            } else if (projectProgress > 0) {
+              projectStatus = "in-progress";
+            }
+
             return {
               id: p.id,
               title: p.title || "Project",
@@ -169,10 +183,10 @@ const ClientProjectsContent = () => {
                 accepted.freelancer?.name ||
                 accepted.freelancer?.email ||
                 "Freelancer",
-              status: mapStatus(p.status || "IN_PROGRESS"),
+              status: projectStatus,
               budget: p.budget || 0,
               deadline: p.deadline || "",
-              progress: 35,
+              progress: projectProgress,
             };
           })
           .filter(Boolean);

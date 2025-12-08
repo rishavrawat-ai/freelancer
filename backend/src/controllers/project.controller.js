@@ -180,23 +180,37 @@ export const updateProject = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
-  // Check existence and ownership
+  // Check existence
   const existing = await prisma.project.findUnique({
-    where: { id }
+    where: { id },
+    include: {
+      proposals: true
+    }
   });
 
   if (!existing) {
     throw new AppError("Project not found", 404);
   }
   
-  if (existing.ownerId !== userId) {
+  // Allow owner OR accepted freelancer to update progress/tasks
+  const isOwner = existing.ownerId === userId;
+  const isAcceptedFreelancer = existing.proposals?.some(
+    p => p.freelancerId === userId && p.status === "ACCEPTED"
+  );
+  
+  if (!isOwner && !isAcceptedFreelancer) {
      throw new AppError("Permission denied", 403);
   }
 
-  const project = await prisma.project.update({
-    where: { id },
-    data: updates
-  });
+  try {
+    const project = await prisma.project.update({
+      where: { id },
+      data: updates
+    });
 
-  res.json({ data: project });
+    res.json({ data: project });
+  } catch (error) {
+    console.error("Update project error:", error);
+    throw new AppError(`Failed to update project: ${error.message}`, 500);
+  }
 });

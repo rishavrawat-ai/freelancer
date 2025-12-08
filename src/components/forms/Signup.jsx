@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import image from "@/assets/img.jpg";
 import {
   Field,
   FieldDescription,
@@ -189,7 +190,7 @@ function Signup({ className, ...props }) {
 
               <div className="bg-muted relative hidden md:block">
                 <img
-                  src="https://images.unsplash.com/photo-1697718363306-a02488b41f57?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGZyZWVsYW5jZXJlJTIwaW1hZ2V8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=500"
+                  src={image}
                   alt="Signup illustration"
                   className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
                 />

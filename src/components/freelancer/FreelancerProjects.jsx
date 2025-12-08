@@ -166,6 +166,19 @@ const FreelancerProjectsContent = () => {
           const project = p.project;
           if (!project?.id) return;
           if (!uniqueProjects.has(project.id)) {
+            // Calculate progress - use project.progress if available, default to 0
+            const projectProgress = typeof project.progress === "number" 
+              ? project.progress 
+              : 0;
+            
+            // Determine status based on progress
+            let projectStatus = "pending";
+            if (projectProgress === 100) {
+              projectStatus = "completed";
+            } else if (projectProgress > 0) {
+              projectStatus = "in-progress";
+            }
+
             uniqueProjects.set(project.id, {
               id: project.id,
               title: project.title || "Project",
@@ -174,10 +187,10 @@ const FreelancerProjectsContent = () => {
                 project.owner?.name ||
                 project.owner?.email ||
                 "Client",
-              status: "in-progress",
+              status: projectStatus,
               budget: project.budget || 0,
               deadline: project.deadline || "",
-              progress: 35,
+              progress: projectProgress,
             });
           }
         });
