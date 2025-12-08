@@ -115,20 +115,29 @@ export const listProjects = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
-  const projects = await prisma.project.findMany({
-    where: { ownerId: userId },
-    include: {
-      proposals: {
-        include: {
-          freelancer: true
-        },
-        orderBy: { createdAt: "desc" }
-      }
-    },
-    orderBy: { createdAt: "desc" }
-  });
+  if (!prisma) {
+    console.error("Prisma client is null in listProjects");
+    throw new AppError("Database client not initialized", 500);
+  }
 
-  res.json({ data: projects });
+  try {
+    const projects = await prisma.project.findMany({
+      where: { ownerId: userId },
+      include: {
+        proposals: {
+          include: {
+            freelancer: true
+          },
+          orderBy: { createdAt: "desc" }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json({ data: projects });
+  } catch (error) {
+    console.error("Error listing projects:", error);
+    throw new AppError(`Failed to fetch projects: ${error.message}`, 500);
+  }
 });
 
 export const getProject = asyncHandler(async (req, res) => {
