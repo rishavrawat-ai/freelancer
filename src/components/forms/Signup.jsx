@@ -117,9 +117,6 @@ function Signup({ className, ...props }) {
                       onChange={handleChange}
                       required
                     />
-                    <FieldDescription>
-                      We&apos;ll use this to contact you. We will not share your email with anyone else.
-                    </FieldDescription>
                   </Field>
 
                   <Field>
