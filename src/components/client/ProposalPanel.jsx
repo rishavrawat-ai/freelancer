@@ -1,6 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -42,9 +50,19 @@ const ProposalPanel = ({ content }) => {
 
     const cleanContent = useMemo(() => stripUnavailableSections(content), [content]);
 
+    // Local state for editing
+    const [isEditing, setIsEditing] = useState(false);
+    const [editableContent, setEditableContent] = useState(cleanContent);
+
+    // Sync state if prop changes (e.g. re-generation matches)
+    useEffect(() => {
+        setEditableContent(cleanContent);
+    }, [cleanContent]);
+
+    // Parse from editableContent so updates reflect immediately in the title/budget
     const parsed = useMemo(() => {
         const getValue = (label) => {
-            const match = cleanContent.match(new RegExp(`${label}:\\s*(.*)`, "i"));
+            const match = editableContent.match(new RegExp(`${label}:\\s*(.*)`, "i"));
             return match?.[1]?.trim() || "";
         };
 
@@ -58,10 +76,10 @@ const ProposalPanel = ({ content }) => {
             projectTitle,
             preparedFor,
             budget,
-            summary: cleanContent,
-            raw: { content }
+            summary: editableContent,
+            raw: { content: editableContent }
         };
-    }, [cleanContent, content]);
+    }, [editableContent]);
 
     const persistProposal = () => {
         if (typeof window === "undefined") return;
@@ -84,28 +102,72 @@ const ProposalPanel = ({ content }) => {
         navigate("/login", { state: { redirectTo: "/client" } });
     };
 
+    const handleSaveEdit = () => {
+        setIsEditing(false);
+        toast.success("Changes saved");
+    };
+
+    const handleCancelEdit = () => {
+        setEditableContent(cleanContent);
+        setIsEditing(false);
+    };
+
     return (
-        <Card className="border border-border/50 bg-card/70 h-full overflow-hidden flex flex-col">
-            <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
-                <div className="space-y-1 border-b border-border/40 pb-4">
-                    <p className="text-xs uppercase tracking-[0.32em] text-emerald-500 font-bold">
-                        Proposal Ready
-                    </p>
-                    <p className="text-lg font-semibold">{parsed.projectTitle}</p>
-                </div>
-                <div className="flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap font-mono">
-                    {cleanContent}
-                </div>
-                <div className="pt-4 border-t border-border/40 flex gap-3">
-                    <Button variant="outline" className="flex-1 border-primary/20 hover:bg-primary/5 text-primary">
-                        Edit Proposal
-                    </Button>
-                    <Button className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleAccept}>
-                        Accept Proposal
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
+        <>
+            <Card className="border border-border/50 bg-card/70 h-full overflow-hidden flex flex-col">
+                <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
+                    <div className="space-y-1 border-b border-border/40 pb-4">
+                        <p className="text-xs uppercase tracking-[0.32em] text-emerald-500 font-bold">
+                            proposal ready
+                        </p>
+                        <p className="text-lg font-semibold">{parsed.projectTitle}</p>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden">
+                        <div className="h-full overflow-y-auto pr-1 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap font-mono">
+                            {editableContent}
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border/40 flex gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsEditing(true)}
+                            className="flex-1 border-primary/20 hover:bg-primary/5 text-primary"
+                        >
+                            Edit Proposal
+                        </Button>
+                        <Button
+                            className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={handleAccept}
+                        >
+                            Accept Proposal
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Edit Proposal</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 py-4 overflow-hidden">
+                        <Textarea
+                            value={editableContent}
+                            onChange={(e) => setEditableContent(e.target.value)}
+                            className="h-[50vh] w-full font-mono text-sm resize-none"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCancelEdit}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSaveEdit}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 };
 
