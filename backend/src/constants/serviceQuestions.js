@@ -66,9 +66,9 @@ export const SERVICE_QUESTION_SETS = {
     },
     {
       key: "integrations",
-      text: "Any specific integrations needed (payments, auth, analytics, CRM)?",
-      type: "suggestion",
-      suggestions: ["Payments", "Social Login/Auth", "Analytics", "CRM", "Maps", "Not sure"]
+      text: "Any specific integrations needed?",
+      type: "multi_select",
+      suggestions: ["Stripe/PayPal", "Google Auth", "Social Login", "Analytics (GA/Mixpanel)", "CRM (HubSpot/Salesforce)", "Maps", "Email (SendGrid/Mailchimp)", "None"]
     },
     {
       key: "budget",

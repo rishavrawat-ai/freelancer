@@ -105,6 +105,147 @@ const formatStackBudgetFloors = () =>
     .map(([stack, amount]) => `${stack}: INR ${amount.toLocaleString("en-IN")}`)
     .join(" | ");
 
+// ============ SMART MESSAGE PARSING ============
+
+// Extract project info from a single comprehensive message
+const extractInfoFromMessage = (message) => {
+  const text = (message || "").toLowerCase();
+  const extracted = {
+    budget: null,
+    timeline: null,
+    techStack: null,
+    projectType: null,
+    description: message,
+    hasEnoughInfo: false
+  };
+
+  // Extract budget (e.g., "65K", "₹50,000", "50000", "1 lakh")
+  const budgetPatterns = [
+    /(\d+)\s*k\b/i,                    // 65K, 65k
+    /₹?\s*(\d{1,3}(?:,?\d{3})*)/,     // ₹50,000 or 50000
+    /(\d+)\s*lakh/i,                   // 1 lakh
+    /budget\s*(?:is|of|:)?\s*(\d+)/i   // budget is 65
+  ];
+
+  for (const pattern of budgetPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      let amount = parseInt(match[1].replace(/,/g, ""));
+      if (text.includes("lakh")) amount *= 100000;
+      else if (/\d+\s*k\b/i.test(text)) amount *= 1000;
+      extracted.budget = `₹${amount.toLocaleString("en-IN")}`;
+      break;
+    }
+  }
+
+  // Extract timeline (e.g., "2 months", "6 weeks", "3 weeks")
+  const timelineMatch = text.match(/(\d+)\s*(month|week|day)s?/i);
+  if (timelineMatch) {
+    extracted.timeline = `${timelineMatch[1]} ${timelineMatch[2]}${parseInt(timelineMatch[1]) > 1 ? 's' : ''}`;
+  }
+
+  // Extract tech stack
+  const techKeywords = {
+    "react": "React/Next.js",
+    "next.js": "React/Next.js",
+    "nextjs": "React/Next.js",
+    "node": "Node.js",
+    "express": "Node.js",
+    "laravel": "Laravel/PHP",
+    "php": "Laravel/PHP",
+    "wordpress": "WordPress",
+    "python": "Python/Django",
+    "django": "Python/Django"
+  };
+
+  for (const [keyword, stack] of Object.entries(techKeywords)) {
+    if (text.includes(keyword)) {
+      extracted.techStack = stack;
+      break;
+    }
+  }
+
+  // Extract project type
+  const projectTypes = {
+    "e-commerce": "E-Commerce",
+    "ecommerce": "E-Commerce",
+    "online store": "E-Commerce",
+    "shop": "E-Commerce",
+    "saas": "SaaS/Web App",
+    "dashboard": "SaaS/Web App",
+    "app": "SaaS/Web App",
+    "website": "Website",
+    "landing page": "Website",
+    "portfolio": "Website",
+    "mobile": "Mobile App"
+  };
+
+  for (const [keyword, type] of Object.entries(projectTypes)) {
+    if (text.includes(keyword)) {
+      extracted.projectType = type;
+      break;
+    }
+  }
+
+  // Check if we have enough info to generate proposal
+  // Need at least: project description + (budget OR timeline)
+  const hasProjectContext = text.length > 30; // Reasonably detailed message
+  const hasBudgetOrTimeline = extracted.budget || extracted.timeline;
+  extracted.hasEnoughInfo = hasProjectContext && hasBudgetOrTimeline;
+
+  return extracted;
+};
+
+// Get default features based on project type - these are auto-included
+const getDefaultFeatures = (projectType) => {
+  const common = ["Responsive Design", "SEO Basics"];
+
+  const byType = {
+    "E-Commerce": [...common, "User Authentication", "Payment Gateway (Stripe/PayPal)", "Shopping Cart", "Checkout Flow", "Order Management", "Product Catalog"],
+    "SaaS/Web App": [...common, "User Authentication", "Dashboard", "User Management", "Data Analytics"],
+    "Website": [...common, "Contact Form", "Mobile Optimization"],
+    "Mobile App": ["User Authentication", "Push Notifications", "Offline Support"],
+  };
+
+  return byType[projectType] || common;
+};
+
+// Generate proposal directly from extracted info
+const generateDirectProposal = (info, service) => {
+  const defaultFeatures = getDefaultFeatures(info.projectType);
+
+  return `[PROPOSAL_DATA]
+PROJECT PROPOSAL
+
+Project Type: ${info.projectType || service || "Custom Project"}
+Tech Stack: ${info.techStack || "To be determined based on requirements"}
+
+Summary:
+${info.description}
+
+Features Included (Auto-selected based on project type):
+${defaultFeatures.map(f => `- ${f}`).join("\n")}
+
+Budget: ${info.budget || "To be discussed"}
+Timeline: ${info.timeline || "To be discussed"}
+
+Scope of Work:
+Phase 1: Discovery & Planning - Requirements gathering and technical architecture
+Phase 2: UI/UX Design - Wireframing, mockups, and design review  
+Phase 3: Development - Core functionality and integrations
+Phase 4: Testing & Launch - QA and deployment
+
+Next Steps:
+1. Confirm scope and any additional requirements
+2. Sign agreement and pay deposit
+3. Kickoff meeting to begin work
+
+Note: This proposal was generated based on your message. Let me know if you'd like to add or modify anything!
+[/PROPOSAL_DATA]`;
+};
+
+// ============ END SMART MESSAGE PARSING ============
+
 // Ensure proposals always include the closing tag so the UI can parse them,
 // even if the model truncates the response.
 const normalizeProposalTags = (content = "") => {
@@ -115,6 +256,97 @@ const normalizeProposalTags = (content = "") => {
     return content;
   }
   return `${content.trim()}\n[/PROPOSAL_DATA]`;
+};
+
+// Clean AI response to remove any internal reasoning and duplicate questions
+const cleanAIResponse = (content = "") => {
+  if (!content) return content;
+
+  // Check if this is a proposal (don't clean proposals)
+  if (content.includes("[PROPOSAL_DATA]")) {
+    return content;
+  }
+
+  // Patterns that indicate internal reasoning/thinking
+  const reasoningPatterns = [
+    /We should[^.?!]*[.?!]?\s*/gi,
+    /We need to[^.?!]*[.?!]?\s*/gi,
+    /We have[^.?!]*[.?!]?\s*/gi,
+    /We haven't[^.?!]*[.?!]?\s*/gi,
+    /We are[^.?!]*[.?!]?\s*/gi,
+    /We might[^.?!]*[.?!]?\s*/gi,
+    /Let's[^.?!]*[.?!]?\s*/gi,
+    /Good\.\s*/gi,
+    /However[^.?!]*[.?!]?\s*/gi,
+    /But we[^.?!]*[.?!]?\s*/gi,
+    /The next in order[^.?!]*[.?!]?\s*/gi,
+    /The user hasn't[^.?!]*[.?!]?\s*/gi,
+    /I should[^.?!]*[.?!]?\s*/gi,
+    /I need to[^.?!]*[.?!]?\s*/gi,
+  ];
+
+  let cleaned = content;
+
+  // Remove reasoning patterns
+  for (const pattern of reasoningPatterns) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+
+  // Extract suggestion tags first (we'll add them back)
+  const suggestionMatch = cleaned.match(/\[SUGGESTIONS:\s*[^\]]+\]/i);
+  const multiSelectMatch = cleaned.match(/\[MULTI_SELECT:\s*[^\]]+\]/i);
+  const suggestions = suggestionMatch ? suggestionMatch[0] : "";
+  const multiSelect = multiSelectMatch ? multiSelectMatch[0] : "";
+
+  // Remove suggestion tags temporarily
+  cleaned = cleaned.replace(/\[SUGGESTIONS:\s*[^\]]+\]/gi, "").replace(/\[MULTI_SELECT:\s*[^\]]+\]/gi, "");
+
+  // Find all questions (sentences ending with ?)
+  const questionRegex = /[^.?!]*\?/g;
+  const allQuestions = cleaned.match(questionRegex) || [];
+
+  // Get unique questions only
+  const seenQuestions = new Set();
+  const uniqueQuestions = [];
+
+  for (const q of allQuestions) {
+    const trimmed = q.trim();
+    const normalized = trimmed.toLowerCase();
+    if (trimmed && !seenQuestions.has(normalized)) {
+      seenQuestions.add(normalized);
+      uniqueQuestions.push(trimmed);
+    }
+  }
+
+  // Take only the FIRST unique question (we want one question at a time)
+  let result = "";
+  if (uniqueQuestions.length > 0) {
+    result = uniqueQuestions[0];
+  } else {
+    // No questions found, look for any non-empty sentence
+    const sentences = cleaned.split(/[.!]/).filter(s => s.trim());
+    if (sentences.length > 0) {
+      result = sentences[0].trim();
+    }
+  }
+
+  // Add back the suggestion/multiselect if present
+  if (multiSelect) {
+    result = result + "\n" + multiSelect;
+  } else if (suggestions) {
+    result = result + "\n" + suggestions;
+  }
+
+  // Clean up whitespace
+  result = result.replace(/\n{3,}/g, "\n\n").trim();
+
+  // If response is empty or just whitespace after cleaning, return empty
+  // The frontend will handle showing nothing
+  if (!result.trim()) {
+    return "";
+  }
+
+  return result;
 };
 
 const getCounterQuestion = () => `Counter question (ask first):
@@ -209,12 +441,67 @@ const getInstructions = () => {
 
 const summarizeContext = (messages = []) => {
   if (!messages.length) return "";
-  const recent = messages.slice(-16);
+
+  // SIMPLE APPROACH: Check what the LAST assistant question was about
+  // If it was about timeline and user answered, generate proposal
+
+  // Find the last assistant message
+  let lastAssistantMsg = null;
+  let lastAssistantIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant") {
+      lastAssistantMsg = messages[i];
+      lastAssistantIndex = i;
+      break;
+    }
+  }
+
+  // Check if user has answered after the last assistant message
+  const userAnsweredLast = lastAssistantIndex >= 0 &&
+    messages.length > lastAssistantIndex + 1 &&
+    messages[messages.length - 1].role === "user";
+
+  // Determine what the last question was about
+  const lastContent = (lastAssistantMsg?.content || "").toLowerCase();
+
+  // Check if last question was about late-stage topics (budget or timeline)
+  const wasAboutTimeline = lastContent.includes("timeline") ||
+    lastContent.includes("go-live") ||
+    lastContent.includes("timeframe");
+  const wasAboutBudget = lastContent.includes("budget") || lastContent.includes("inr");
+
+  // Count how many assistant messages we have (rough estimate of progress)
+  const assistantCount = messages.filter(m => m.role === "assistant").length;
+
+  // PROPOSAL TRIGGER CONDITIONS:
+  // 1. Last question was about timeline AND user just answered
+  // 2. OR: We've had many exchanges (8+) and last question was budget/timeline
+  let shouldGenerateProposal = false;
+  if (userAnsweredLast && wasAboutTimeline) {
+    shouldGenerateProposal = true;
+  } else if (userAnsweredLast && wasAboutBudget && assistantCount >= 10) {
+    // If budget was asked late in conversation and answered, also trigger
+    shouldGenerateProposal = true;
+  }
+
+  // Show recent messages for context
+  const recent = messages.slice(-6);
   const lines = recent.map((msg) => {
-    const prefix = msg.role === "assistant" ? "Q" : "A";
+    const prefix = msg.role === "assistant" ? "Bot" : "User";
     return `${prefix}: ${msg.content}`;
   });
-  return `Recent context (last ${recent.length} turns):\n${lines.join("\n")}`;
+
+  const nextAction = shouldGenerateProposal
+    ? "GENERATE PROPOSAL NOW - user answered timeline question"
+    : "Continue with next question in the flow";
+
+  return `CONVERSATION PROGRESS: ${assistantCount} questions asked.
+LAST QUESTION TOPIC: ${wasAboutTimeline ? "TIMELINE" : wasAboutBudget ? "BUDGET" : "other"}
+USER ANSWERED: ${userAnsweredLast ? "YES" : "NO"}
+NEXT ACTION: ${nextAction}
+
+Recent:
+${lines.join("\n")}`;
 };
 
 const buildSystemPrompt = (service) => {
@@ -226,61 +513,67 @@ const buildSystemPrompt = (service) => {
     .map((q, idx) => `${idx + 1}) ${q.text}`)
     .join("\n");
 
-  return `You are a professional consultant for FreelanceHub helping clients with "${service}" projects.
+  return `You are a consultant helping with "${service}" projects. Your job is to gather requirements by asking questions ONE AT A TIME.
 
-Response rules:
-- Maintain a strictly professional, direct, and concise tone.
-- Do NOT use buzzwords, slang, or overly enthusiastic language.
-- Keep responses very short (1-2 sentences max).
-- Ask ONE focused question at a time.
-- Track answers in a simple section map (name, company/project, summary, service type, features/pages, design readiness, tech stack, integrations, budget, timeline, references). If the user says "change/update <section>", jump to that section, ask for the new value, and continue from there without restarting the flow.
-- If the user asks what can be changed, list the editable sections in one line like: "You can update: name, company, summary, features, design, stack, integrations, budget, timeline, references."
-- Output plain text only—no JSON, XML, tool-call syntax, or angle-bracket tokens. Never echo system markers like "<|start|>" or "[call]".
-- Keep an internal checklist of questions already asked/answered from the conversation history. If an item was asked before, skip it—do NOT restart or repeat it.
-- Once the essentials are answered (who: name/company, what: summary + must-have features/pages, how: tech stack/platform, budget, timeline), generate the proposal instead of looping back to earlier questions.
-- CRITICAL: Do NOT repeat questions. Check the history. If a question was already asked and the user answered (even briefly), accept it and move to the next one.
-- Do NOT preface with "We need to ask next question" or repeat the same question text twice.
-- Before asking, compare against your last 2 assistant messages—if it is the same question, skip ahead to the next unanswered item.
-- If the user replies with anything after a question (even a short answer or "already shared"), treat it as answered and move on; do not re-ask.
-- CRITICAL: Output suggestions for the CURRENT question if applicable.
-- Do NOT use markdown bolding (like **text**) in your responses.
-- If the question instructions say "Output options as [MULTI_SELECT: ...]", you MUST use that exact format.
-- Otherwise, for single-choice questions, format suggestions like this:
-  \`[SUGGESTIONS: Option 1 | Option 2 | Option 3]\`
-- Tailor suggestions to the current service/subtype and prior answers; omit irrelevant options (e.g., show catalog/checkout for e-commerce, dashboard/auth for SaaS, design assets for design requests).
-- Never embed option lists directly inside the question text; use the \`[SUGGESTIONS: ...]\` or \`[MULTI_SELECT: ...]\` line so the UI can render clickable chips.
-- If the user selects an option, treat it as their answer and move to the next question immediately.
-- When generating the proposal, YOU MUST wrap it in \`[PROPOSAL_DATA]...[/PROPOSAL_DATA]\` tags.
-- "Recommended Package & Estimate" must be a scoped, realistic option (e.g., "WordPress e-commerce with custom theme + checkout - INR 60,000"). Do NOT simply restate the user's budget as the estimate; if budget is low, propose a phased or lighter-stack option with its own estimated range.
+ABSOLUTE RULES:
+1. Output ONLY ONE question per response. Nothing else. No combining questions.
+2. NEVER go backwards. If you asked about budget, don't ask about name again.
+3. NEVER repeat yourself. Check history before every response.
+4. NO internal thoughts. No "We should...", "Let's...", "Good." - just the question.
+5. Keep it SHORT. One sentence question maximum.
 
-Context & Logic:
-- **Context Awareness**: Reference the user's previous answers in your questions to show understanding (e.g., "Since you need a dashboard, what specific metrics...?").
-- **Compatibility Check**: If the user requests incompatible technologies (e.g., "Shopify + 3D" or "WordPress + React Native" without a headless setup), politely flag the potential conflict or complexity in your response before asking the next question.
-- **Budget vs Stack Guardrails**: If the user's budget is below the realistic floor for their chosen stack/type (${formatStackBudgetFloors()}), do NOT proceed as-is. Acknowledge the gap politely, then offer two options in a professional tone: 1) increase the budget to the realistic floor for that stack, or 2) move to a clearly named lighter stack/phased MVP within their budget (e.g., "WordPress + custom theme (INR 45,000)" or "Bubble MVP (INR 50,000)"). Ask it like: "Given your budget of INR X, the typical floor for [stack] is INR Y. Would you prefer to align the budget to INR Y or switch to [suggested option] that fits INR X?" Keep it concise and respectful, and always include the proposed alternative tech stack name with an estimated cost.
+YOUR QUESTION FLOW (follow in order, skip if answered):
+Step 1: "What's your first name?"
+Step 2: "What's your company or project name?"
+Step 3: "In one line, what are you building?"
+Step 4: "Which category fits best?" [SUGGESTIONS: Website | SaaS/Web App | Mobile App | E-Commerce | Other]
+Step 5: "Is this new or existing?" [SUGGESTIONS: New Project | Existing Project]
+Step 6: "What are the essential features?" [MULTI_SELECT: based on their project type]
+Step 7: "Do you have designs?" [SUGGESTIONS: Yes | No | Partial]
+Step 8: "Preferred tech stack?" [SUGGESTIONS: React/Next.js | Node.js | Laravel | WordPress | No preference]
+Step 9: "Any integrations needed?" [SUGGESTIONS: Payments | Auth | Analytics | CRM | None]
+Step 10: "What's your budget in INR?"
+Step 11: "What's your timeline?"
+Step 12: Generate proposal
 
-Service Info: ${service}
-${getServiceDetails(service)}   
-${servicePolicy ? `\n${servicePolicy}\n` : ""}${counterQuestion}
+HOW TO TRACK PROGRESS:
+- Look at the conversation history
+- Find which questions were already asked AND answered
+- Ask the NEXT unanswered question
+- When you have: name, project description, features, tech, budget, timeline → generate the proposal
 
-OFFICIAL SERVICE INSTRUCTIONS AND PRICING (STRICTLY FOLLOW THESE):
-${instructions}
+FORMAT:
+- Question text on first line
+- [SUGGESTIONS: ...] or [MULTI_SELECT: ...] on second line if applicable
+- Nothing else
 
-Use this question order for this service (ask top-down, skip if already answered):
-${questionLines}
-If a suggestion list exists for the current question, surface 3-5 short options in the [SUGGESTIONS: ...] format.
+Service: ${service}
+${getServiceDetails(service)}
+${servicePolicy ? `${servicePolicy}` : ""}
 
-Proposal instructions:
-${proposalTemplate.replace(/\*\*/g, "")}
+CRITICAL - WHEN TO GENERATE PROPOSAL:
+If the context says "NEXT ACTION: GENERATE PROPOSAL NOW", you MUST output only the proposal.
+Do NOT ask any more questions. Just generate the proposal using this structure:
 
-Your Goal:
-- Gather: 1) what they need, 2) timeline, 3) budget amount.
-- Do NOT stop mid-flow; always ask the next required question.
-- If a website budget is under ${MIN_WEBSITE_PRICE_DISPLAY}, restate the minimum and suggest a smaller scope or phased plan.
+[PROPOSAL_DATA]
+PROJECT PROPOSAL
+Project: [Project Name]
+For: [Name] - [Company]
+Tech: [Tech Stack]
 
-After 3-4 exchanges, or when you have enough info, generate the FULL PROPOSAL using the [PROPOSAL_DATA] template.
-Ensure the "Scope of Work" and "Features & Services" sections are detailed and specific to the user's requests.
-Do NOT generate a partial "Quick Proposal".
-Keep it short and structured.`;
+Summary: [Brief description of what they're building]
+
+Features:
+- [List features they mentioned]
+
+Budget: [Their budget]
+Timeline: [Their timeline]
+
+Next Steps:
+1. Confirm scope
+2. Sign agreement
+3. Begin work
+[/PROPOSAL_DATA]`;
 };
 
 export const generateChatReply = async ({
@@ -309,9 +602,118 @@ export const generateChatReply = async ({
   const systemContent = buildSystemPrompt(service || "");
   const safeHistory = Array.isArray(history) ? history.slice(-50) : [];
 
+  // IMPORTANT: Include the current message in context calculation
+  const historyWithCurrentMessage = [
+    ...safeHistory,
+    { role: "user", content: message }
+  ];
+
+  // ======== SMART MESSAGE PARSING ========
+  // Check if user provided all info in ONE message (skip questions entirely)
+  // This only triggers on the FIRST message (no history) or very early in conversation
+  const isEarlyConversation = safeHistory.filter(m => m.role === "assistant").length <= 1;
+
+  if (isEarlyConversation && message.length > 50) {
+    const extractedInfo = extractInfoFromMessage(message);
+
+    if (extractedInfo.hasEnoughInfo) {
+      console.log("🎯 Smart parsing: Detected comprehensive message, generating proposal directly!");
+      console.log("   Extracted:", {
+        budget: extractedInfo.budget,
+        timeline: extractedInfo.timeline,
+        techStack: extractedInfo.techStack,
+        projectType: extractedInfo.projectType
+      });
+
+      return generateDirectProposal(extractedInfo, service);
+    }
+  }
+  // ======== END SMART MESSAGE PARSING ========
+
+  // ======== DIRECT PROPOSAL GENERATION ========
+  // Check if we should generate proposal directly (bypass AI completely)
+  // This triggers when the last bot question was about timeline and user answered
+
+  // Find the last assistant message in history
+  let lastBotMessage = null;
+  for (let i = safeHistory.length - 1; i >= 0; i--) {
+    if (safeHistory[i].role === "assistant") {
+      lastBotMessage = safeHistory[i].content?.toLowerCase() || "";
+      break;
+    }
+  }
+
+  const isTimelineQuestion = lastBotMessage &&
+    (lastBotMessage.includes("timeline") || lastBotMessage.includes("go-live") || lastBotMessage.includes("timeframe"));
+
+  // Count how many exchanges we've had
+  const exchangeCount = safeHistory.filter(m => m.role === "assistant").length;
+
+  // If last question was timeline (step 11+) and this is the answer, generate proposal directly
+  if (isTimelineQuestion && exchangeCount >= 8) {
+    console.log("🚀 Timeline answered! Generating proposal directly...");
+
+    // Extract info from conversation
+    const allMessages = historyWithCurrentMessage;
+    const extractAnswer = (patterns) => {
+      for (let i = 0; i < allMessages.length - 1; i++) {
+        const bot = allMessages[i];
+        const user = allMessages[i + 1];
+        if (bot.role === "assistant" && user?.role === "user") {
+          const botContent = (bot.content || "").toLowerCase();
+          if (patterns.some(p => botContent.includes(p))) {
+            return user.content;
+          }
+        }
+      }
+      return null;
+    };
+
+    const name = extractAnswer(["first name", "your name"]) || "Client";
+    const company = extractAnswer(["company", "project name"]) || "Project";
+    const summary = extractAnswer(["what are you building", "in one line"]) || "Web application";
+    const features = extractAnswer(["essential features", "features"]) || "Core features";
+    const techStack = extractAnswer(["tech stack", "platform"]) || "React/Next.js";
+    const budget = extractAnswer(["budget", "inr"]) || "TBD";
+    const timeline = message; // Current message is the timeline answer
+
+    return `[PROPOSAL_DATA]
+PROJECT PROPOSAL
+
+Project: ${company}
+For: ${name}
+Tech Stack: ${techStack}
+
+Summary:
+${summary}
+
+Features Included:
+${features}
+
+Budget: INR ${budget}
+Timeline: ${timeline}
+
+Scope of Work:
+Phase 1: Discovery & Planning - Requirements gathering and technical architecture
+Phase 2: UI/UX Design - Wireframing, mockups, and design review
+Phase 3: Development - Core functionality and integrations
+Phase 4: Testing & Launch - QA and deployment
+
+Next Steps:
+1. Review and confirm this proposal
+2. Sign agreement and pay deposit
+3. Kickoff meeting to begin work
+
+Generated based on your requirements. Let me know if you'd like any changes!
+[/PROPOSAL_DATA]`;
+  }
+  // ======== END DIRECT PROPOSAL GENERATION ========
+
+  const contextHintWithCurrent = summarizeContext(historyWithCurrentMessage);
+
   const messages = [
     { role: "system", content: systemContent },
-    ...(contextHint ? [{ role: "system", content: contextHint }] : []),
+    { role: "system", content: contextHintWithCurrent },
     ...safeHistory.map((msg) => ({
       role: msg.role === "assistant" ? "assistant" : "user",
       content: msg.content,
@@ -348,7 +750,8 @@ export const generateChatReply = async ({
     completion?.choices?.[0]?.message?.content ||
     "I'm here-please share a bit more so I can prepare your quick proposal.";
 
-  return normalizeProposalTags(rawContent);
+  // Clean the response: normalize proposal tags and remove any internal reasoning
+  return cleanAIResponse(normalizeProposalTags(rawContent));
 };
 
 export const chatController = async (req, res) => {
@@ -409,13 +812,13 @@ export const listUserConversations = asyncHandler(async (req, res) => {
   for (const proposal of proposals) {
     const projectId = proposal.project?.id;
     if (!projectId) continue;
-    
+
     const ownerId = proposal.project?.ownerId;
     const freelancerId = proposal.freelancerId;
-    
+
     // Use consistent key format: CHAT:CLIENT_ID:FREELANCER_ID
     const serviceKey = `CHAT:${ownerId}:${freelancerId}`;
-    
+
     serviceKeys.push(serviceKey);
     serviceMeta.set(serviceKey, {
       freelancerName:
@@ -430,18 +833,18 @@ export const listUserConversations = asyncHandler(async (req, res) => {
   // Pull conversations that match the project+freelancer service keys.
   const conversations = serviceKeys.length
     ? await prisma.chatConversation.findMany({
-        where: { service: { in: serviceKeys } },
-        orderBy: { updatedAt: "desc" },
-        include: {
-          messages: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-          _count: {
-            select: { messages: true },
-          },
+      where: { service: { in: serviceKeys } },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
-      })
+        _count: {
+          select: { messages: true },
+        },
+      },
+    })
     : [];
 
   // Ensure a conversation exists for each service key.

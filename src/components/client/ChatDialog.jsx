@@ -722,7 +722,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       }
     }
   }, [proposalMessage, messageStorageKey, serviceKey]);
-  
+
   const resolveSenderChip = (msg) => {
     if (msg.role === "assistant") return "Assistant";
     return "You";
@@ -777,10 +777,11 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
               <div className="space-y-4 min-w-0 pb-4">
                 {messages.map((msg, index) => {
                   const msgKey = getMessageKey(msg, index);
-                  const isSelf = msg.senderId && user?.id && msg.senderId === user.id;
                   const isAssistant = msg.role === "assistant";
-                  const alignment =
-                    isAssistant || !isSelf ? "flex-row" : "flex-row-reverse";
+                  // For AI chat: user messages (role !== "assistant") go on RIGHT
+                  // Assistant messages go on LEFT
+                  const isUserMessage = !isAssistant;
+                  const alignment = isUserMessage ? "flex-row-reverse" : "flex-row";
 
                   const bubbleTone = (() => {
                     if (isAssistant) return "bg-muted text-foreground";
@@ -788,9 +789,8 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                       return "bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100";
                     if (msg.senderRole === "FREELANCER")
                       return "bg-sky-100 text-sky-900 dark:bg-sky-900/25 dark:text-sky-50";
-                    return isSelf
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground";
+                    // User messages in AI chat get primary color
+                    return "bg-primary text-primary-foreground";
                   })();
 
                   // Parse content for suggestions and multi-select
@@ -818,11 +818,11 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                   return (
                     <div
                       key={msg.id || index}
-                      className={`flex flex-col gap-2 min-w-0 ${isAssistant || !isSelf ? "items-start" : "items-end"}`}
+                      className={`flex flex-col gap-2 min-w-0 ${isUserMessage ? "items-end" : "items-start"}`}
                     >
                       <div className={`flex items-start gap-3 max-w-[85%] ${alignment}`}>
                         <div
-                          className={`p-2 rounded-full flex-shrink-0 ${isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
+                          className={`p-2 rounded-full flex-shrink-0 ${isUserMessage ? "bg-primary text-primary-foreground" : "bg-muted"
                             }`}
                         >
                           {isAssistant ? (
@@ -867,19 +867,19 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                         msg.role === "assistant" &&
                         !isLoading &&
                         !answeredOptions[msgKey] && (
-                        <div className="flex flex-wrap gap-2 pl-12">
-                          {suggestions.map((suggestion, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleSuggestionSelect(suggestion, msgKey)}
-                              className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-full transition-colors border border-primary/20 disabled:opacity-40 disabled:pointer-events-none"
-                              disabled={isLoading}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                          <div className="flex flex-wrap gap-2 pl-12">
+                            {suggestions.map((suggestion, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => handleSuggestionSelect(suggestion, msgKey)}
+                                className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-full transition-colors border border-primary/20 disabled:opacity-40 disabled:pointer-events-none"
+                                disabled={isLoading}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        )}
 
                       {answeredOptions[msgKey] && (
                         <div className="pl-12 space-y-1">
