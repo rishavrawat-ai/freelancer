@@ -46,6 +46,8 @@ const loadDrafts = () => {
     if (!raw) return;
     const parsed = parseDraftValue(raw);
     if (!parsed?.content && !parsed?.summary) return;
+    // Only show proposals that were explicitly saved (have savedAt or isSavedDraft flag)
+    if (!parsed.savedAt && !parsed.isSavedDraft) return;
     const content = (parsed.content || parsed.summary || "").trim();
     const title =
       parsed.projectTitle ||

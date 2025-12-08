@@ -85,7 +85,9 @@ const ProposalPanel = ({ content }) => {
         if (typeof window === "undefined") return;
         const payload = {
             ...parsed,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            savedAt: new Date().toISOString(), // Mark as explicitly saved
+            isSavedDraft: true // Flag to indicate this is a saved draft
         };
         // Keep keys in sync with dashboard/auth sync logic
         window.localStorage.setItem("markify:savedProposal", JSON.stringify(payload));

@@ -57,9 +57,14 @@ const loadSavedProposalFromStorage = () => {
     const rawValue = window.localStorage.getItem(storageKey);
     if (!rawValue) continue;
     try {
-      return JSON.parse(rawValue);
+      const parsed = JSON.parse(rawValue);
+      // Only return if explicitly saved (has savedAt or isSavedDraft flag)
+      if (parsed.savedAt || parsed.isSavedDraft) {
+        return parsed;
+      }
     } catch {
-      return { content: rawValue };
+      // If can't parse, skip (not a valid saved proposal)
+      continue;
     }
   }
 
