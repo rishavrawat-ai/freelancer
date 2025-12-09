@@ -30,23 +30,134 @@ const STACK_BUDGET_FLOORS = {
   "E-Commerce Platform": 75000,
 };
 
-// Project-specific minimum timelines
-const PROJECT_TIMELINES = {
-  "Landing Page": { minDays: 7, display: "1 week" },
-  "WordPress": { minDays: 15, display: "15-20 days" },
-  "Shopify": { minDays: 15, display: "15-20 days" },
-  "3D WordPress": { minDays: 20, display: "20-25 days" },
-  "3D Shopify": { minDays: 20, display: "20-25 days" },
-  "Webflow": { minDays: 20, display: "20-28 days" },
-  "Framer": { minDays: 20, display: "20-28 days" },
-  "Custom E-commerce": { minDays: 30, display: "30-60 days" },
-  "E-Commerce Platform": { minDays: 30, display: "30-60 days" },
-  "App": { minDays: 60, display: "2 months" },
-  "Mobile App": { minDays: 60, display: "2 months" },
-  "Mobile Application": { minDays: 60, display: "2 months" },
-  "Web Application/SaaS": { minDays: 45, display: "45-60 days" },
-  "SaaS": { minDays: 45, display: "45-60 days" },
-  "Website": { minDays: 15, display: "15-20 days" },
+// Project-specific minimum timelines and pricing
+const PROJECT_REQUIREMENTS = {
+  "Landing Page": { 
+    minDays: 7, 
+    displayTime: "1 week", 
+    minBudget: 10000, 
+    displayBudget: "₹10,000",
+    alternatives: []
+  },
+  "WordPress": { 
+    minDays: 15, 
+    displayTime: "15-20 days", 
+    minBudget: 20000, 
+    displayBudget: "₹20,000",
+    alternatives: ["Landing Page (₹10,000, 1 week)"]
+  },
+  "Shopify": { 
+    minDays: 15, 
+    displayTime: "15-20 days", 
+    minBudget: 30000, 
+    displayBudget: "₹30,000",
+    alternatives: ["WordPress (₹20,000, 15-20 days)", "Landing Page (₹10,000, 1 week)"]
+  },
+  "3D WordPress": { 
+    minDays: 20, 
+    displayTime: "20-25 days", 
+    minBudget: 45000, 
+    displayBudget: "₹45,000",
+    alternatives: ["WordPress (₹20,000, 15-20 days)", "Shopify (₹30,000, 15-20 days)"]
+  },
+  "3D Shopify": { 
+    minDays: 20, 
+    displayTime: "20-25 days", 
+    minBudget: 45000, 
+    displayBudget: "₹45,000",
+    alternatives: ["Shopify (₹30,000, 15-20 days)", "WordPress (₹20,000, 15-20 days)"]
+  },
+  "Webflow": { 
+    minDays: 20, 
+    displayTime: "20-28 days", 
+    minBudget: 80000, 
+    displayBudget: "₹80,000",
+    alternatives: ["WordPress (₹20,000, 15-20 days)", "Shopify (₹30,000, 15-20 days)"]
+  },
+  "Framer": { 
+    minDays: 20, 
+    displayTime: "20-28 days", 
+    minBudget: 80000, 
+    displayBudget: "₹80,000",
+    alternatives: ["WordPress (₹20,000, 15-20 days)", "Shopify (₹30,000, 15-20 days)"]
+  },
+  "Custom E-commerce": { 
+    minDays: 30, 
+    displayTime: "30-60 days", 
+    minBudget: 150000, 
+    displayBudget: "₹1,50,000",
+    alternatives: ["Shopify (₹30,000, 15-20 days)", "WordPress + WooCommerce (₹30,000, 20 days)"]
+  },
+  "E-Commerce Platform": { 
+    minDays: 30, 
+    displayTime: "30-60 days", 
+    minBudget: 75000, 
+    displayBudget: "₹75,000",
+    alternatives: ["Shopify (₹30,000, 15-20 days)", "WordPress + WooCommerce (₹30,000, 20 days)"]
+  },
+  "App": { 
+    minDays: 60, 
+    displayTime: "2 months", 
+    minBudget: 200000, 
+    displayBudget: "₹2,00,000",
+    alternatives: ["Web App (₹75,000, 45-60 days)", "Landing Page + PWA (₹40,000, 3 weeks)"]
+  },
+  "Mobile App": { 
+    minDays: 60, 
+    displayTime: "2 months", 
+    minBudget: 200000, 
+    displayBudget: "₹2,00,000",
+    alternatives: ["Web App (₹75,000, 45-60 days)", "Landing Page + PWA (₹40,000, 3 weeks)"]
+  },
+  "Mobile Application": { 
+    minDays: 60, 
+    displayTime: "2 months", 
+    minBudget: 200000, 
+    displayBudget: "₹2,00,000",
+    alternatives: ["Web App (₹75,000, 45-60 days)", "Landing Page + PWA (₹40,000, 3 weeks)"]
+  },
+  "Web Application/SaaS": { 
+    minDays: 45, 
+    displayTime: "45-60 days", 
+    minBudget: 75000, 
+    displayBudget: "₹75,000",
+    alternatives: ["WordPress + Plugins (₹35,000, 20 days)", "Landing Page + Forms (₹15,000, 1 week)"]
+  },
+  "SaaS": { 
+    minDays: 45, 
+    displayTime: "45-60 days", 
+    minBudget: 75000, 
+    displayBudget: "₹75,000",
+    alternatives: ["WordPress + Plugins (₹35,000, 20 days)", "Landing Page + Forms (₹15,000, 1 week)"]
+  },
+  "Website": { 
+    minDays: 15, 
+    displayTime: "15-20 days", 
+    minBudget: 20000, 
+    displayBudget: "₹20,000",
+    alternatives: ["Landing Page (₹10,000, 1 week)"]
+  },
+  "React/Next.js": { 
+    minDays: 30, 
+    displayTime: "30-45 days", 
+    minBudget: 60000, 
+    displayBudget: "₹60,000",
+    alternatives: ["WordPress (₹20,000, 15-20 days)", "Webflow (₹80,000, 20-28 days)"]
+  },
+  "Node.js": { 
+    minDays: 30, 
+    displayTime: "30-45 days", 
+    minBudget: 60000, 
+    displayBudget: "₹60,000",
+    alternatives: ["Laravel (₹40,000, 25-30 days)", "WordPress (₹20,000, 15-20 days)"]
+  },
+  "Laravel": { 
+    minDays: 25, 
+    displayTime: "25-30 days", 
+    minBudget: 40000, 
+    displayBudget: "₹40,000",
+    alternatives: ["WordPress (₹20,000, 15-20 days)"]
+  },
 };
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
@@ -232,6 +343,13 @@ const getDefaultFeatures = (projectType) => {
 // Generate proposal directly from extracted info
 const generateDirectProposal = (info, service) => {
   const defaultFeatures = getDefaultFeatures(info.projectType);
+  
+  // Get pricing from PROJECT_REQUIREMENTS
+  const projectReq = PROJECT_REQUIREMENTS[info.projectType] || 
+                     PROJECT_REQUIREMENTS[info.techStack] || 
+                     PROJECT_REQUIREMENTS["Website"];
+  const estimatedPrice = projectReq?.displayBudget || "To be discussed";
+  const estimatedTimeline = projectReq?.displayTime || info.timeline || "To be discussed";
 
   return `[PROPOSAL_DATA]
 PROJECT PROPOSAL
@@ -242,11 +360,12 @@ Tech Stack: ${info.techStack || "To be determined based on requirements"}
 Summary:
 ${info.description}
 
-Features Included (Auto-selected based on project type):
+Features Included:
 ${defaultFeatures.map(f => `- ${f}`).join("\n")}
 
-Budget: ${info.budget || "To be discussed"}
-Timeline: ${info.timeline || "To be discussed"}
+Estimated Price: ${estimatedPrice}
+Timeline: ${estimatedTimeline}
+Client Budget: ${info.budget || "To be discussed"}
 
 Scope of Work:
 Phase 1: Discovery & Planning - Requirements gathering and technical architecture
@@ -255,8 +374,8 @@ Phase 3: Development - Core functionality and integrations
 Phase 4: Testing & Launch - QA and deployment
 
 Next Steps:
-1. Confirm scope and any additional requirements
-2. Sign agreement and pay deposit
+1. Confirm scope and pricing
+2. Sign agreement and pay 50% deposit
 3. Kickoff meeting to begin work
 
 To customize this proposal, please use the Edit Proposal option.
@@ -513,6 +632,36 @@ const summarizeContext = (messages = []) => {
     shouldGenerateProposal = true;
   }
 
+  // Extract the LATEST budget and timeline from user messages
+  let latestBudget = null;
+  let latestTimeline = null;
+  
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === "user") {
+      const content = (msg.content || "").toLowerCase();
+      // Check for budget patterns
+      if (!latestBudget) {
+        const budgetMatch = content.match(/(\d+)\s*k\b/i) || 
+                           content.match(/₹?\s*(\d{1,3}(?:,?\d{3})*)/);
+        if (budgetMatch) {
+          let amount = parseInt(budgetMatch[1].replace(/,/g, ""));
+          if (/\d+\s*k\b/i.test(content)) amount *= 1000;
+          if (content.includes("lakh")) amount *= 100000;
+          latestBudget = `₹${amount.toLocaleString("en-IN")}`;
+        }
+      }
+      // Check for timeline patterns
+      if (!latestTimeline) {
+        const timeMatch = content.match(/(\d+)\s*(month|week|day)s?/i);
+        if (timeMatch) {
+          latestTimeline = `${timeMatch[1]} ${timeMatch[2]}${parseInt(timeMatch[1]) > 1 ? 's' : ''}`;
+        }
+      }
+    }
+    if (latestBudget && latestTimeline) break;
+  }
+
   // Show recent messages for context
   const recent = messages.slice(-6);
   const lines = recent.map((msg) => {
@@ -528,9 +677,13 @@ const summarizeContext = (messages = []) => {
 LAST QUESTION TOPIC: ${wasAboutTimeline ? "TIMELINE" : wasAboutBudget ? "BUDGET" : "other"}
 USER ANSWERED: ${userAnsweredLast ? "YES" : "NO"}
 NEXT ACTION: ${nextAction}
+${latestBudget ? `CONFIRMED BUDGET: ${latestBudget}` : ""}
+${latestTimeline ? `CONFIRMED TIMELINE: ${latestTimeline}` : ""}
 
 Recent:
-${lines.join("\n")}`;
+${lines.join("\n")}
+
+IMPORTANT: Use CONFIRMED BUDGET and CONFIRMED TIMELINE values in the proposal, not older values from earlier in conversation.`;
 };
 
 const buildSystemPrompt = (service) => {
@@ -542,19 +695,40 @@ const buildSystemPrompt = (service) => {
     .map((q, idx) => `${idx + 1}) ${q.text}`)
     .join("\n");
 
-  // Format timeline information for the prompt
-  const timelineInfo = `
-MINIMUM PROJECT TIMELINES (inform user if their timeline is too short):
-- Landing Page (single page): 1 week
-- WordPress / Shopify: 15-20 days
-- 3D WordPress / 3D Shopify: 20-25 days
-- Webflow / Framer: 20-28 days
-- Custom E-commerce: 30-60 days
-- Mobile App: 2 months
-- SaaS / Web Application: 45-60 days
+  // Format budget and timeline requirements
+  const requirementsInfo = `
+MINIMUM PROJECT REQUIREMENTS (Budget & Timeline):
+| Project Type | Min Budget | Min Timeline |
+|--------------|------------|--------------|
+| Landing Page | ₹10,000 | 1 week |
+| WordPress | ₹20,000 | 15-20 days |
+| Shopify | ₹30,000 | 15-20 days |
+| 3D WordPress/Shopify | ₹45,000 | 20-25 days |
+| Webflow/Framer | ₹80,000 | 20-28 days |
+| E-Commerce Platform | ₹75,000 | 30-60 days |
+| Custom E-commerce | ₹1,50,000 | 30-60 days |
+| Web App/SaaS | ₹75,000 | 45-60 days |
+| Mobile App | ₹2,00,000 | 2 months |
+| React/Next.js | ₹60,000 | 30-45 days |
+| Laravel | ₹40,000 | 25-30 days |
 
-If user provides a timeline shorter than the minimum for their project type, politely inform them:
-"For a [project type], we typically need [minimum timeline]. This ensures quality delivery. Would you like to proceed with this timeline?"`;
+BUDGET TOO LOW - If user's budget is below minimum:
+DO NOT generate proposal. Instead respond:
+"Your budget of [user budget] is below the minimum required for a [project type] project (minimum: [min budget]).
+
+You have two options:
+1. Increase your budget to at least [min budget]
+2. Consider a more affordable alternative"
+[SUGGESTIONS: Increase Budget | WordPress (₹20,000) | Shopify (₹30,000) | Landing Page (₹10,000)]
+
+TIMELINE TOO SHORT - If user's timeline is below minimum:
+DO NOT generate proposal. Instead respond:
+"Your timeline of [user timeline] is shorter than what's required for a quality [project type] project (minimum: [min timeline]).
+
+You have two options:
+1. Extend your timeline to at least [min timeline]
+2. Consider a faster alternative"
+[SUGGESTIONS: Extend Timeline | WordPress (15-20 days) | Landing Page (1 week)]`;
 
   return `You are a consultant helping with "${service}" projects. Your job is to gather requirements by asking questions ONE AT A TIME.
 
@@ -564,6 +738,7 @@ ABSOLUTE RULES:
 3. NEVER repeat yourself. Check history before every response.
 4. NO internal thoughts. No "We should...", "Let's...", "Good." - just the question.
 5. Keep it SHORT. One sentence question maximum.
+6. VALIDATE BUDGET AND TIMELINE before generating proposal.
 
 YOUR QUESTION FLOW (follow in order, skip if answered):
 Step 1: "What's your first name?"
@@ -577,14 +752,15 @@ Step 8: "Preferred tech stack?" [SUGGESTIONS: React/Next.js | Node.js | Laravel 
 Step 9: "Any integrations needed?" [SUGGESTIONS: Payments | Auth | Analytics | CRM | None]
 Step 10: "What's your budget in INR?"
 Step 11: "What's your timeline?"
-Step 12: Generate proposal
-${timelineInfo}
+Step 12: VALIDATE budget/timeline, then generate proposal OR suggest alternatives
+${requirementsInfo}
 
 HOW TO TRACK PROGRESS:
 - Look at the conversation history
 - Find which questions were already asked AND answered
 - Ask the NEXT unanswered question
-- When you have: name, project description, features, tech, budget, timeline → generate the proposal
+- BEFORE generating proposal: Check if budget >= minimum AND timeline >= minimum
+- If either is too low, show alternatives instead of proposal
 
 FORMAT:
 - Question text on first line
@@ -596,28 +772,43 @@ ${getServiceDetails(service)}
 ${servicePolicy ? `${servicePolicy}` : ""}
 
 CRITICAL - WHEN TO GENERATE PROPOSAL:
-If the context says "NEXT ACTION: GENERATE PROPOSAL NOW", you MUST output only the proposal.
-Do NOT ask any more questions. Just generate the proposal using this structure:
+If the context says "NEXT ACTION: GENERATE PROPOSAL NOW", first validate:
+1. Is budget >= minimum for their project type?
+2. Is timeline >= minimum for their project type?
+
+If YES to both, generate proposal with PRICE included:
 
 [PROPOSAL_DATA]
 PROJECT PROPOSAL
+
 Project: [Project Name]
 For: [Name] - [Company]
-Tech: [Tech Stack]
+Tech Stack: [Tech Stack]
 
 Summary: [Brief description of what they're building]
 
-Features:
+Features Included:
 - [List features they mentioned]
 
-Budget: [Their budget]
-Timeline: [Their timeline]
+Estimated Price: [Price based on project type - use the minimum budget as base]
+Timeline: [Their timeline or minimum if theirs was too short]
+Budget: [Their confirmed budget]
+
+Scope of Work:
+Phase 1: Discovery & Planning
+Phase 2: UI/UX Design
+Phase 3: Development & Integration
+Phase 4: Testing & Deployment
 
 Next Steps:
-1. Confirm scope
-2. Sign agreement
-3. Begin work
-[/PROPOSAL_DATA]`;
+1. Confirm scope and pricing
+2. Sign agreement and pay 50% deposit
+3. Kickoff meeting to begin work
+
+To customize this proposal, please use the Edit Proposal option.
+[/PROPOSAL_DATA]
+
+If NO (budget or timeline too low), DO NOT generate proposal. Instead, show the budget/timeline message with alternatives.`;
 };
 
 export const generateChatReply = async ({
