@@ -953,8 +953,11 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                     <div className="p-2 rounded-full bg-muted">
                       <Bot className="w-4 h-4" />
                     </div>
-                    <div className="p-3 rounded-lg bg-muted">
+                    <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">
+                        Thinking<span className="animate-pulse">...</span>
+                      </span>
                     </div>
                   </div>
                 )}

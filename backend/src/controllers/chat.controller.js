@@ -30,6 +30,25 @@ const STACK_BUDGET_FLOORS = {
   "E-Commerce Platform": 75000,
 };
 
+// Project-specific minimum timelines
+const PROJECT_TIMELINES = {
+  "Landing Page": { minDays: 7, display: "1 week" },
+  "WordPress": { minDays: 15, display: "15-20 days" },
+  "Shopify": { minDays: 15, display: "15-20 days" },
+  "3D WordPress": { minDays: 20, display: "20-25 days" },
+  "3D Shopify": { minDays: 20, display: "20-25 days" },
+  "Webflow": { minDays: 20, display: "20-28 days" },
+  "Framer": { minDays: 20, display: "20-28 days" },
+  "Custom E-commerce": { minDays: 30, display: "30-60 days" },
+  "E-Commerce Platform": { minDays: 30, display: "30-60 days" },
+  "App": { minDays: 60, display: "2 months" },
+  "Mobile App": { minDays: 60, display: "2 months" },
+  "Mobile Application": { minDays: 60, display: "2 months" },
+  "Web Application/SaaS": { minDays: 45, display: "45-60 days" },
+  "SaaS": { minDays: 45, display: "45-60 days" },
+  "Website": { minDays: 15, display: "15-20 days" },
+};
+
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
   value.split(",").map(normalizeOrigin).filter(Boolean);
@@ -240,7 +259,7 @@ Next Steps:
 2. Sign agreement and pay deposit
 3. Kickoff meeting to begin work
 
-Note: This proposal was generated based on your message. Let me know if you'd like to add or modify anything!
+To customize this proposal, please use the Edit Proposal option.
 [/PROPOSAL_DATA]`;
 };
 
@@ -276,13 +295,24 @@ const cleanAIResponse = (content = "") => {
     /We are[^.?!]*[.?!]?\s*/gi,
     /We might[^.?!]*[.?!]?\s*/gi,
     /Let's[^.?!]*[.?!]?\s*/gi,
-    /Good\.\s*/gi,
+    /Good\.?\s*/gi,
     /However[^.?!]*[.?!]?\s*/gi,
     /But we[^.?!]*[.?!]?\s*/gi,
     /The next in order[^.?!]*[.?!]?\s*/gi,
     /The user hasn't[^.?!]*[.?!]?\s*/gi,
     /I should[^.?!]*[.?!]?\s*/gi,
     /I need to[^.?!]*[.?!]?\s*/gi,
+    /Now[^.?!]*ask[^.?!]*[.?!]?\s*/gi,
+    /Moving on[^.?!]*[.?!]?\s*/gi,
+    /Next[^.?!]*[.?!]?\s*/gi,
+    /Great[^.?!]*[.?!]?\s*/gi,
+    /Thanks[^.?!]*[.?!]?\s*/gi,
+    /Thank you[^.?!]*[.?!]?\s*/gi,
+    /Perfect[^.?!]*[.?!]?\s*/gi,
+    /Okay[^.?!]*[.?!]?\s*/gi,
+    /Alright[^.?!]*[.?!]?\s*/gi,
+    /Got it[^.?!]*[.?!]?\s*/gi,
+    /Understood[^.?!]*[.?!]?\s*/gi,
   ];
 
   let cleaned = content;
@@ -438,7 +468,6 @@ const getInstructions = () => {
     return "";
   }
 };
-
 const summarizeContext = (messages = []) => {
   if (!messages.length) return "";
 
@@ -513,6 +542,20 @@ const buildSystemPrompt = (service) => {
     .map((q, idx) => `${idx + 1}) ${q.text}`)
     .join("\n");
 
+  // Format timeline information for the prompt
+  const timelineInfo = `
+MINIMUM PROJECT TIMELINES (inform user if their timeline is too short):
+- Landing Page (single page): 1 week
+- WordPress / Shopify: 15-20 days
+- 3D WordPress / 3D Shopify: 20-25 days
+- Webflow / Framer: 20-28 days
+- Custom E-commerce: 30-60 days
+- Mobile App: 2 months
+- SaaS / Web Application: 45-60 days
+
+If user provides a timeline shorter than the minimum for their project type, politely inform them:
+"For a [project type], we typically need [minimum timeline]. This ensures quality delivery. Would you like to proceed with this timeline?"`;
+
   return `You are a consultant helping with "${service}" projects. Your job is to gather requirements by asking questions ONE AT A TIME.
 
 ABSOLUTE RULES:
@@ -535,6 +578,7 @@ Step 9: "Any integrations needed?" [SUGGESTIONS: Payments | Auth | Analytics | C
 Step 10: "What's your budget in INR?"
 Step 11: "What's your timeline?"
 Step 12: Generate proposal
+${timelineInfo}
 
 HOW TO TRACK PROGRESS:
 - Look at the conversation history
@@ -704,7 +748,7 @@ Next Steps:
 2. Sign agreement and pay deposit
 3. Kickoff meeting to begin work
 
-Generated based on your requirements. Let me know if you'd like any changes!
+To customize this proposal, please use the Edit Proposal option.
 [/PROPOSAL_DATA]`;
   }
   // ======== END DIRECT PROPOSAL GENERATION ========
