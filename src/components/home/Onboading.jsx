@@ -1,9 +1,11 @@
 "use client";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sparkles, ChevronRight, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { GridScan } from "@/components/ui/GridScan";
+import { useTheme } from "@/components/theme-provider";
+import HeroWebGLBackground from "@/components/ui/hero-webgl-background";
 import { cn } from "@/lib/utils";
 
 const ShinyText = ({ text, className = "", disabled = false, speed = 3 }) => {
@@ -11,7 +13,7 @@ const ShinyText = ({ text, className = "", disabled = false, speed = 3 }) => {
     return (
       <span
         className={cn(
-          "text-foreground font-semibold tracking-tight",
+          "text-current font-semibold tracking-tight",
           className
         )}>
         {text}
@@ -39,20 +41,49 @@ const ShinyText = ({ text, className = "", disabled = false, speed = 3 }) => {
 };
 
 const Onboading = () => {
+  const { theme } = useTheme();
+  const [resolvedTheme, setResolvedTheme] = useState("dark");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = window.document.documentElement;
+    setResolvedTheme(root.classList.contains("dark") ? "dark" : "light");
+  }, [theme]);
+
+  const palette =
+    resolvedTheme === "dark"
+      ? {
+          bg: "#000000",
+          text: "#ffffff",
+          subtext: "rgba(255,255,255,0.72)",
+          accents: {
+            a: "rgba(16,185,129,0.2)",
+            b: "rgba(59,130,246,0.18)",
+            c: "rgba(99,102,241,0.12)",
+          },
+          gridOpacity: 0.35,
+        }
+      : {
+          bg: "#0b1220",
+          text: "#e8f0ff",
+          subtext: "rgba(232,240,255,0.8)",
+          accents: {
+            a: "rgba(59,130,246,0.24)",
+            b: "rgba(14,165,233,0.18)",
+            c: "rgba(244,114,182,0.14)",
+          },
+          gridOpacity: 0.32,
+        };
+
   return (
-    <div className="relative min-h-screen w-full bg-background text-foreground flex items-center justify-center px-6 md:px-12 overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <GridScan
-          sensitivity={0.55}
-          lineThickness={1}
-          linesColor="#392e4e"
-          gridScale={0.1}
-          scanColor="#ffd700"
-          scanOpacity={0.4}
-          noiseIntensity={0.01}
-          className="w-full h-full"
-        />
-      </div>
+    <div
+      className="relative isolate min-h-screen w-full text-white flex items-center justify-center px-6 md:px-12 overflow-hidden"
+      style={{ backgroundColor: palette.bg, color: palette.text }}>
+      <HeroWebGLBackground
+        bgColor={palette.bg}
+        accentColors={palette.accents}
+        gridOpacity={palette.gridOpacity}
+      />
 
       <section className="relative z-10 w-full max-w-6xl text-center flex flex-col items-center justify-center gap-5 py-16 min-h-screen">
         <Link to="/signup" className="inline-block">
@@ -69,11 +100,13 @@ const Onboading = () => {
           </Button>
         </Link>
 
-        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium leading-tight tracking-tight text-foreground max-w-6x">
+        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium leading-tight tracking-tight text-foreground max-w-6xl">
           Find clever minds<br/> Upgrade your craft
         </h1>
 
-        <p className="text-lg md:text-2xl text-muted-foreground max-w-3xl">
+        <p
+          className="text-lg md:text-2xl max-w-3xl"
+          style={{ color: palette.subtext }}>
           Join our network of freelancers and connect with clients who value
           your talent.
         </p>
