@@ -980,27 +980,6 @@ const ClientDashboardContent = () => {
     <>
       <div className="flex flex-col gap-6 p-6">
         <ClientTopBar label={dashboardLabel} />
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Today</p>
-            <h1 className="text-2xl font-semibold leading-tight">
-              {heroTitle}
-            </h1>
-            <p className="text-muted-foreground">{heroSubtitle}</p>
-          </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-            <div className="flex shrink-0 items-center gap-3">
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarRange className="size-4" />
-                Sync calendar
-              </Button>
-              <Button size="sm" className="gap-2">
-                <MessageSquare className="size-4" />
-                Quick reply
-              </Button>
-            </div>
-          </div>
-        </header>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {isLoadingProjects ? (
