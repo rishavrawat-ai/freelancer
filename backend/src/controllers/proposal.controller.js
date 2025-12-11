@@ -187,6 +187,24 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
     throw new AppError("You do not have permission to update this proposal", 403);
   }
 
+  // Ensure only one proposal can be accepted per project
+  if (normalizedStatus === "ACCEPTED") {
+    const existingAccepted = await prisma.proposal.findFirst({
+      where: {
+        projectId: proposal.projectId,
+        status: "ACCEPTED",
+        id: { not: proposalId }
+      }
+    });
+
+    if (existingAccepted) {
+      throw new AppError(
+        "This project has already been awarded to another freelancer. You cannot accept this proposal.",
+        409
+      );
+    }
+  }
+
   try {
     const updated = await prisma.proposal.update({
       where: { id: proposalId },

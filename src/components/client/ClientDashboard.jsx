@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Zap,
   X,
+  Trash2,
 } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
@@ -1060,12 +1061,12 @@ const ClientDashboardContent = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     onClick={handleClearSavedProposal}
                     disabled={!hasSavedProposal}
-                    aria-label="Clear saved proposal"
+                    aria-label="Delete saved proposal"
                   >
-                    <PanelLeftClose className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
