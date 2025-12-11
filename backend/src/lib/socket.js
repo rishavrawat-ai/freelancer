@@ -27,7 +27,10 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const serializeMessage = (message) => ({
-  ...message,
+  content: message.content,
+  senderId: message.senderId,
+  senderRole: message.senderRole,
+  readAt: message.readAt,
   createdAt:
     message.createdAt instanceof Date
       ? message.createdAt.toISOString()
@@ -159,6 +162,33 @@ export const initSocket = (server) => {
         socket.emit("chat:error", {
           message: "Unable to join chat. Please try again."
         });
+      }
+    });
+
+    socket.on("chat:read", async ({ conversationId, userId }) => {
+      if (!conversationId || !userId) return;
+
+      try {
+        // Mark messages as read in DB where sender is NOT the current user
+        await prisma.chatMessage.updateMany({
+          where: {
+            conversationId,
+            senderId: { not: userId }, // Mark others' messages as read
+            readAt: null
+          },
+          data: {
+            readAt: new Date()
+          }
+        });
+
+        // Broadcast read receipt to the room (so the sender sees blue ticks)
+        io.to(conversationId).emit("chat:read_receipt", {
+          conversationId,
+          readerId: userId,
+          readAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Failed to mark messages as read:", error);
       }
     });
 

@@ -106,6 +106,7 @@ model ChatMessage {
   role            String           @default("user")
   content         String           @db.Text
   attachment      Json?            // store { name, size, type, url? }
+  readAt          DateTime?
   createdAt       DateTime         @default(now())
   @@index([conversationId, createdAt])
 }
