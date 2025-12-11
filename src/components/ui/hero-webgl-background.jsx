@@ -428,7 +428,7 @@ const HeroWebGLBackground = ({
           <color attach="background" args={[bgColor]} />
           <Particles
             speed={1.0}
-            aperture={1.79}
+            aperture={1.79} 
             focus={3.8}
             size={512}
             noiseScale={0.6}
