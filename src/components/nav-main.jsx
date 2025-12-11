@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import {
   Collapsible,
@@ -22,6 +22,7 @@ export function NavMain({
   items
 }) {
   const { unreadCount } = useNotifications();
+  const location = useLocation();
 
   return (
     <SidebarGroup>
@@ -35,22 +36,23 @@ export function NavMain({
           const showBadge = item.title === "Messages" && unreadCount > 0;
 
           if (!hasChildren) {
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.url ?? "#"} className="relative">
-                    {Icon && <Icon />}
-                    <span>{item.title}</span>
-                    {showBadge && (
-                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          }
+             const isActive = location.pathname === item.url;
+             return (
+               <SidebarMenuItem key={item.title}>
+                 <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
+                   <Link to={item.url ?? "#"} className={`relative ${isActive ? "text-primary font-medium" : ""}`}>
+                     {Icon && <Icon className={isActive ? "text-primary" : ""} />}
+                     <span>{item.title}</span>
+                     {showBadge && (
+                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white">
+                         {unreadCount > 99 ? "99+" : unreadCount}
+                       </span>
+                     )}
+                   </Link>
+                 </SidebarMenuButton>
+               </SidebarMenuItem>
+             );
+           }
 
           return (
             <Collapsible
