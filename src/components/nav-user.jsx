@@ -112,7 +112,11 @@ export function NavUser({ user = null }) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => navigate("/client/profile")}>
+              <DropdownMenuItem onClick={() => {
+                 const role = activeUser?.role || "FREELANCER";
+                 const path = role === "CLIENT" ? "/client/profile" : "/freelancer/profile";
+                 navigate(path);
+              }}>
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>

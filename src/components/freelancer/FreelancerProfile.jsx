@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
+import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 
 const serviceOptions = [
   "Web development",
@@ -14,8 +15,9 @@ const serviceOptions = [
   "AI/ML integration",
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const buildUrl = (path) => `${API_BASE_URL}${path}`;
+// Use relative path to leverage Vite proxy in development
+const API_BASE_URL = "/api";
+const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 
 const initialWorkForm = {
   company: "",
@@ -85,6 +87,9 @@ const FreelancerProfile = () => {
           email: data.personal?.email ?? prev.email,
           phone: data.personal?.phone ?? "",
           location: data.personal?.location ?? "",
+          headline: data.personal?.headline ?? "",
+          avatar: data.personal?.avatar ?? "",
+          available: data.personal?.available ?? true,
         }));
 
         const skillsFromApi = Array.isArray(data.skills) ? data.skills : [];
@@ -187,6 +192,8 @@ const FreelancerProfile = () => {
         email: personal.email,
         phone: personal.phone,
         location: personal.location,
+        headline: personal.headline,
+        available: personal.available,
       },
       skills: skillsForApi,
       workExperience,
@@ -228,51 +235,108 @@ const FreelancerProfile = () => {
     }
   };
 
+  // ----- Personal Details Edit (Name, Headline, Phone, Location) -----
+  const openEditPersonalModal = () => {
+    setModalType("personal");
+  };
+
+  const handlePersonalChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setPersonal((prev) => ({ 
+        ...prev, 
+        [name]: type === "checkbox" ? checked : value 
+    }));
+  };
+
+  // ----- Add Custom Service -----
+  const [serviceForm, setServiceForm] = useState("");
+  const addService = () => {
+    const name = serviceForm.trim();
+    if (name && !services.includes(name)) {
+        setServices(prev => [...prev, name]);
+    }
+    setServiceForm("");
+    setModalType(null);
+  };
+
+  // Merge default options with any custom ones saved in the profile
+  const displayServices = Array.from(new Set([...serviceOptions, ...services]));
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-16 space-y-10">
+      <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
         <FreelancerTopBar label={`${personal.name || "Freelancer"}'s profile`} />
         {/* Header Section with Profile Picture */}
         <section className="mb-20">
           <div className="flex flex-col md:flex-row items-start md:items-end gap-8 mb-8">
             {/* Profile Image / Initials */}
-            <div className="relative">
+            <div className="relative group">
               <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-card border border-border p-1 overflow-hidden shadow">
-                <div className="w-full h-full rounded-xl bg-secondary flex items-center justify-center text-3xl md:text-5xl font-bold text-secondary-foreground">
-                  {initials}
+                 {personal.avatar ? (
+                    <img 
+                        src={personal.avatar} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover rounded-xl"
+                    />
+                 ) : (
+                    <div className="w-full h-full rounded-xl bg-secondary flex items-center justify-center text-3xl md:text-5xl font-bold text-secondary-foreground">
+                      {initials}
+                    </div>
+                 )}
+              </div>
+              {personal.available && (
+                <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-primary rounded-full text-xs font-semibold text-primary-foreground shadow-sm animate-in fade-in zoom-in duration-300">
+                  Available
                 </div>
-              </div>
-              <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-primary rounded-full text-xs font-semibold text-primary-foreground shadow-sm">
-                Available
-              </div>
+              )}
             </div>
 
             {/* Profile Info */}
-            <div className="flex-1">
-              <p className="text-muted-foreground text-xs tracking-widest uppercase mb-2">
-                Profile
-              </p>
-              <h1 className="text-5xl md:text-6xl font-bold mb-3 text-foreground leading-tight">
-                {personal.name || "Your name"}
-              </h1>
-              <p className="text-lg text-foreground mb-2">
-                {/* Could later be dynamic (headline) */}
-                Full-stack Developer & Digital Creator
-              </p>
-              <a
-                href={personal.email ? `mailto:${personal.email}` : "#"}
-                className="text-muted-foreground text-sm hover:text-primary transition-colors"
-              >
-                {personal.email || "your@email.com"}
-              </a>
-              {(personal.location || personal.phone) && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {personal.location && <span>{personal.location}</span>}
-                  {personal.location && personal.phone && <span> • </span>}
-                  {personal.phone && <span>{personal.phone}</span>}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-4 mb-2">
+                <p className="text-muted-foreground text-xs tracking-widest uppercase">
+                  Profile
                 </p>
-              )}
+                <button 
+                  onClick={openEditPersonalModal}
+                  className="text-primary hover:text-primary/80 transition-colors"
+                  title="Edit Profile"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <h1 className="text-5xl md:text-6xl font-bold mb-3 text-foreground leading-tight truncate">
+                {personal.name || "Your Name"}
+              </h1>
+              <p className="text-lg text-foreground/80 mb-2 font-medium">
+                {personal.headline || "Add a headline to describe your role"}
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mt-4">
+                <a
+                  href={personal.email ? `mailto:${personal.email}` : "#"}
+                  className="hover:text-primary transition-colors flex items-center gap-2"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
+                  {personal.email || ""}
+                </a>
+                
+                {personal.phone && (
+                  <span className="flex items-center gap-2">
+                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
+                     {personal.phone}
+                  </span>
+                )}
+                
+                {personal.location && (
+                  <span className="flex items-center gap-2">
+                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
+                     {personal.location}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -286,10 +350,18 @@ const FreelancerProfile = () => {
               </p>
               <h2 className="text-2xl font-bold text-foreground">Services</h2>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+              onClick={() => setModalType("service")}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {serviceOptions.map((label) => {
+            {displayServices.map((label) => {
               const active = services.includes(label);
               return (
                 <div
@@ -455,8 +527,8 @@ const FreelancerProfile = () => {
 
       {/* Modal */}
       {modalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
+          <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200">
             {modalType === "skill" ? (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
@@ -480,19 +552,127 @@ const FreelancerProfile = () => {
                   <button
                     type="button"
                     onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40"
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={addSkill}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85"
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
                   >
                     Add
                   </button>
                 </div>
               </>
+            ) : modalType === "service" ? (
+              <>
+                <h1 className="text-lg font-semibold text-foreground">
+                  Add Custom Service
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Offer a specialized service not in the default list.
+                </p>
+                <input
+                  value={serviceForm}
+                  onChange={(event) => setServiceForm(event.target.value)}
+                  placeholder="Service name (e.g. Rust Development)"
+                  className="mt-4 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                />
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalType(null)}
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addService}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </>
+            ) : modalType === "personal" ? (
+               <>
+                <h1 className="text-lg font-semibold text-foreground">
+                  Edit Personal Details
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Update your public profile information.
+                </p>
+
+                <div className="mt-4 space-y-4">
+                  <label className="flex items-center justify-between p-3 rounded-2xl border border-border bg-secondary/50 cursor-pointer hover:bg-secondary/70 transition-colors">
+                    <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Available for work</span>
+                    <input
+                      type="checkbox"
+                      name="available"
+                      checked={personal.available || false}
+                      onChange={handlePersonalChange}
+                      className="w-5 h-5 accent-primary rounded cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Headline
+                    <input
+                      name="headline"
+                      value={personal.headline || ""}
+                      onChange={handlePersonalChange}
+                      placeholder="e.g. Senior React Developer"
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+                  
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Display Name
+                    <input
+                      name="name"
+                      value={personal.name || ""}
+                      onChange={handlePersonalChange}
+                      placeholder="Your Name"
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                      Phone
+                      <input
+                        name="phone"
+                        value={personal.phone || ""}
+                        onChange={handlePersonalChange}
+                        placeholder="+91..."
+                        className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                      />
+                    </label>
+                    <label className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                      Location
+                      <input
+                        name="location"
+                        value={personal.location || ""}
+                        onChange={handlePersonalChange}
+                        placeholder="City, Country"
+                        className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalType(null)}
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+               </>
             ) : (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
@@ -586,14 +766,14 @@ const FreelancerProfile = () => {
                       setEditingIndex(null);
                       setWorkForm(initialWorkForm);
                     }}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40"
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={saveExperience}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85"
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
                   >
                     {editingIndex !== null ? "Update" : "Save"}
                   </button>
@@ -607,4 +787,13 @@ const FreelancerProfile = () => {
   );
 };
 
-export default FreelancerProfile;
+
+const FreelancerProfileWrapper = () => {
+    return (
+        <RoleAwareSidebar>
+            <FreelancerProfile />
+        </RoleAwareSidebar>
+    )
+}
+
+export default FreelancerProfileWrapper;
