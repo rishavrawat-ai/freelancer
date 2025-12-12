@@ -102,13 +102,18 @@ export const NotificationProvider = ({ children }) => {
       console.log("[Notification] ✅ Socket connected! Socket ID:", newSocket.id);
       // Join the user's notification room
       newSocket.emit("notification:join", { userId: user.id });
-      console.log("[Notification] Joined room user:" + user.id);
+      console.log("[Notification] Emitted notification:join for user:", user.id);
     });
 
     // Listen for new notifications
     newSocket.on("notification:new", (notification) => {
-      console.log("[Notification] Received:", notification);
+      console.log("[Notification] 📬 Received notification:new:", notification);
       addNotification(notification);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("[Notification] Socket disconnected");
+      connectedRef.current = false;
     });
 
     // Listen for chat messages (create notification for new messages)
@@ -119,7 +124,12 @@ export const NotificationProvider = ({ children }) => {
           type: "chat",
           title: "New Message",
           message: `${message.senderName || "Someone"}: ${message.content?.slice(0, 50)}${message.content?.length > 50 ? "..." : ""}`,
-          data: { conversationId: message.conversationId, messageId: message.id }
+          data: { 
+            conversationId: message.conversationId, 
+            messageId: message.id,
+            senderId: message.senderId,
+            service: message.service
+          }
         });
       }
     });

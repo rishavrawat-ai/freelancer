@@ -334,12 +334,21 @@ const ProjectDashboard = () => {
     setIsSending(true);
 
     try {
+      // Build the correct service key for notifications
+      const acceptedProposal = project?.proposals?.find(p => p.status === "ACCEPTED");
+      let serviceKey = `project:${project?.id || projectId}`;
+      if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
+        serviceKey = `CHAT:${user.id}:${acceptedProposal.freelancerId}`;
+      }
+
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
            content: userMessage.text,
+           service: serviceKey,
            senderRole: "CLIENT",
+           senderName: user?.fullName || user?.name || user?.email || "Client",
            skipAssistant: true // Force persistence to DB
         })
       });
@@ -376,12 +385,21 @@ const ProjectDashboard = () => {
        setMessages(prev => [...prev, userMessage]);
        
        try {
+         // Build the correct service key for notifications
+         const acceptedProposal = project?.proposals?.find(p => p.status === "ACCEPTED");
+         let serviceKey = `project:${project?.id || projectId}`;
+         if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
+           serviceKey = `CHAT:${user.id}:${acceptedProposal.freelancerId}`;
+         }
+
          await authFetch(`/chat/conversations/${conversationId}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 content: `Uploaded document: ${file.name}`,
+                service: serviceKey,
                 senderRole: "CLIENT",
+                senderName: user?.fullName || user?.name || user?.email || "Client",
                 attachment, // Send attachment metadata
                 skipAssistant: true // Force persistence to DB
             })

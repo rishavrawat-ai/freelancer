@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
   Navbar as ResizableNavbar,
   NavBody,
@@ -23,8 +24,46 @@ const navItems = [
   { name: "Contact", link: "/contact" },
 ];
 
+const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
+  const forceWhite = isHome && !visible;
+  
+  return (
+    <div
+      onClick={onClick}
+      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
+        isDark ? "rotate-180" : "rotate-0"
+      }`}>
+      {isDark ? (
+        <Sun className="h-6 w-6 text-yellow-500" />
+      ) : (
+        <Moon className={cn("h-6 w-6", forceWhite ? "text-black" : "text-gray-500")} />
+      )}
+    </div>
+  );
+};
+
+const AuthButtons = ({ visible, isHome }) => {
+  const forceWhite = isHome && !visible;
+  return (
+    <div className="flex items-center gap-2">
+      <NavbarButton
+        as={Link}
+        to="/login"
+        variant="outline"
+        className={cn(forceWhite ? "text-white border-white/20 hover:bg-white/10" : "")}>
+        Log In
+      </NavbarButton>
+      <NavbarButton as={Link} to="/signup">
+        Sign Up
+      </NavbarButton>
+    </div>
+  );
+};
+
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  const isHome = location.pathname === "/";
 
   const toggleMobileMenu = () => setMobileOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileOpen(false);
@@ -40,27 +79,10 @@ const Navbar = () => {
     <ResizableNavbar>
       {/* Desktop Navbar */}
       <NavBody>
-        <NavbarLogo />
-        <NavItems items={navItems} onItemClick={closeMobileMenu} />
-        <div
-          onClick={handleThemeToggle}
-          className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
-            isDark ? "rotate-180" : "rotate-0"
-          }`}>
-          {isDark ? (
-            <Sun className="h-6 w-6 text-yellow-500" />
-          ) : (
-            <Moon className="h-6 w-6 text-gray-500" />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <NavbarButton as={Link} to="/login" variant="outline">
-            Log In
-          </NavbarButton>
-          <NavbarButton as={Link} to="/signup">
-            Sign Up
-          </NavbarButton>
-        </div>
+        <NavbarLogo isHome={isHome} />
+        <NavItems items={navItems} onItemClick={closeMobileMenu} isHome={isHome} />
+        <ThemeButton isDark={isDark} onClick={handleThemeToggle} isHome={isHome} />
+        <AuthButtons isHome={isHome} />
       </NavBody>
 
       {/* Mobile Navbar */}

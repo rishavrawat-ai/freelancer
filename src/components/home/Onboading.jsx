@@ -1,11 +1,10 @@
-"use client";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sparkles, ChevronRight, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import GradientBarsBackground from "@/components/ui/gradient-bars-background";
 import { useTheme } from "@/components/theme-provider";
-import HeroWebGLBackground from "@/components/ui/hero-webgl-background";
 import { cn } from "@/lib/utils";
 
 const ShinyText = ({ text, className = "", disabled = false, speed = 3 }) => {
@@ -47,61 +46,79 @@ const Onboading = () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const root = window.document.documentElement;
-    setResolvedTheme(root.classList.contains("dark") ? "dark" : "light");
-  }, [theme]);
 
+    const checkTheme = () => {
+      setResolvedTheme(root.classList.contains("dark") ? "dark" : "light");
+    };
+
+    // Initial check
+    checkTheme();
+
+    // Observe changes to the class attribute on the html element
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Force dark theme palette for the hero section to maintain the premium look
   const palette =
-    resolvedTheme === "dark"
+    resolvedTheme === "light"
       ? {
+          bg: "#ffffff",
+          text: "#000000",
+          subtext: "rgba(0,0,0,0.72)",
+          gradientFrom: "#facc15", // Yellow bars visible on white
+          gradientTo: "#ffffff",
+          buttonHover: "hover:bg-black/5",
+          buttonBorder: "border-black/20",
+          buttonText: "text-black",
+        }
+      : {
           bg: "#000000",
           text: "#ffffff",
           subtext: "rgba(255,255,255,0.72)",
-          accents: {
-            a: "rgba(16,185,129,0.2)",
-            b: "rgba(59,130,246,0.18)",
-            c: "rgba(99,102,241,0.12)",
-          },
-          gridOpacity: 0.35,
-        }
-      : {
-          bg: "#0b1220",
-          text: "#e8f0ff",
-          subtext: "rgba(232,240,255,0.8)",
-          accents: {
-            a: "rgba(59,130,246,0.24)",
-            b: "rgba(14,165,233,0.18)",
-            c: "rgba(244,114,182,0.14)",
-          },
-          gridOpacity: 0.32,
+          gradientFrom: "#facc15",
+          gradientTo: "#000000",
+          buttonHover: "hover:bg-white/10",
+          buttonBorder: "border-white/20",
+          buttonText: "text-white",
         };
 
   return (
-    <div
-      className="relative isolate min-h-screen w-full text-white flex items-center justify-center px-6 md:px-12 overflow-hidden"
-      style={{ backgroundColor: palette.bg, color: palette.text }}>
-      <HeroWebGLBackground
-        bgColor={palette.bg}
-        accentColors={palette.accents}
-        gridOpacity={palette.gridOpacity}
-      />
-
-      <section className="relative z-10 w-full max-w-6xl text-center flex flex-col items-center justify-center gap-5 py-16 min-h-screen">
+    <GradientBarsBackground
+      backgroundColor={palette.bg}
+      gradientFrom={palette.gradientFrom}
+      gradientTo={palette.gradientTo}
+      numBars={20}
+      animationDuration={3}
+    >
+      <div className="max-w-6xl text-center flex flex-col items-center justify-center gap-5 py-16">
         <Link to="/signup" className="inline-block">
           <Button
             variant="outline"
-            className="group border px-6 py-3 rounded-full inline-flex items-center gap-2 text-sm font-medium cursor-pointer bg-transparent hover:bg-foreground/5">
+            className={cn(
+              "group border px-6 py-3 rounded-full inline-flex items-center gap-2 text-sm font-medium cursor-pointer bg-transparent",
+              palette.buttonHover,
+              palette.buttonText,
+              palette.buttonBorder
+            )}>
             <Sparkles className="text-yellow-400 fill-yellow-400 w-5 h-5" />
             <ShinyText
               text="Smarter Way to Connect Freelancers & Clients"
               disabled={false}
               speed={3}
+              className={palette.buttonText}
             />
             <ChevronRight className="w-4 h-4 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
           </Button>
         </Link>
 
-        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium leading-tight tracking-tight text-foreground max-w-6xl">
-          Find clever minds<br/> Upgrade your craft
+        <h1 
+          className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium leading-tight tracking-tight max-w-6xl"
+          style={{ color: palette.text }}
+        >
+          Find clever minds<br /> Upgrade your craft
         </h1>
 
         <p
@@ -123,13 +140,18 @@ const Onboading = () => {
             <Button
               variant="outline"
               size="lg"
-              className="text-lg rounded-full border-foreground/20 hover:bg-foreground/10 w-full sm:w-auto cursor-pointer">
+              className={cn(
+                "text-lg rounded-full w-full sm:w-auto cursor-pointer bg-transparent border",
+                palette.buttonText,
+                palette.buttonBorder,
+                palette.buttonHover
+              )}>
               Get Hired
             </Button>
           </Link>
         </div>
-      </section>
-    </div>
+      </div>
+    </GradientBarsBackground>
   );
 };
 
