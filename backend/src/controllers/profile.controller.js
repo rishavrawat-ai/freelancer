@@ -31,7 +31,10 @@ export const getProfile = asyncHandler(async (req, res) => {
         name: user.fullName ?? "",
         email: user.email,
         phone: extras.phone ?? "",
-        location: extras.location ?? ""
+        location: extras.location ?? "",
+        headline: extras.headline ?? "",
+        avatar: user.avatar ?? "",
+        available: extras.available ?? true // Default to true
       },
       skills: user.skills ?? [],
       workExperience: extras.workExperience ?? [],
@@ -66,6 +69,8 @@ export const saveProfile = asyncHandler(async (req, res) => {
     const extras = {
         phone: personal.phone,
         location: personal.location,
+        headline: personal.headline, // NEW: Support headline
+        available: personal.available, // NEW: Support availability
         workExperience: workExperience ?? [],
         services: services ?? []
     };

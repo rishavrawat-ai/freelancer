@@ -77,6 +77,12 @@ const navConfigs = {
       icon: CreditCard,
       isActive: true,
     },
+    {
+      title: "Profile",
+      url: "/freelancer/profile",
+      icon: User,
+      isActive: true,
+    },
   ],
   CLIENT: [
     {
