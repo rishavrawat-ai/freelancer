@@ -86,9 +86,14 @@ export const ClientTopBar = ({ label, interactive = true }) => {
     markAsRead(notification.id)
     // Navigate based on notification type
     if (notification.type === "chat" && notification.data?.conversationId) {
-      navigate("/client/messages")
+      // Pass senderId (freelancerId) to auto-select conversation
+      const senderId = notification.data.senderId;
+      navigate(`/client/messages?conversationId=${notification.data.conversationId}&freelancerId=${senderId || ""}`);
+    } else if (notification.type === "proposal" && notification.data?.projectId) {
+       // Navigate to Project Detail (owner view)
+      navigate(`/client/project/${notification.data.projectId}`);
     } else if (notification.type === "proposal") {
-      navigate("/client/proposal")
+      navigate("/client/proposal");
     }
   }
 

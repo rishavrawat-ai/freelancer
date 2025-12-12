@@ -1405,7 +1405,12 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
           type: "chat",
           title: "New Message",
           message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
-          data: { conversationId: conversation.id, messageId: userMessage.id }
+          data: { 
+            conversationId: conversation.id, 
+            messageId: userMessage.id,
+            service: convService,
+            senderId: actualSenderId
+          }
         });
       }
     }

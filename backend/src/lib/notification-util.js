@@ -20,12 +20,14 @@ export const sendNotificationToUser = (userId, notification) => {
   }
   
   const roomName = `user:${userId}`;
-  io.to(roomName).emit("notification:new", {
+  const payload = {
     id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     ...notification,
     createdAt: new Date().toISOString()
-  });
+  };
   
-  console.log(`[NotificationUtil] Sent notification to ${roomName}:`, notification.title);
+  io.to(roomName).emit("notification:new", payload);
+  
+  console.log(`[NotificationUtil] ✅ Sent notification to ${roomName}:`, notification.title, notification.type);
   return true;
 };
