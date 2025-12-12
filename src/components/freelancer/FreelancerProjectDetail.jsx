@@ -177,6 +177,7 @@ const FreelancerProjectDetailContent = () => {
             progress: normalizedProgress,
             status: match.project.status || match.status || "IN_PROGRESS",
             budget: normalizedBudget,
+            currency: match.project.currency || match.currency || "₹",
             spent: Number(match.project.spent || 0)
           });
           setIsFallback(false);
@@ -557,14 +558,17 @@ const FreelancerProjectDetailContent = () => {
   const totalBudget = useMemo(() => {
     if (project?.budget !== undefined && project?.budget !== null) {
       const value = Number(project.budget);
-      if (Number.isFinite(value)) return Math.max(0, value);
+      // Reduce 30% platform fee - Freelancer sees 70%
+      if (Number.isFinite(value)) return Math.max(0, value * 0.7);
     }
     return 0;
   }, [project]);
   
   const spentBudget = useMemo(() => {
-       return project?.spent ? Number(project.spent) : 0;
-  }, [project]);
+     // If database has spent value, use it. Otherwise derive from progress.
+     if (project?.spent && project.spent > 0) return Number(project.spent);
+     return Math.round((totalBudget * overallProgress) / 100);
+  }, [project, totalBudget, overallProgress]);
   
   const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
 
@@ -754,15 +758,15 @@ const FreelancerProjectDetailContent = () => {
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
                     <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">${totalBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{totalBudget.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
                     <span>Spent</span>
-                    <span className="font-semibold text-emerald-600">${spentBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-emerald-600">{project?.currency || "₹"}{spentBudget.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Remaining</span>
-                    <span className="font-semibold text-foreground">${remainingBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{remainingBudget.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -792,8 +796,8 @@ const FreelancerProjectDetailContent = () => {
                           <div
                             className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
                               message.sender === "user"
-                                ? "bg-primary/20 text-foreground"
-                                : "bg-accent text-accent-foreground border border-border/60"
+                              ? "bg-primary/20 text-foreground"
+                              : "bg-accent text-accent-foreground border border-border/60"
                             }`}
                           >
                             <FileText className="w-3 h-3" />
