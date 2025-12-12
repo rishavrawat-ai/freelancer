@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -99,39 +100,56 @@ const ChatArea = ({
             return "bg-card text-card-foreground border border-border/50 shadow-sm";
           })();
 
+          const prevMessage = messages[index - 1];
+          const currentDate = message.createdAt ? new Date(message.createdAt) : new Date();
+          const prevDate = prevMessage?.createdAt ? new Date(prevMessage.createdAt) : null;
+          const showDateDivider = !prevDate || !isSameDay(currentDate, prevDate);
+
           return (
-            <div key={message.id || index} className={`flex ${align}`}>
-              <div
-                className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-2.5 text-sm flex items-baseline gap-2 overflow-hidden ${
-                  isSelf ? "rounded-tr-sm" : "rounded-tl-sm"
-                } ${bubbleClass}`}
-                role="group"
-              >
-                {isDeleted ? (
-                  <>
-                    <Clock4 className="h-4 w-4 flex-shrink-0 opacity-70" />
-                    <span className="italic text-foreground/90 flex-1">
-                      {isSelf ? "You deleted this message." : "This message was deleted."}
-                    </span>
-                  </>
-                ) : (
-                  <p
-                    className="leading-relaxed whitespace-pre-wrap flex-1"
-                    style={{
-                      overflowWrap: "break-word",
-                      wordBreak: "break-all"
-                    }}
-                  >
-                    {message.content}
-                  </p>
-                )}
+            <React.Fragment key={message.id || index}>
+              {showDateDivider && (
+                <div className="flex justify-center my-4">
+                  <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
+                    {isToday(currentDate)
+                      ? "Today"
+                      : isYesterday(currentDate)
+                      ? "Yesterday"
+                      : format(currentDate, "MMMM d, yyyy")}
+                  </span>
+                </div>
+              )}
+              <div className={`flex ${align}`}>
+                <div
+                  className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-2.5 text-sm flex items-baseline gap-2 overflow-hidden ${
+                    isSelf ? "rounded-tr-sm" : "rounded-tl-sm"
+                  } ${bubbleClass}`}
+                  role="group"
+                >
+                  {isDeleted ? (
+                    <>
+                      <Clock4 className="h-4 w-4 flex-shrink-0 opacity-70" />
+                      <span className="italic text-foreground/90 flex-1">
+                        {isSelf ? "You deleted this message." : "This message was deleted."}
+                      </span>
+                    </>
+                  ) : (
+                    <p
+                      className="leading-relaxed whitespace-pre-wrap flex-1"
+                      style={{
+                        overflowWrap: "break-word",
+                        wordBreak: "break-all"
+                      }}
+                    >
+                      {message.content}
+                    </p>
+                  )}
                   <div className="flex items-center gap-1 self-end mt-1">
                     {message.createdAt ? (
                       <span className="text-[10px] lowercase opacity-70 whitespace-nowrap">
                         {formatTime(message.createdAt)}
                       </span>
                     ) : null}
-                     {isSelf && (
+                    {isSelf && (
                       <span className="ml-1" title={message.readAt ? `Read ${formatTime(message.readAt)}` : "Sent"}>
                         {message.readAt ? (
                           <CheckCheck className="h-3.5 w-3.5 text-blue-600" strokeWidth={2.5} />
@@ -141,8 +159,9 @@ const ChatArea = ({
                       </span>
                     )}
                   </div>
+                </div>
               </div>
-            </div>
+            </React.Fragment>
           );
         })}
         {typingUsers.length > 0 ? (
