@@ -227,6 +227,7 @@ const FreelancerChatContent = () => {
   const socketRef = useRef(null);
   const pollRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const drafts = useRef({});
   const [typingUsers, setTypingUsers] = useState([]);
   const [online, setOnline] = useState(false);
 
@@ -673,6 +674,16 @@ const FreelancerChatContent = () => {
                         : "border-border/50 hover:border-primary/30 hover:bg-muted/50"
                       }`}
                       onClick={() => {
+                        // Save draft for current conversation
+                        if (selectedConversation) {
+                          const currentKey = selectedConversation.serviceKey || selectedConversation.id;
+                          drafts.current[currentKey] = messageInput;
+                        }
+
+                        // Load draft for new conversation
+                        const newKey = conversation.serviceKey || conversation.id;
+                        setMessageInput(drafts.current[newKey] || "");
+
                         setMessages([]);
                         setConversationId(null);
                         setSelectedConversation(conversation);
