@@ -505,16 +505,52 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     });
 
     socket.on("chat:message", (message) => {
-      setIsLoading(message?.role !== "assistant");
+      // Set loading false if it's the assistant's message (we received it)
+      // Or set it false if it's a user message (we got echo back)
+      // Actually original logic was: setIsLoading(message.role !== "assistant"). 
+      // i.e. if we get user message, we are now waiting for assistant? Yes.
+      // If we get assistant message, we are done waiting? 
+      // Wait, original: setIsLoading(!isAssistant).
+      // If assistant message comes, isAssistant=true -> isLoading=false. Correct.
+      // If user echo comes, isAssistant=false -> isLoading=true. Correct.
+      setIsLoading((message?.role || "").toLowerCase() !== "assistant");
+
       setMessages((prev) => {
+        const validMessage = message?.content && message?.role;
+        const incomingContent = (message?.content || "").trim();
+        const incomingRole = (message?.role || "").toLowerCase();
+        
+        // Remove pending messages that match the incoming one to avoid duplicates
         const filtered = prev.filter(
-          (msg) =>
-            !msg.pending ||
-            msg.content !== message?.content ||
-            msg.role !== message?.role
+          (msg) => {
+             // Keep non-pending messages
+             if (!msg.pending) return true;
+             
+             // Check pending messages
+             const pendingContent = (msg.content || "").trim();
+             const pendingRole = (msg.role || "").toLowerCase();
+             
+             const isSameContent = pendingContent === incomingContent;
+             const isSameRole = pendingRole === incomingRole;
+             
+             // If it's the "same" message (pending version), remove it (return false)
+             if (isSameContent) return false;
+             
+             return true;
+          }
         );
-        const finish = () => {
-          const next = [...filtered, message];
+
+        const finish = (currentMessages) => {
+          // Double check: ensure we don't append a duplicate of the VERY LAST message
+          // This handles echoes that might slip through if timing is off
+          const lastMsg = currentMessages[currentMessages.length - 1];
+          if (lastMsg && !lastMsg.pending && 
+              (lastMsg.content || "").trim() === incomingContent &&
+              lastMsg.role === message?.role) {
+              return currentMessages;
+          }
+
+          const next = [...currentMessages, message];
           persistMessagesToStorage(messageStorageKey, next);
           setIsLoading(false);
           return next;
@@ -532,7 +568,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
             return filtered;
           }
         }
-        return finish();
+        return finish(filtered);
       });
     });
 
@@ -724,7 +760,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   }, [proposalMessage, messageStorageKey, serviceKey]);
 
   const resolveSenderChip = (msg) => {
-    if (msg.role === "assistant") return "Assistant";
+    if ((msg.role || "").toLowerCase() === "assistant" || (msg.senderName || "").toLowerCase() === "assistant") return "Assistant";
     return "You";
   };
 
@@ -757,7 +793,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={`h-[85vh] flex flex-col overflow-hidden transition-all duration-300 ${proposalMessage ? "max-w-[90vw] lg:max-w-6xl" : "max-w-2xl"}`}>
-        <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
+        <DialogHeader className="flex flex-row items-center justify-between border-b pb-4 pr-5">
           <div className="space-y-1">
             <DialogTitle>Chat about {service?.title}</DialogTitle>
             <DialogDescription>
@@ -770,14 +806,14 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
           </Button>
         </DialogHeader>
 
-        <div className={`flex-1 overflow-hidden grid gap-6 ${proposalMessage ? "lg:grid-cols-[1fr_400px]" : "grid-cols-1"}`}>
+        <div className={`flex-1 overflow-hidden grid gap-6 min-h-0 ${proposalMessage ? "lg:grid-cols-[1fr_400px]" : "grid-cols-1"}`}>
           {/* Chat Area */}
           <div className="flex flex-col h-full min-h-0 overflow-hidden">
-            <ScrollArea className="flex-1 h-full pr-4">
+            <ScrollArea className="flex-1 min-h-0 pr-4">
               <div className="space-y-4 min-w-0 pb-4">
                 {messages.map((msg, index) => {
                   const msgKey = getMessageKey(msg, index);
-                  const isAssistant = msg.role === "assistant";
+                  const isAssistant = (msg.role || "").toLowerCase() === "assistant" || (msg.senderName || "").toLowerCase() === "assistant";
                   // For AI chat: user messages (role !== "assistant") go on RIGHT
                   // Assistant messages go on LEFT
                   const isUserMessage = !isAssistant;

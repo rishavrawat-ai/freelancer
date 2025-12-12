@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createProposal,
+  getProposal,
   listProposals,
   updateProposalStatus
 } from "../controllers/proposal.controller.js";
@@ -16,6 +17,12 @@ import { deleteProposal } from "../controllers/proposal.controller.js";
 export const proposalRouter = Router();
 
 proposalRouter.get("/", requireAuth, validateResource(listProposalsSchema), listProposals);
+
+const getProposalSchema = z.object({
+  params: z.object({ id: z.string().min(1) })
+});
+
+proposalRouter.get("/:id", requireAuth, validateResource(getProposalSchema), getProposal);
 
 proposalRouter.post(
   "/",
