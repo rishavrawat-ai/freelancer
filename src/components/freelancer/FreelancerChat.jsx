@@ -673,6 +673,8 @@ const FreelancerChatContent = () => {
                         : "border-border/50 hover:border-primary/30 hover:bg-muted/50"
                       }`}
                       onClick={() => {
+                        setMessages([]);
+                        setConversationId(null);
                         setSelectedConversation(conversation);
                         // Reset unread count
                         setConversations(prev => prev.map(c => 
