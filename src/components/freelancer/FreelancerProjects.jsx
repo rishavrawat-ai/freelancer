@@ -243,17 +243,6 @@ const FreelancerProjectsContent = () => {
         <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
           Freelancer projects
         </p>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold">Project tracker</h1>
-            <p className="text-muted-foreground">
-              Monitor client work, budgets, and deadlines in one place.
-            </p>
-          </div>
-          <Button className="rounded-full" size="lg">
-            New project
-          </Button>
-        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

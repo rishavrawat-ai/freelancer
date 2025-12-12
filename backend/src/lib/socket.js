@@ -27,9 +27,13 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const serializeMessage = (message) => ({
+  id: message.id,
+  conversationId: message.conversationId,
   content: message.content,
+  role: message.role, // CRITICAL: frontend uses this to identify assistant messages
   senderId: message.senderId,
   senderRole: message.senderRole,
+  senderName: message.senderName,
   readAt: message.readAt,
   createdAt:
     message.createdAt instanceof Date
@@ -267,9 +271,11 @@ export const initSocket = (server) => {
                 conversationId: conversation.id,
                 senderName: "Assistant",
                 senderRole: "assistant",
-                role: "assistant",
+                role: "assistant", // Ensuring role is 'assistant'
                 content: assistantReply
               });
+
+              console.log("[Socket] Emitting assistant response:", serializeMessage(assistantMessage));
 
               io.to(conversation.id).emit(
                 "chat:message",

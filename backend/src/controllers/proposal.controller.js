@@ -53,6 +53,41 @@ export const createProposal = asyncHandler(async (req, res) => {
   res.status(201).json({ data: proposal });
 });
 
+export const getProposal = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const proposalId = req.params.id;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    include: {
+      project: {
+        include: {
+          owner: true
+        }
+      },
+      freelancer: true
+    }
+  });
+
+  if (!proposal) {
+    throw new AppError("Proposal not found", 404);
+  }
+
+  // Check if user has permission to view this proposal
+  const isOwner = proposal.project?.ownerId === userId;
+  const isFreelancer = proposal.freelancerId === userId;
+
+  if (!isOwner && !isFreelancer) {
+    throw new AppError("You do not have permission to view this proposal", 403);
+  }
+
+  res.json({ data: proposal });
+});
+
 export const listProposals = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
 
