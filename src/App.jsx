@@ -25,7 +25,7 @@ import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
 const App = () => {
   return (
     <main>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="freelancer-ui-theme-v1">
         <Routes>
           <Route
             path="/"

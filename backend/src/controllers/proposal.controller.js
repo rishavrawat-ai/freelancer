@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { sendNotificationToUser } from "../lib/notification-util.js";
 
 const normalizeAmount = (value) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
@@ -49,6 +50,21 @@ export const createProposal = asyncHandler(async (req, res) => {
       projectId
     }
   });
+
+  // Notify project owner
+  try {
+    sendNotificationToUser(project.ownerId, {
+      type: "proposal",
+      title: "New Proposal Received",
+      message: `You received a new proposal for project "${project.title}" from a freelancer.`,
+      data: { 
+        projectId: project.id, 
+        proposalId: proposal.id 
+      }
+    });
+  } catch (error) {
+    console.error("Failed to send proposal notification:", error);
+  }
 
   res.status(201).json({ data: proposal });
 });
@@ -249,6 +265,35 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
         freelancer: true
       }
     });
+
+    // Notify Freelancer if Client changes status
+    if (isOwner && proposal.status !== normalizedStatus) {
+      let title = "Proposal Update";
+      let message = `Your proposal for "${proposal.project.title}" was updated to ${normalizedStatus}`;
+      
+      if (normalizedStatus === "ACCEPTED") {
+        title = "Proposal Accepted! 🎉";
+        message = `Congratulations! Your proposal for "${proposal.project.title}" has been accepted.`;
+      } else if (normalizedStatus === "REJECTED") {
+        title = "Proposal Rejected";
+        message = `Your proposal for "${proposal.project.title}" was declined.`;
+      }
+
+      try {
+        sendNotificationToUser(proposal.freelancerId, {
+          type: "proposal",
+          title,
+          message,
+          data: { 
+            projectId: proposal.projectId, 
+            proposalId: proposal.id,
+            status: normalizedStatus
+          }
+        });
+      } catch (err) {
+        console.error("Failed to notify freelancer:", err);
+      }
+    }
 
     // MARKIFY: If status is ACCEPTED (by freelancer), send an automated chat message to the client.
     if (normalizedStatus === "ACCEPTED" && isFreelancer) {

@@ -343,11 +343,15 @@ export const initSocket = (server) => {
 
             // Send notification to the other participant
             const convService = serviceKey || conversation.service || "";
+            console.log(`[Socket] Checking notification for service: ${convService}, senderId: ${senderId}`);
+            
             if (convService.startsWith("CHAT:")) {
               const parts = convService.split(":");
               if (parts.length >= 3) {
                 const [, id1, id2] = parts;
                 const recipientId = senderId === id1 ? id2 : id1;
+                
+                console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
                 
                 if (recipientId && recipientId !== senderId) {
                   sendNotificationToUser(recipientId, {
@@ -363,25 +367,9 @@ export const initSocket = (server) => {
                   });
                 }
               }
+            } else {
+              console.log(`[Socket] Skipping notification - service doesn't start with CHAT: ${convService}`);
             }
-
-          // Send notification to the other participant
-          // Service key format: CHAT:userId1:userId2
-          if (serviceKey && serviceKey.startsWith("CHAT:")) {
-            const parts = serviceKey.split(":");
-            if (parts.length >= 3) {
-              const [, id1, id2] = parts;
-              const recipientId = senderId === id1 ? id2 : id1;
-              if (recipientId && recipientId !== senderId) {
-                sendNotification(recipientId, {
-                  type: "chat",
-                  title: "New Message",
-                  message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
-                  data: { conversationId: conversation.id, messageId: userMessage.id }
-                });
-              }
-            }
-          }
         } catch (error) {
           console.error("chat:message failed", error);
           socket.emit("chat:error", {

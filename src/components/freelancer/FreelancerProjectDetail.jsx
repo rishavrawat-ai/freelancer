@@ -320,13 +320,19 @@ const FreelancerProjectDetailContent = () => {
     setIsSending(true);
 
     try {
+      // Build the correct service key for notifications
+      const serviceKey = (project?.ownerId && user?.id) 
+        ? `CHAT:${project.ownerId}:${user.id}` 
+        : `project:${project?.id || projectId}`;
+        
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content: userMessage.text,
-            service: `project:${project?.id || projectId}`,
+            service: serviceKey,
             senderRole: "FREELANCER",
+            senderName: user?.fullName || user?.name || user?.email || "Freelancer",
             skipAssistant: true // Persist to DB
           })
         });
@@ -359,12 +365,19 @@ const FreelancerProjectDetailContent = () => {
       setMessages((prev) => [...prev, userMessage]);
 
       try {
+         // Build the correct service key for notifications
+         const serviceKey = (project?.ownerId && user?.id) 
+           ? `CHAT:${project.ownerId}:${user.id}` 
+           : `project:${project?.id || projectId}`;
+           
          await authFetch(`/chat/conversations/${conversationId}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 content: `Uploaded document: ${file.name}`,
+                service: serviceKey,
                 senderRole: "FREELANCER",
+                senderName: user?.fullName || user?.name || user?.email || "Freelancer",
                 attachment,
                 skipAssistant: true
             })

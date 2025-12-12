@@ -14,6 +14,7 @@ import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
+import { useSearchParams } from "react-router-dom";
 import ProposalPanel from "./ProposalPanel";
 
 const SERVICE_LABEL = "Project Chat";
@@ -214,6 +215,7 @@ const ChatArea = ({
 const ClientChatContent = () => {
   const { user, authFetch, token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const { socket: notificationSocket } = useNotifications();
+  const [searchParams] = useSearchParams();
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState("");
@@ -361,13 +363,19 @@ const ClientChatContent = () => {
 
         if (!cancelled) {
           setConversations(finalList);
-          // Default to first conversation if none selected
+          // Default to param-based or first conversation if none selected
           if (!selectedConversation) {
-             if (finalList.length > 0) {
-               setSelectedConversation(finalList[0]);
-             } else {
-               setSelectedConversation(null);
+             const paramFreelancerId = searchParams.get("freelancerId");
+             let target = null;
+
+             if (paramFreelancerId) {
+                target = finalList.find(c => String(c.id) === String(paramFreelancerId));
              }
+
+             if (!target && finalList.length > 0) {
+               target = finalList[0];
+             }
+             setSelectedConversation(target || null);
           }
         }
       } catch (error) {

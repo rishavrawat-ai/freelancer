@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { useSearchParams } from "react-router-dom";
 
 const SERVICE_LABEL = "Project Chat";
 
@@ -216,6 +217,7 @@ const ChatArea = ({
 const FreelancerChatContent = () => {
   const { user, authFetch, token } = useAuth();
   const { socket: notificationSocket } = useNotifications();
+  const [searchParams] = useSearchParams();
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState("");
@@ -330,7 +332,17 @@ const FreelancerChatContent = () => {
           // If we have conversations, select the first one by default.
           // Otherwise, select null so we show the "empty state".
           if (finalList.length > 0) {
-            setSelectedConversation(finalList[0]);
+            const paramClientId = searchParams.get("clientId");
+            let target = null;
+            
+            if (paramClientId) {
+                target = finalList.find(c => String(c.id) === String(paramClientId));
+            }
+            
+            if (!target) {
+                target = finalList[0];
+            }
+            setSelectedConversation(target);
           } else {
             setSelectedConversation(null);
           }
