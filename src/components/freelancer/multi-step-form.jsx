@@ -688,18 +688,7 @@ const FreelancerMultiStepForm = () => {
                     </div>
                   )}
                 </div>
-                <div className="md:hidden flex justify-between">
-                  <Button
-                  type="button"
-                  variant="outline"
-                  disabled={currentStep === 1 || isSubmitting}
-                  onClick={handleBack}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground transition-colors duration-300 group-hover:bg-primary" />
-                    Back
-                  </span>
-                </Button>
+                <div className="md:hidden flex justify-center">
 
                 <Button
                   type="button"
@@ -745,18 +734,7 @@ const FreelancerMultiStepForm = () => {
                   </a>
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 w-full">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={currentStep === 1 || isSubmitting}
-                  onClick={handleBack}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground transition-colors duration-300 group-hover:bg-primary" />
-                    Back
-                  </span>
-                </Button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 w-full">
 
                 <Button
                   type="button"

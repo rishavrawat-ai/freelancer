@@ -6,7 +6,7 @@ import PropTypes from "prop-types"
 
 import { cn } from "@/lib/utils"
 
-export const EvervaultCard = ({ text, className, children }) => {
+export const EvervaultCard = ({ text, className, children, disableEffect = false }) => {
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
 
@@ -46,7 +46,7 @@ export const EvervaultCard = ({ text, className, children }) => {
         className="group/card relative flex h-full w-full items-center justify-center overflow-hidden rounded-[26px]"
         style={cardStyle}
       >
-        <CardPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />
+        {!disableEffect && <CardPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />}
         <div
           className="relative z-10 flex h-full w-full items-center justify-center px-6 text-center"
           style={textStyle}

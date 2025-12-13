@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Notepad } from "@/components/ui/notepad";
 
 const getInitials = (fullName) => {
   if (!fullName) return "FL";
@@ -129,6 +130,9 @@ export const FreelancerTopBar = ({ label }) => {
           <MessageSquare className="size-4 text-primary" />
           <span className="text-xs font-semibold text-primary">Quick chat</span>
         </Button>
+
+        {/* Notepad Feature */}
+        <Notepad />
 
         {/* Notification Bell with Badge */}
         <Popover>

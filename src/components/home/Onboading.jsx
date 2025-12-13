@@ -90,10 +90,10 @@ const Onboading = () => {
       backgroundColor={palette.bg}
       gradientFrom={palette.gradientFrom}
       gradientTo={palette.gradientTo}
-      numBars={20}
+      numBars={13}
       animationDuration={3}
     >
-      <div className="max-w-6xl text-center flex flex-col items-center justify-center gap-5 py-16">
+      <div className="max-w-6xl text-center flex flex-col items-center justify-center gap-5 py-16 pointer-events-auto">
         <Link to="/signup" className="inline-block">
           <Button
             variant="outline"
