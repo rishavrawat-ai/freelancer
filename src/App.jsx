@@ -21,6 +21,7 @@ import FreelancerProjectDetail from "@/components/freelancer/FreelancerProjectDe
 import FreelancerChat from "@/components/freelancer/FreelancerChat";
 import { useAuth } from "@/context/AuthContext";
 import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
+import NotepadPage from "@/components/ui/notepad-page";
 
 const App = () => {
   return (
@@ -183,6 +184,12 @@ const App = () => {
               <ProtectedRoute>
                 <FreelancerProfile />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notepad"
+            element={
+                <NotepadPage />
             }
           />
           <Route

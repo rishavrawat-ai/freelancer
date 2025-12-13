@@ -2,11 +2,13 @@ import React from 'react';
 
 const GradientBars = ({
   numBars = 15,
-  gradientFrom = 'rgb(255, 60, 0)',
+  gradientFrom = '#facc15',
   gradientTo = 'transparent',
   animationDuration = 2,
   className = '',
 }) => {
+  const [hoveredIndex, setHoveredIndex] = React.useState(null);
+
   const calculateHeight = (index, total) => {
     const position = index / (total - 1);
     const maxHeight = 100;
@@ -20,49 +22,42 @@ const GradientBars = ({
   };
 
   return (
-    <>
-      <style>{`
-        @keyframes pulseBar {
-          0% { transform: scaleY(var(--initial-scale)); }
-          100% { transform: scaleY(calc(var(--initial-scale) * 0.7)); }
-        }
-      `}</style>
-      
-      <div className={`absolute inset-0 z-0 overflow-hidden ${className}`}>
-        <div 
-          className="flex h-full"
-          style={{
-            width: '100%',
-            transform: 'translateZ(0)',
-            backfaceVisibility: 'hidden',
-            WebkitFontSmoothing: 'antialiased',
-          }}
-        >
-          {Array.from({ length: numBars }).map((_, index) => {
-            const height = calculateHeight(index, numBars);
-            return (
-              <div
-                key={index}
-                style={{
-                  flex: `1 0 calc(100% / ${numBars})`,
-                  maxWidth: `calc(100% / ${numBars})`,
-                  height: '100%',
-                  background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})`,
-                  transform: `scaleY(${height / 100})`,
-                  transformOrigin: 'bottom',
-                  transition: 'transform 0.5s ease-in-out',
-                  animation: `pulseBar ${animationDuration}s ease-in-out infinite alternate`,
-                  animationDelay: `${index * 0.1}s`,
-                  outline: '1px solid rgba(0, 0, 0, 0)',
-                  boxSizing: 'border-box',
-                  '--initial-scale': height / 100,
-                }}
-              />
-            );
-          })}
-        </div>
+    <div className={`absolute inset-0 z-0 overflow-hidden ${className}`}>
+      <div 
+        className="flex h-full"
+        style={{
+          width: '100%',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          WebkitFontSmoothing: 'antialiased',
+        }}
+      >
+        {Array.from({ length: numBars }).map((_, index) => {
+          const height = calculateHeight(index, numBars);
+          const isHovered = hoveredIndex === index;
+          
+          return (
+            <div
+              key={index}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{
+                flex: `1 0 calc(100% / ${numBars})`,
+                maxWidth: `calc(100% / ${numBars})`,
+                height: '100%',
+                background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})`,
+                transform: `scaleY(${isHovered ? (height / 100) * 1.5 : (height / 100)})`,
+                transformOrigin: 'bottom',
+                transition: 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smoother "piano-like" feel
+                outline: '1px solid rgba(0, 0, 0, 0)',
+                boxSizing: 'border-box',
+                zIndex: isHovered ? 10 : 1,
+              }}
+            />
+          );
+        })}
       </div>
-    </>
+    </div>
   );
 };
 
@@ -88,7 +83,7 @@ export default function GradientBarsBackground({
       />
       
       {children && (
-        <div className="relative z-10 w-full h-full flex items-center justify-center px-4">
+        <div className="relative z-10 w-full h-full flex items-center justify-center px-4 pointer-events-none">
           {children}
         </div>
       )}

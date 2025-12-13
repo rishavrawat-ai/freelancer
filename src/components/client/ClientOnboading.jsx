@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { EvervaultCard } from "@/components/ui/evervault-card";
+import { useState, useEffect } from "react";
+import { EvervaultCard, CardPattern, generateRandomString } from "@/components/ui/evervault-card";
+import { useMotionValue, useMotionTemplate, motion } from "motion/react";
 import ChatDialog from "./ChatDialog";
 import {
   Code,
@@ -11,14 +12,30 @@ import {
   Heart,
   Headphones,
   ClipboardList,
+  Search,
+  Share2,
+  Activity,
   Mic,
 } from "lucide-react";
 
+// ... features array remains the same ...
 const features = [
   {
-    title: "Development & Tech",
-    description: "Websites, apps and custom software development.",
-    price: "Starting at ₹20,000",
+    title: "Website Development",
+    description: "Custom business websites, landing pages and e-commerce stores.",
+    price: "Starting at ₹15,000",
+    icon: Code,
+  },
+  {
+    title: "App Development",
+    description: "Native and cross-platform mobile applications for iOS and Android.",
+    price: "Starting at ₹25,000",
+    icon: Code,
+  },
+  {
+    title: "Software Development",
+    description: "Custom software solutions, SaaS platforms and enterprise tools.",
+    price: "Starting at ₹30,000",
     icon: Code,
   },
   {
@@ -34,10 +51,22 @@ const features = [
     icon: Video,
   },
   {
-    title: "Digital Marketing",
-    description: "SEO, ads, social and performance marketing.",
-    price: "Starting at ₹10,000",
-    icon: Megaphone,
+    title: "SEO Optimization",
+    description: "Rank higher on Google with on-page, off-page and technical SEO.",
+    price: "Starting at ₹8,000",
+    icon: Search,
+  },
+  {
+    title: "Social Media Management",
+    description: "Content creation, scheduling and community management.",
+    price: "Starting at ₹12,000",
+    icon: Share2,
+  },
+  {
+    title: "Performance Marketing",
+    description: "Paid ad campaigns (PPC) on Google, Facebook, and Instagram.",
+    price: "Starting at ₹15,000",
+    icon: Activity,
   },
   {
     title: "Creative & Design",
@@ -51,24 +80,14 @@ const features = [
     price: "Starting at ₹2,000",
     icon: FileText,
   },
-  {
-    title: "Lifestyle & Personal",
-    description: "Fitness, styling, wellness and personal coaching.",
-    price: "Starting at ₹2,500",
-    icon: Heart,
-  },
+
   {
     title: "Customer Support",
     description: "Chat, email or voice support setup and staffing.",
     price: "Starting at ₹8,000",
     icon: Headphones,
   },
-  {
-    title: "Administrative Services",
-    description: "Data entry, scheduling, research and VA support.",
-    price: "Starting at ₹3,000",
-    icon: ClipboardList,
-  },
+
   {
     title: "Audio Services",
     description: "Voiceover, podcast editing, music & audio production.",
@@ -77,9 +96,55 @@ const features = [
   },
 ];
 
+// Custom Matrix Pattern component for background - always visible (masked by mouse) without hover dependency
+function MatrixPattern({ mouseX, mouseY, randomString }) {
+  const maskImage = useMotionTemplate`radial-gradient(150px at ${mouseX}px ${mouseY}px, white, transparent)`; // Reduced radius for subtler effect
+  const style = { maskImage, WebkitMaskImage: maskImage };
+
+  return (
+    <div className="pointer-events-none">
+      <div className="absolute inset-0 [mask-image:linear-gradient(white,transparent)] opacity-20" /> {/* Base subtle pattern */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl" // Always visible, controlled by mask
+        style={style}
+      />
+      <motion.div
+        className="absolute inset-0 opacity-100 mix-blend-overlay transition duration-500" // Always visible, controlled by mask
+        style={style}
+      >
+        <p className="absolute inset-x-0 h-full break-words whitespace-pre-wrap text-xs font-mono font-bold text-white transition duration-500">
+          {randomString}
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+
 const ClientOnboading = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  // Matrix effect state
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const [randomString, setRandomString] = useState("");
+
+  useEffect(() => {
+    const str = generateRandomString(20000);
+    setRandomString(str);
+
+    const handleMouseMove = (event) => {
+      mouseX.set(event.clientX);
+      mouseY.set(event.clientY);
+      
+      // Optional: Regenerate string on movement for dynamic effect
+       const str = generateRandomString(20000);
+       setRandomString(str);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   const handleCardClick = (feature) => {
     setSelectedService(feature);
@@ -87,8 +152,15 @@ const ClientOnboading = () => {
   };
 
   return (
-    <section className="mt-10 space-y-6 text-foreground transition-colors">
-      <div className="text-center space-y-2">
+    <section 
+      className="mt-10 space-y-6 text-foreground transition-colors relative" 
+    >
+      {/* Matrix Background Layer - Fixed to cover whole screen */}
+      <div className="fixed inset-0 z-[0] pointer-events-none overflow-hidden">
+        <MatrixPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />
+      </div>
+
+      <div className="text-center space-y-2 relative z-10">
         <p className="text-lg uppercase tracking-[0.4em] text-primary">
           Services
         </p>
@@ -97,10 +169,10 @@ const ClientOnboading = () => {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
         {features.map((feature, index) => (
           <div key={index} onClick={() => handleCardClick(feature)} className="cursor-pointer">
-            <EvervaultCard text={feature.title} className="h-72">
+            <EvervaultCard text={feature.title} className="h-72" disableEffect={true}>
               <div className="text-center space-y-3 flex flex-col items-center">
                 <div className="p-2 rounded-full bg-primary/10 text-primary">
                   <feature.icon className="w-6 h-6" />
