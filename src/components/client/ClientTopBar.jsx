@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Notepad } from "@/components/ui/notepad"
 
 const formatTimeAgo = (dateString) => {
   const date = new Date(dateString)
@@ -117,6 +118,9 @@ export const ClientTopBar = ({ label, interactive = true }) => {
       </div>
       
       <div className="ml-auto flex items-center gap-2">
+        {/* Notepad Feature */}
+        <Notepad />
+        
         {/* Notification Bell with Badge */}
         <Popover>
           <PopoverTrigger asChild>
