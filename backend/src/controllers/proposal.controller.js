@@ -51,28 +51,51 @@ export const createProposal = asyncHandler(async (req, res) => {
     }
   });
 
-  // Notify project owner ONLY if the proposal was created by a freelancer (not the owner)
-  // This prevents the client from getting a notification for their own proposal
-  console.log(`[Proposal] Checking notification - ownerId: ${project.ownerId}, userId: ${userId}, actingFreelancerId: ${actingFreelancerId}`);
+  // Determine who should receive the notification:
+  // - If CLIENT (project owner) is sending the proposal TO a freelancer -> notify the FREELANCER
+  // - If FREELANCER is sending the proposal TO a client's project -> notify the CLIENT (owner)
+  // The sender should NEVER receive the notification
   
-  if (project.ownerId !== actingFreelancerId) {
-    console.log(`[Proposal] Sending notification to project owner: ${project.ownerId}`);
+  const isClientSendingToFreelancer = isOwner && freelancerId && freelancerId !== userId;
+  const isFreelancerSendingToClient = !isOwner && actingFreelancerId === userId;
+  
+  console.log(`[Proposal] Notification check - isOwner: ${isOwner}, userId: ${userId}, freelancerId: ${freelancerId}, actingFreelancerId: ${actingFreelancerId}`);
+  console.log(`[Proposal] isClientSendingToFreelancer: ${isClientSendingToFreelancer}, isFreelancerSendingToClient: ${isFreelancerSendingToClient}`);
+  
+  if (isClientSendingToFreelancer) {
+    // Client is sending a proposal TO a freelancer - notify the freelancer
+    console.log(`[Proposal] Client sending to freelancer - notifying freelancer: ${freelancerId}`);
     try {
-      const sent = sendNotificationToUser(project.ownerId, {
+      sendNotificationToUser(freelancerId, {
+        type: "proposal",
+        title: "New Proposal Received",
+        message: `You received a new proposal for project "${project.title}" from a client.`,
+        data: { 
+          projectId: projectId,
+          proposalId: proposal.id 
+        }
+      });
+    } catch (error) {
+      console.error("Failed to send proposal notification to freelancer:", error);
+    }
+  } else if (isFreelancerSendingToClient) {
+    // Freelancer is sending a proposal TO a client's project - notify the client (owner)
+    console.log(`[Proposal] Freelancer sending to client - notifying owner: ${project.ownerId}`);
+    try {
+      sendNotificationToUser(project.ownerId, {
         type: "proposal",
         title: "New Proposal Received",
         message: `You received a new proposal for project "${project.title}" from a freelancer.`,
         data: { 
-          projectId: projectId,  // Use projectId from req.body, not project.id which is not selected
+          projectId: projectId,
           proposalId: proposal.id 
         }
       });
-      console.log(`[Proposal] Notification sent result: ${sent}`);
     } catch (error) {
-      console.error("Failed to send proposal notification:", error);
+      console.error("Failed to send proposal notification to owner:", error);
     }
   } else {
-    console.log(`[Proposal] Skipping notification - freelancer is the project owner`);
+    console.log(`[Proposal] Skipping notification - sender is recipient or unknown scenario`);
   }
 
   res.status(201).json({ data: proposal });
