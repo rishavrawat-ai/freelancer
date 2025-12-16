@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationContext";
 import {
   Dialog,
   DialogContent,
@@ -396,6 +397,7 @@ const mapLocalProposal = (proposal = {}) => ({
 
 const FreelancerProposalContent = ({ filter = "all" }) => {
   const { authFetch, isAuthenticated } = useAuth();
+  const { notifications } = useNotifications();
   const [proposals, setProposals] = useState([]);
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
@@ -443,6 +445,33 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
 
     fetchProposals();
   }, [authFetch, isAuthenticated]);
+
+  // Listen for "Project Awarded to Another" notifications in real-time
+  useEffect(() => {
+    if (!notifications.length) return;
+    
+    // Find any recent "awarded" notifications
+    const awardedNotifs = notifications.filter(
+      n => n.type === "proposal" && 
+           (n.title?.includes("Awarded to Another") || n.data?.status === "REJECTED")
+    );
+    
+    if (awardedNotifs.length === 0) return;
+    
+    // Update proposals that match the projectId in the notification
+    awardedNotifs.forEach(notif => {
+      const projectId = notif.data?.projectId;
+      if (!projectId) return;
+      
+      setProposals(prev => 
+        prev.map(p => 
+          p.project?.id === projectId || p.projectId === projectId 
+            ? { ...p, status: "awarded" } 
+            : p
+        )
+      );
+    });
+  }, [notifications]);
 
   const grouped = useMemo(() => {
     return proposals.reduce(

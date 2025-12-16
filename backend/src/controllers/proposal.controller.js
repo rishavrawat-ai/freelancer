@@ -53,9 +53,12 @@ export const createProposal = asyncHandler(async (req, res) => {
 
   // Notify project owner ONLY if the proposal was created by a freelancer (not the owner)
   // This prevents the client from getting a notification for their own proposal
-  if (project.ownerId !== userId) {
+  console.log(`[Proposal] Checking notification - ownerId: ${project.ownerId}, userId: ${userId}, actingFreelancerId: ${actingFreelancerId}`);
+  
+  if (project.ownerId !== actingFreelancerId) {
+    console.log(`[Proposal] Sending notification to project owner: ${project.ownerId}`);
     try {
-      sendNotificationToUser(project.ownerId, {
+      const sent = sendNotificationToUser(project.ownerId, {
         type: "proposal",
         title: "New Proposal Received",
         message: `You received a new proposal for project "${project.title}" from a freelancer.`,
@@ -64,9 +67,12 @@ export const createProposal = asyncHandler(async (req, res) => {
           proposalId: proposal.id 
         }
       });
+      console.log(`[Proposal] Notification sent result: ${sent}`);
     } catch (error) {
       console.error("Failed to send proposal notification:", error);
     }
+  } else {
+    console.log(`[Proposal] Skipping notification - freelancer is the project owner`);
   }
 
   res.status(201).json({ data: proposal });

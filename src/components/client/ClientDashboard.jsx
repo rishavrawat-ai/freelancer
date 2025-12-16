@@ -10,7 +10,7 @@ import {
   Banknote,
   Save,
   Send,
-
+  FileText,
   Star,
   MapPin,
   CheckCircle,
@@ -108,84 +108,42 @@ const clearSavedProposalFromStorage = () => {
 
 const FreelancerCard = ({ freelancer, onSend, canSend, onViewProfile }) => {
   return (
-    <Card className="group w-full hover:shadow-xl hover:border-primary/20 flex flex-col h-full overflow-hidden bg-card transition-all duration-300">
-      {/* Header Section */}
-      <div className="p-6 pb-2">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex gap-4">
-            <div className="relative">
-              <div className="relative flex h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-background shadow-sm ring-1 ring-border">
-                {freelancer.avatar ? (
-                  <img
-                    className="aspect-square h-full w-full object-cover transition-transform duration-500 hover:scale-110"
-                    src={freelancer.avatar}
-                    alt={freelancer.name}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground font-bold text-lg">
-                    {freelancer.name?.charAt(0) || "F"}
-                  </div>
-                )}
+    <Card className="group w-full hover:shadow-xl hover:border-primary/20 flex flex-col overflow-hidden bg-card transition-all duration-300">
+      {/* Header Section - Name and Avatar */}
+      <div className="p-6 pb-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-background shadow-sm ring-1 ring-border">
+            {freelancer.avatar ? (
+              <img
+                className="aspect-square h-full w-full object-cover"
+                src={freelancer.avatar}
+                alt={freelancer.name}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-primary/10 text-primary font-bold text-lg">
+                {freelancer.name?.charAt(0) || "F"}
               </div>
-              {/* Simulated verified badge for demo purposes or if data exists */}
-              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-[2px] shadow-sm ring-1 ring-border">
-              </div>
-            </div>
-            <div className="pt-1">
-              <h3 className="font-bold text-xl leading-none tracking-tight text-foreground flex items-center gap-2 group-hover:text-primary transition-colors">
-                {freelancer.name}
-              </h3>
-              <p className="text-sm font-medium text-muted-foreground mt-1.5 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-muted-foreground/70" />
-                {freelancer.specialty}
-              </p>
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground/70 font-medium">
-                <MapPin className="w-3 h-3" />
-                {freelancer.availability}
-              </div>
-            </div>
+            )}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-            <Heart className="w-5 h-5" />
-          </Button>
+          <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">
+            {freelancer.name}
+          </h3>
         </div>
         
-        {/* Stats Row */}
-        <div className="flex items-center justify-center text-sm mt-5 bg-muted/50 p-3 rounded-lg border border-border/50 group-hover:bg-primary/5 group-hover:border-primary/10 transition-colors">
-          <div className="flex flex-col items-center px-2">
-            <span className="font-bold text-foreground flex items-center gap-1.5 text-base">
-              {freelancer.rating} <Star className="w-3.5 h-3.5 fill-primary text-primary" />
-            </span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">Rating</span>
+        {/* Skills */}
+        {(freelancer.skills || []).length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {(freelancer.skills || []).slice(0, 4).map((skill, index) => (
+              <Badge key={index} variant="outline" className="bg-muted/50 text-xs">
+                {skill}
+              </Badge>
+            ))}
           </div>
-          <div className="w-px h-8 bg-border/60 mx-4"></div>
-          <div className="flex flex-col items-center px-2">
-             <span className="font-bold text-foreground flex items-center gap-1.5 text-base">
-              {freelancer.projects}
-            </span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">Projects</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      <CardContent className="flex-grow pt-3 px-5">
-        {/* Styled "Outline Box" */}
-        <div className="relative overflow-hidden rounded-xl bg-muted/30 border border-border/50 p-5 text-foreground transition-all duration-300">
-            
-            {/* About Me header and bio removed as per request */}
-          
-            <div className="flex flex-wrap gap-2 relative z-10">
-                {(freelancer.skills || []).slice(0, 3).map((skill, index) => (
-                <Badge key={index} variant="outline" className="bg-background/50 hover:bg-background">
-                    {skill}
-                </Badge>
-                ))}
-            </div>
-        </div>
-      </CardContent>
-
+      {/* Action Buttons */}
       <div className="px-6 pb-6 mt-auto">
-         <div className="h-px w-full bg-border/50 my-4"></div>
          <div className="grid grid-cols-2 gap-3">
             <Button 
               variant="outline" 
@@ -208,29 +166,14 @@ const FreelancerCard = ({ freelancer, onSend, canSend, onViewProfile }) => {
 };
 
 const FreelancerCardSkeleton = () => (
-  <Card className="w-full h-full flex flex-col overflow-hidden bg-card">
-    <div className="p-6 pb-2">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex gap-4 w-full">
-          <Skeleton className="h-16 w-16 rounded-full shrink-0" />
-          <div className="pt-1 flex-1 space-y-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-3 w-1/3" />
-          </div>
-        </div>
-      </div>
-      <div className="mt-5 p-3 border border-border/50 rounded-lg flex justify-center gap-4 bg-muted/50">
-         <Skeleton className="h-8 w-16" />
-         <div className="w-px h-8 bg-border/60"></div>
-         <Skeleton className="h-8 w-16" />
+  <Card className="w-full flex flex-col overflow-hidden bg-card">
+    <div className="p-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-14 w-14 rounded-full shrink-0" />
+        <Skeleton className="h-6 w-32" />
       </div>
     </div>
-    <CardContent className="flex-grow pt-3 px-5">
-        <Skeleton className="h-32 w-full rounded-xl" />
-    </CardContent>
     <div className="px-6 pb-6 mt-auto">
-        <div className="h-px w-full bg-border/50 my-4"></div>
         <div className="grid grid-cols-2 gap-3">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
@@ -354,8 +297,47 @@ const FreelancerProfileDialog = ({ freelancer, isOpen, onClose }) => {
               About
             </h3>
             <p className="text-foreground/90 leading-relaxed text-[15px]">
-              {freelancer.bio || `Experienced ${freelancer.specialty || "freelancer"} professional with a passion for delivering high-quality work. Ready to help bring your project to life with expertise and dedication.`}
+              {(() => {
+                // Handle bio that might be JSON string or object
+                let bioText = freelancer.bio;
+                if (typeof bioText === 'string' && bioText.startsWith('{')) {
+                  try {
+                    const parsed = JSON.parse(bioText);
+                    bioText = parsed.bio || parsed.about || null;
+                  } catch { /* keep original */ }
+                }
+                if (typeof bioText === 'object' && bioText !== null) {
+                  bioText = bioText.bio || bioText.about || null;
+                }
+                return bioText || `Experienced ${freelancer.specialty || "freelancer"} professional with a passion for delivering high-quality work. Ready to help bring your project to life with expertise and dedication.`;
+              })()}
             </p>
+          </div>
+
+          {/* Projects Section - Image Gallery */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Projects</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {/* Sample project images - in real app, these would come from freelancer.projects */}
+              {[1, 2, 3].map((i) => (
+                <div 
+                  key={i} 
+                  className="aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted/30 border border-border/40 hover:border-primary/40 transition-all duration-200 cursor-pointer group"
+                >
+                  {freelancer.projectImages?.[i - 1] ? (
+                    <img 
+                      src={freelancer.projectImages[i - 1]} 
+                      alt={`Project ${i}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
+                      <FileText className="w-8 h-8" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Skills Section */}
@@ -402,24 +384,6 @@ const FreelancerProfileDialog = ({ freelancer, isOpen, onClose }) => {
               </div>
             )}
           </div>
-
-          {/* Contact Section */}
-          {freelancer.email && (
-            <div className="p-4 rounded-xl bg-muted/20 border border-border/40 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Contact Email</h3>
-                  <p className="text-foreground font-medium">{freelancer.email}</p>
-                </div>
-              </div>
-              <Button size="sm" variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10">
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Footer Actions */}
