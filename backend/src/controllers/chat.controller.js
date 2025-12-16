@@ -1364,9 +1364,17 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     let assistantMessage = null;
 
     if (!skipAssistant) {
-      const dbHistory = Array.isArray(clientHistory)
+      const serverHistory = listMessages(conversation.id, 100).map(toHistoryMessage);
+      const fallbackHistory = Array.isArray(clientHistory)
         ? clientHistory.map(toHistoryMessage)
-        : listMessages(conversation.id, 100).map(toHistoryMessage);
+        : [];
+
+      // Prefer server-side history when it has context; fall back to client-provided
+      // history only when the server history is basically empty (e.g., after a restart).
+      const dbHistory =
+        fallbackHistory.length > 0 && serverHistory.length <= 1
+          ? fallbackHistory
+          : serverHistory;
       const contextHint = summarizeContext(dbHistory);
 
       try {

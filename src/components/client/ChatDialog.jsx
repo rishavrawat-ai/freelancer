@@ -67,7 +67,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
   // Start or resume a conversation, persisting the id for the session.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || conversationId) return;
 
     let cancelled = false;
 
@@ -113,7 +113,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, serviceKey]);
+  }, [conversationId, isLocalhost, isOpen, serviceKey]);
 
   // Load local chat history for this service if present.
   useEffect(() => {
@@ -300,8 +300,32 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const msgContent = contentOverride || input;
     if (!msgContent.trim()) return;
 
+    let activeConversationId = conversationId;
+    if (!activeConversationId) {
+      try {
+        const storageKey = `markify:chatConversationId:${serviceKey}`;
+        const conversation = await apiClient.createChatConversation({
+          service: serviceKey,
+          mode: "assistant",
+          ephemeral: isLocalhost,
+        });
+
+        if (conversation?.id) {
+          activeConversationId = conversation.id;
+          setConversationId(conversation.id);
+          if (isLocalhost && typeof window !== "undefined") {
+            window.localStorage.setItem(storageKey, conversation.id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to initialize chat conversation:", error);
+      }
+    }
+
+    if (!activeConversationId) return;
+
     const payload = {
-      conversationId,
+      conversationId: activeConversationId,
       content: msgContent,
       service: serviceKey,
       senderId: user?.id || null,
@@ -309,9 +333,13 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       skipAssistant: false,
       mode: "assistant",
       ephemeral: isLocalhost,
-      history: messages.slice(-10).map((m) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content
+      history: messages.slice(-50).map((m) => ({
+        role:
+          (m?.role || "").toLowerCase() === "assistant" ||
+            (m?.senderName || "").toLowerCase() === "assistant"
+            ? "assistant"
+            : "user",
+        content: m?.content || ""
       }))
     };
 
@@ -345,6 +373,17 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
           response?.data?.message || response?.message || payload;
         const assistant =
           response?.data?.assistant || response?.assistant || null;
+
+        const responseConversationId =
+          assistant?.conversationId || userMsg?.conversationId || null;
+        if (responseConversationId && responseConversationId !== activeConversationId) {
+          setConversationId(responseConversationId);
+          if (isLocalhost && typeof window !== "undefined") {
+            const storageKey = `markify:chatConversationId:${serviceKey}`;
+            window.localStorage.setItem(storageKey, responseConversationId);
+          }
+        }
+
         const finish = () => {
           setMessages((prev) => {
             const withoutPending = prev.filter(

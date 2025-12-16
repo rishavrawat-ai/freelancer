@@ -41,17 +41,14 @@ export const getConversation = (id) => {
 };
 
 export const ensureConversation = ({ id, service, createdById }) => {
-  let conversation = null;
   if (id) {
-    conversation = getConversation(id);
+    const existing = getConversation(id);
+    if (existing) return existing;
   }
-  if (!conversation && service) {
-    conversation = findConversationByService(service);
-  }
-  if (!conversation) {
-    conversation = createConversation({ service, createdById });
-  }
-  return conversation;
+
+  // Never reuse a conversation just because the service matches; it can cause
+  // context leakage and repeated questions if the client has a stale/missing id.
+  return createConversation({ service, createdById });
 };
 
 export const listMessages = (conversationId, limit = 100) => {

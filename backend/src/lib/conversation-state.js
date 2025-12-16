@@ -73,7 +73,8 @@ const getSuggestionAliases = (value = "") => {
             .replace(/\.?\bjs\b/gi, "")
             .replace(/\s+/g, " ")
             .trim();
-        if (withoutJs && withoutJs !== alias) {
+        // Avoid creating overly-generic aliases like "Next" from "Next.js".
+        if (withoutJs && withoutJs !== alias && withoutJs.length >= 5) {
             aliases.add(withoutJs);
         }
     }
@@ -90,6 +91,15 @@ const matchSuggestionsInMessage = (question, rawMessage) => {
 
     const messageLower = message.toLowerCase();
     const messageCanonical = canonicalize(messageLower);
+    const tokens = (messageLower.match(/[a-z0-9]+/gi) || []).map((t) =>
+        canonicalize(t.toLowerCase())
+    );
+    const tokenSet = new Set(tokens.filter(Boolean));
+    // Add common bigrams to support inputs like "next js" -> "nextjs".
+    for (let i = 0; i < tokens.length - 1; i++) {
+        const bigram = `${tokens[i]}${tokens[i + 1]}`;
+        if (bigram) tokenSet.add(bigram);
+    }
     const matches = [];
 
     for (const option of question.suggestions) {
@@ -103,9 +113,12 @@ const matchSuggestionsInMessage = (question, rawMessage) => {
             const aliasCanonical = canonicalize(aliasLower);
             if (!aliasCanonical) continue;
 
-            if (aliasCanonical.length <= 3 && !aliasLower.includes(" ")) {
-                isMatch = new RegExp(`\\b${escapeRegExp(aliasLower)}\\b`, "i").test(messageLower);
+            if (!aliasLower.includes(" ")) {
+                // For single tokens, require whole-token matching to avoid false positives
+                // like "help" matching "helps" or "search" matching "research".
+                isMatch = tokenSet.has(aliasCanonical);
             } else {
+                // For multi-word phrases, allow canonical containment.
                 isMatch = messageCanonical.includes(aliasCanonical) || messageLower.includes(aliasLower);
             }
 
@@ -165,8 +178,8 @@ const extractOrganizationName = (value = "") => {
 
     const patterns = [
         /\bfor\s+(?:my\s+)?(?:company|business|brand|project)\s+([a-z0-9][a-z0-9&._' -]{1,80})/i,
-        /\bmy\s+(?:company|business|brand|project)\s*(?:name\s*)?(?:is|:)\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
-        /\b(?:company|business|brand|project)\s*(?:name\s*)?(?:is|:)\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
+        /\bmy\s+(?:company|business|brand|project)\s*(?:name\s*)?(?:is|:|called|named)\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
+        /\b(?:company|business|brand|project)\s*(?:name\s*)?(?:is|:|called|named)\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
     ];
 
     for (const pattern of patterns) {
@@ -174,6 +187,20 @@ const extractOrganizationName = (value = "") => {
         if (!match) continue;
         const candidate = trimEntity(match[1]);
         if (candidate && candidate.length <= 60) return candidate;
+    }
+
+    // Common phrasing: "my project called Markify", "it's called Markify"
+    if (
+        /\b(?:called|named)\b/i.test(text) &&
+        /\b(company|business|brand|project|app|website|platform|product|tool|manager|system|dashboard|store|marketplace|saas)\b/i.test(
+            text
+        )
+    ) {
+        const match = text.match(/\b(?:called|named)\s+([a-z0-9][a-z0-9&._' -]{1,80})/i);
+        if (match) {
+            const candidate = trimEntity(match[1]);
+            if (candidate && candidate.length <= 60) return candidate;
+        }
     }
 
     return null;
@@ -397,22 +424,6 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
         if (org) updates[orgKey] = org;
     }
 
-    if (keys.has("website_type") && !collectedData.website_type) {
-        const question = questions.find((q) => q.key === "website_type");
-        const matches = matchSuggestionsInMessage(question, text);
-        if (matches.length) {
-            updates.website_type = matches.join(", ");
-        } else if (/\blanding\s*page\b/i.test(text)) {
-            updates.website_type = "Landing Page";
-        } else if (/\be-?commerce\b|\becommerce\b|\bonline\s*store\b/i.test(text)) {
-            updates.website_type = "E-commerce";
-        } else if (/\bportfolio\b/i.test(text)) {
-            updates.website_type = "Portfolio";
-        } else if (/\bweb\s*app\b|\bsaas\b|\bdashboard\b/i.test(text)) {
-            updates.website_type = "Web App";
-        }
-    }
-
     const descriptionKey =
         keys.has("description")
             ? "description"
@@ -423,36 +434,18 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
                     : null;
 
     if (descriptionKey && !collectedData[descriptionKey] && !isUserQuestion(text)) {
+        const hasIntentVerb = /(need|looking|build|create|develop|want|require|make)\b/i.test(text);
+        const hasIsA = /\b(?:it\s+is|it's|it’s|this\s+is)\b/i.test(text);
+        const hasProjectNoun =
+            /(website|web\s*app|app|platform|tool|manager|system|dashboard|store|marketplace|landing\s*page|e-?commerce|portfolio|saas|product)\b/i.test(
+                text
+            );
+
         const looksDescriptive =
-            text.length >= 25 &&
-            /(need|looking|build|create|develop|want|require|make)\b/i.test(text);
+            text.length >= 25 && (hasIntentVerb || (hasIsA && hasProjectNoun));
         if (looksDescriptive) {
             updates[descriptionKey] = text;
         }
-    }
-
-    // Extract suggestion-based answers from any message (helps with out-of-sequence replies).
-    for (const question of questions) {
-        const key = question?.key;
-        if (!key) continue;
-        if (key === "website_type" || key === "budget" || key === "timeline") continue;
-
-        const existing = collectedData[key];
-        const alreadyAnswered =
-            existing !== undefined &&
-            existing !== null &&
-            normalizeText(existing) !== "";
-        if (alreadyAnswered) continue;
-        if (updates[key] !== undefined) continue;
-
-        if (!Array.isArray(question.suggestions) || question.suggestions.length === 0) {
-            continue;
-        }
-
-        const matches = matchSuggestionsInMessage(question, text);
-        if (!matches.length) continue;
-
-        updates[key] = question.multiSelect ? matches.join(", ") : matches[0];
     }
 
     return updates;

@@ -175,15 +175,22 @@ export const fetchChatMessages = (conversationId) => {
   });
 };
 
-export const sendChatMessage = ({
-  conversationId,
-  content,
-  service,
-  senderId,
-  senderRole,
-  senderName,
-  skipAssistant = true
-}) => {
+export const sendChatMessage = (payload = {}) => {
+  const {
+    conversationId,
+    content,
+    service,
+    senderId,
+    senderRole,
+    senderName,
+    skipAssistant = true,
+    ...rest
+  } = payload || {};
+
+  if (!conversationId) {
+    return Promise.reject(new Error("conversationId is required"));
+  }
+
   return request(`/chat/conversations/${conversationId}/messages`, {
     method: "POST",
     body: JSON.stringify({
@@ -192,7 +199,8 @@ export const sendChatMessage = ({
       senderId,
       senderRole,
       senderName,
-      skipAssistant
+      skipAssistant,
+      ...rest
     })
   });
 };
