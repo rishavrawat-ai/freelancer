@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote } from "lucide-react";
+import { ProjectNotepad } from "@/components/ui/notepad";
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
@@ -795,11 +796,14 @@ const ProjectDashboard = () => {
         
       <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
         <div className="w-full max-w-full mx-auto space-y-6">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
-            <p className="text-sm text-muted-foreground">
-              {isLoading ? "Loading project details..." : "Track project progress and manage tasks efficiently"}
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
+              <p className="text-sm text-muted-foreground">
+                {isLoading ? "Loading project details..." : "Track project progress and manage tasks efficiently"}
+              </p>
+            </div>
+            <ProjectNotepad projectId={project?.id || projectId} />
           </div>
           {!isLoading && !project && (
             <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">

@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote } from "lucide-react";
+import { ProjectNotepad } from "@/components/ui/notepad";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
@@ -615,15 +616,18 @@ const FreelancerProjectDetailContent = () => {
       </div>
       <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
         <div className="w-full max-w-full mx-auto space-y-6">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
-            <p className="text-sm text-muted-foreground">
-              {isLoading
-                ? "Loading project details..."
-                : isFallback
-                ? "Previewing layout with sample data."
-                : "Track project progress and deliverables in one place."}
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
+              <p className="text-sm text-muted-foreground">
+                {isLoading
+                  ? "Loading project details..."
+                  : isFallback
+                  ? "Previewing layout with sample data."
+                  : "Track project progress and deliverables in one place."}
+              </p>
+            </div>
+            <ProjectNotepad projectId={project?.id || projectId} />
           </div>
 
           {!isLoading && isFallback && (
