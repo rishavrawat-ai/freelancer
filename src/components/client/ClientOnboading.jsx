@@ -16,6 +16,13 @@ import {
   Share2,
   Activity,
   Mic,
+  Database,
+  Workflow,
+  MessageCircle,
+  Users,
+  Globe,
+  Smartphone,
+  Terminal,
 } from "lucide-react";
 
 // ... features array remains the same ...
@@ -24,19 +31,19 @@ const features = [
     title: "Website Development",
     description: "Custom business websites, landing pages and e-commerce stores.",
     price: "Starting at ₹15,000",
-    icon: Code,
+    icon: Globe,
   },
   {
     title: "App Development",
     description: "Native and cross-platform mobile applications for iOS and Android.",
     price: "Starting at ₹25,000",
-    icon: Code,
+    icon: Smartphone,
   },
   {
     title: "Software Development",
     description: "Custom software solutions, SaaS platforms and enterprise tools.",
     price: "Starting at ₹30,000",
-    icon: Code,
+    icon: Terminal,
   },
   {
     title: "Lead Generation",
@@ -89,10 +96,28 @@ const features = [
   },
 
   {
-    title: "Audio Services",
-    description: "Voiceover, podcast editing, music & audio production.",
-    price: "Starting at ₹2,000",
-    icon: Mic,
+    title: "Influencer/UGC Marketing",
+    description: "Collaborate with creators for authentic brand promotion.",
+    price: "Starting at ₹10,000",
+    icon: Users,
+  },
+  {
+    title: "CRM & ERP Solutions",
+    description: "Custom CRM/ERP systems to streamline business operations.",
+    price: "Starting at ₹40,000",
+    icon: Database,
+  },
+  {
+    title: "AI Automation",
+    description: "Automate repetitive tasks with custom AI workflows and agents.",
+    price: "Starting at ₹20,000",
+    icon: Workflow,
+  },
+  {
+    title: "WhatsApp Chat Bot",
+    description: "Automated customer support and sales bots for WhatsApp.",
+    price: "Starting at ₹10,000",
+    icon: MessageCircle,
   },
 ];
 

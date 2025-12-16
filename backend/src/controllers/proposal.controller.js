@@ -238,32 +238,46 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
     throw new AppError("You do not have permission to update this proposal", 403);
   }
 
-  // Ensure only one proposal can be accepted per project
-  if (normalizedStatus === "ACCEPTED") {
-    const existingAccepted = await prisma.proposal.findFirst({
-      where: {
-        projectId: proposal.projectId,
-        status: "ACCEPTED",
-        id: { not: proposalId }
-      }
-    });
-
-    if (existingAccepted) {
-      throw new AppError(
-        "This project has already been awarded to another freelancer. You cannot accept this proposal.",
-        409
-      );
-    }
-  }
-
   try {
-    const updated = await prisma.proposal.update({
-      where: { id: proposalId },
-      data: { status: normalizedStatus },
-      include: {
-        project: { include: { owner: true } },
-        freelancer: true
+    // Use a transaction to atomically check and update to prevent race conditions
+    const updated = await prisma.$transaction(async (tx) => {
+      // Check AGAIN inside transaction to prevent race conditions
+      if (normalizedStatus === "ACCEPTED") {
+        const existingAccepted = await tx.proposal.findFirst({
+          where: {
+            projectId: proposal.projectId,
+            status: "ACCEPTED",
+            id: { not: proposalId }
+          }
+        });
+
+        if (existingAccepted) {
+          throw new AppError(
+            "This project has already been awarded to another freelancer. You cannot accept this proposal.",
+            409
+          );
+        }
+        
+        // Auto-reject all other pending proposals for the same project
+        await tx.proposal.updateMany({
+          where: {
+            projectId: proposal.projectId,
+            id: { not: proposalId },
+            status: "PENDING"
+          },
+          data: { status: "REJECTED" }
+        });
       }
+      
+      // Now do the update atomically
+      return await tx.proposal.update({
+        where: { id: proposalId },
+        data: { status: normalizedStatus },
+        include: {
+          project: { include: { owner: true } },
+          freelancer: true
+        }
+      });
     });
 
     // Notify Freelancer if Client changes status
@@ -308,9 +322,13 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       }
 
       try {
+        const projectId = updated.projectId;
         const ownerId = updated.project.ownerId;
         const freelancerId = updated.freelancerId;
-        const serviceKey = `CHAT:${ownerId}:${freelancerId}`;
+        const projectTitle = updated.project.title || "Project Chat";
+        
+        // Use new project-based key format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
+        const serviceKey = `CHAT:${projectId}:${ownerId}:${freelancerId}`;
 
         // 2. Find or create conversation
         let conversation = await prisma.chatConversation.findFirst({
@@ -321,18 +339,20 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           conversation = await prisma.chatConversation.create({
             data: {
               service: serviceKey,
+              projectTitle: projectTitle,
               createdById: freelancerId
             }
           });
         }
 
         // 3. Create the message
-        const messageContent = `I have accepted your proposal for "${updated.project.title}". I'm ready to start!`;
+        const freelancerName = updated.freelancer.fullName || updated.freelancer.name || updated.freelancer.email || "Freelancer";
+        const messageContent = `I have accepted your proposal for "${projectTitle}". I'm ready to start!`;
         const userMessage = await prisma.chatMessage.create({
           data: {
             conversationId: conversation.id,
             senderId: freelancerId,
-            senderName: updated.freelancer.fullName || updated.freelancer.name || updated.freelancer.email || "Freelancer",
+            senderName: freelancerName,
             senderRole: "FREELANCER",
             role: "user",
             content: messageContent
@@ -345,11 +365,22 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           data: { updatedAt: new Date() }
         });
 
-        // 5. Emit detailed socket notification (same as socket.js/chat.controller.js)
-        // Since we are not in a socket handler here, assuming socket is not available to emit chat:message directly
-        // But we can trigger a notification if we import sendNotificationToUser - which we don't have here yet.
-        // For now, rely on polling or the dashboard update.
-        // Ideally we would send a notification here too.
+        // 5. Send notification to client about the new message
+        try {
+          sendNotificationToUser(ownerId, {
+            type: "chat",
+            title: "New Message",
+            message: `${freelancerName}: ${messageContent}`,
+            data: { 
+              conversationId: conversation.id,
+              projectId: projectId,
+              service: serviceKey,
+              senderId: freelancerId
+            }
+          });
+        } catch (notifyErr) {
+          console.error("Failed to notify client about auto-message:", notifyErr);
+        }
         
       } catch (chatError) {
         console.error("Failed to send automated acceptance message:", chatError);

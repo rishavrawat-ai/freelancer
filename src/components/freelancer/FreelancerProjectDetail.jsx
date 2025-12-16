@@ -208,11 +208,11 @@ const FreelancerProjectDetailContent = () => {
   useEffect(() => {
     if (!project || !authFetch || !user?.id) return;
     
-    // Key Logic: CHAT:OWNER_ID:FREELANCER_ID (User is Freelancer)
+    // Key Logic: CHAT:PROJECT_ID:OWNER_ID:FREELANCER_ID (User is Freelancer)
     // Fallback to project:ID only if owner unknown, but for sync needs CHAT:...
     let key = `project:${project.id}`;
     if (project.ownerId && user.id) {
-        key = `CHAT:${project.ownerId}:${user.id}`;
+        key = `CHAT:${project.id}:${project.ownerId}:${user.id}`;
     }
     
     console.log("Freelancer Chat Init - Key:", key);
@@ -226,6 +226,7 @@ const FreelancerProjectDetailContent = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             service: key,
+            projectTitle: project?.title || "Project Chat",
             forceNew: false
           })
         });
@@ -322,7 +323,7 @@ const FreelancerProjectDetailContent = () => {
     try {
       // Build the correct service key for notifications
       const serviceKey = (project?.ownerId && user?.id) 
-        ? `CHAT:${project.ownerId}:${user.id}` 
+        ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}` 
         : `project:${project?.id || projectId}`;
         
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -367,7 +368,7 @@ const FreelancerProjectDetailContent = () => {
       try {
          // Build the correct service key for notifications
          const serviceKey = (project?.ownerId && user?.id) 
-           ? `CHAT:${project.ownerId}:${user.id}` 
+           ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}` 
            : `project:${project?.id || projectId}`;
            
          await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -735,55 +736,7 @@ const FreelancerProjectDetailContent = () => {
             </div>
 
             <div className="space-y-4">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <FileText className="w-4 h-4" />
-                    Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {docs.length > 0 ? (
-                    <div className="space-y-2">
-                      {docs.map((doc, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
-                           <FileText className="w-4 h-4 text-primary" />
-                           <span className="truncate flex-1">{doc.name}</span>
-                           <span className="text-xs text-muted-foreground">{doc.size}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No documents attached yet. Upload project documentation here.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <DollarSign className="w-4 h-4" />
-                    Budget Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{totalBudget.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Spent</span>
-                    <span className="font-semibold text-emerald-600">{project?.currency || "₹"}{spentBudget.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Remaining</span>
-                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{remainingBudget.toLocaleString()}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
+              {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60">
                   <CardTitle className="text-base text-foreground">Project Chat</CardTitle>
@@ -849,6 +802,57 @@ const FreelancerProjectDetailContent = () => {
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
+              </Card>
+
+              {/* Documents - Second */}
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <FileText className="w-4 h-4" />
+                    Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {docs.length > 0 ? (
+                    <div className="space-y-2">
+                      {docs.map((doc, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
+                           <FileText className="w-4 h-4 text-primary" />
+                           <span className="truncate flex-1">{doc.name}</span>
+                           <span className="text-xs text-muted-foreground">{doc.size}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No documents attached yet. Upload project documentation here.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Budget Summary - Third */}
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <DollarSign className="w-4 h-4" />
+                    Budget Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                    <span>Total Budget</span>
+                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{totalBudget.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                    <span>Spent</span>
+                    <span className="font-semibold text-emerald-600">{project?.currency || "₹"}{spentBudget.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Remaining</span>
+                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{remainingBudget.toLocaleString()}</span>
+                  </div>
+                </CardContent>
               </Card>
             </div>
           </div>

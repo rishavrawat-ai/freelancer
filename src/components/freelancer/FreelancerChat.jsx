@@ -306,19 +306,31 @@ const FreelancerChatContent = () => {
         const uniq = [];
         const seen = new Set();
         for (const item of items) {
+          // Filter: Only show accepted proposals (active projects)
+          if (item.status !== "ACCEPTED") continue;
+
           const owner = item.project?.owner;
           if (!owner?.id) continue;
-          if (seen.has(owner.id)) continue;
-          seen.add(owner.id);
-          const sharedKey = `CHAT:${owner.id}:${user?.id || "freelancer"}`;
+          
+          const projectId = item.project?.id;
+          if (!projectId) continue;
+
+          // Create unique key PER PROJECT (not per client)
+          // Format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
+          const sharedKey = `CHAT:${projectId}:${owner.id}:${user?.id || "freelancer"}`;
+          
+          // Dedupe by project (not by client)
+          if (seen.has(sharedKey)) continue;
+          seen.add(sharedKey);
+
           uniq.push({
-            id: owner.id,
+            id: projectId, // Use projectId as the conversation id
+            clientId: owner.id,
             name: owner.fullName || owner.name || owner.email || "Client",
             avatar: owner.avatar,
             label: item.project?.title || "Client Project",
             serviceKey: sharedKey,
-            // Add timestamp for sorting - use proposal's updatedAt or createdAt
-            serviceKey: sharedKey,
+            projectTitle: item.project?.title || "Client Project",
             // Add timestamp for sorting - use backend provided lastActivity if available
             lastActivity: new Date(item.lastActivity || item.updatedAt || item.createdAt || 0).getTime(),
             unreadCount: 0
@@ -332,11 +344,11 @@ const FreelancerChatContent = () => {
           // If we have conversations, select the first one by default.
           // Otherwise, select null so we show the "empty state".
           if (finalList.length > 0) {
-            const paramClientId = searchParams.get("clientId");
+            const paramProjectId = searchParams.get("projectId");
             let target = null;
             
-            if (paramClientId) {
-                target = finalList.find(c => String(c.id) === String(paramClientId));
+            if (paramProjectId) {
+                target = finalList.find(c => String(c.id) === String(paramProjectId));
             }
             
             if (!target) {
@@ -378,7 +390,8 @@ const FreelancerChatContent = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+            service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL,
+            projectTitle: selectedConversation.projectTitle || selectedConversation.label || "Project Chat"
           }),
           skipLogoutOn401: true
         });
@@ -717,7 +730,7 @@ const FreelancerChatContent = () => {
                       <div className="flex-1 overflow-hidden">
                         <div className="flex justify-between items-center mb-1">
                           <p className={`truncate font-medium transition-colors ${nameClass}`}>
-                            {conversation.name}
+                            {conversation.label}
                           </p>
                           {conversation.unreadCount > 0 && (
                             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
@@ -726,7 +739,7 @@ const FreelancerChatContent = () => {
                           )}
                         </div>
                         <p className={`truncate text-xs transition-colors ${labelClass}`}>
-                          {conversation.label || SERVICE_LABEL}
+                          {conversation.name}
                         </p>
                       </div>
                     </button>
@@ -739,7 +752,7 @@ const FreelancerChatContent = () => {
 
         {selectedConversation ? (
           <ChatArea
-            conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
+            conversationName={selectedConversation?.label || selectedConversation?.name || SERVICE_LABEL}
             avatar={selectedConversation?.avatar}
             messages={activeMessages}
             messageInput={messageInput}

@@ -97,6 +97,13 @@ const statusConfig = {
       "bg-red-500/15 text-red-700 border-red-200 dark:text-red-400 dark:border-red-500/30",
     dotColor: "bg-red-500",
   },
+  awarded: {
+    label: "Awarded to Another",
+    icon: XCircle,
+    className:
+      "bg-gray-500/15 text-gray-700 border-gray-200 dark:text-gray-400 dark:border-gray-500/30",
+    dotColor: "bg-gray-500",
+  },
 };
 
 const normalizeProposalStatus = (status = "") => {
@@ -105,6 +112,8 @@ const normalizeProposalStatus = (status = "") => {
       return "accepted";
     case "REJECTED":
       return "rejected";
+    case "AWARDED":
+      return "awarded";
     case "RECEIVED":
     case "PENDING":
       return "received";
@@ -441,7 +450,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         acc[proposal.status] = [...(acc[proposal.status] || []), proposal];
         return acc;
       },
-      { pending: [], received: [], accepted: [], rejected: [] }
+      { pending: [], received: [], accepted: [], rejected: [], awarded: [] }
     );
   }, [proposals]);
 
@@ -496,7 +505,20 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
       }
     } catch (error) {
       console.error("Failed to persist proposal status:", error);
-      toast.error(error?.message || "Unable to update proposal status.");
+      // Check if it's a "already awarded" error (409 conflict)
+      const isAlreadyAwarded = error?.message?.toLowerCase().includes("already") || 
+                               error?.message?.toLowerCase().includes("awarded");
+      if (isAlreadyAwarded) {
+        // Update the local proposal to show "awarded to another"
+        setProposals((prev) =>
+          prev.map((proposal) =>
+            proposal.id === id ? { ...proposal, status: "awarded" } : proposal
+          )
+        );
+        toast.error("This project has already been awarded to another freelancer.");
+      } else {
+        toast.error(error?.message || "Unable to update proposal status.");
+      }
     } finally {
       setProcessingId(null);
     }
@@ -584,6 +606,18 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
             onStatusChange={handleStatusChange}
             onOpenProposal={handleOpenProposal}
             empty="Rejected items will show here."
+            isLoading={isLoading}
+            processingId={processingId}
+          />
+        )}
+        {/* Show awarded to another section if there are any */}
+        {grouped.awarded.length > 0 && (
+          <Section
+            title="Awarded to Another Freelancer"
+            items={grouped.awarded}
+            onStatusChange={handleStatusChange}
+            onOpenProposal={handleOpenProposal}
+            empty=""
             isLoading={isLoading}
             processingId={processingId}
           />

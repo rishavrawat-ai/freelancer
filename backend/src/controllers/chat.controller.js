@@ -1137,11 +1137,12 @@ export const listUserConversations = asyncHandler(async (req, res) => {
     const ownerId = proposal.project?.ownerId;
     const freelancerId = proposal.freelancerId;
 
-    // Use consistent key format: CHAT:CLIENT_ID:FREELANCER_ID
-    const serviceKey = `CHAT:${ownerId}:${freelancerId}`;
+    // Use consistent key format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
+    const serviceKey = `CHAT:${projectId}:${ownerId}:${freelancerId}`;
 
     serviceKeys.push(serviceKey);
     serviceMeta.set(serviceKey, {
+      projectId,
       freelancerName:
         proposal.freelancer?.fullName ||
         proposal.freelancer?.name ||
@@ -1235,6 +1236,7 @@ export const listUserConversations = asyncHandler(async (req, res) => {
 export const createConversation = asyncHandler(async (req, res) => {
   const createdById = req.user?.sub || null;
   const serviceKey = normalizeService(req.body?.service);
+  const projectTitle = req.body?.projectTitle || null;
   const ephemeral =
     req.body?.mode === "assistant" || req.body?.ephemeral === true;
 
@@ -1267,12 +1269,46 @@ export const createConversation = asyncHandler(async (req, res) => {
 
     // Pick the one with messages, or the newest one
     conversation = candidates.find((c) => c._count.messages > 0) || candidates[0];
+
+    // BACKWARDS COMPATIBILITY: If no conversation found with new format,
+    // try to find one with the old format (CHAT:CLIENT_ID:FREELANCER_ID)
+    if (!conversation && serviceKey.startsWith("CHAT:")) {
+      const parts = serviceKey.split(":");
+      // New format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID (4 parts)
+      // Old format: CHAT:CLIENT_ID:FREELANCER_ID (3 parts)
+      if (parts.length === 4) {
+        const [, projectId, clientId, freelancerId] = parts;
+        const legacyKey = `CHAT:${clientId}:${freelancerId}`;
+        
+        const legacyCandidates = await prisma.chatConversation.findMany({
+          where: { service: legacyKey },
+          include: {
+            _count: { select: { messages: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+
+        const legacyConvo = legacyCandidates.find((c) => c._count.messages > 0) || legacyCandidates[0];
+        
+        if (legacyConvo) {
+          // Update the legacy conversation to use the new service key
+          conversation = await prisma.chatConversation.update({
+            where: { id: legacyConvo.id },
+            data: { 
+              service: serviceKey,
+              projectTitle: projectTitle || legacyConvo.projectTitle
+            },
+          });
+        }
+      }
+    }
   }
 
   if (!conversation) {
     conversation = await prisma.chatConversation.create({
       data: {
         service: serviceKey,
+        projectTitle,
         createdById,
       },
     });
@@ -1328,6 +1364,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
   const {
     content,
     service,
+    projectTitle,
     senderId,
     senderRole,
     senderName,
@@ -1431,6 +1468,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     conversation = await prisma.chatConversation.create({
       data: {
         service: serviceKey,
+        projectTitle: projectTitle || null,
         createdById: senderId || null,
       },
     });

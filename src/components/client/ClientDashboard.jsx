@@ -537,6 +537,31 @@ const ClientDashboardContent = () => {
             icon: Banknote,
           },
         ]);
+
+        // Check if saved proposal's project has an accepted proposal - if so, clear it
+        const currentSavedProposal = loadSavedProposalFromStorage();
+        if (currentSavedProposal) {
+          const savedProjectTitle = currentSavedProposal.projectTitle || currentSavedProposal.title || "";
+          const savedProjectId = currentSavedProposal.projectId;
+          
+          // Check if any project matching the saved proposal has an accepted proposal
+          const matchingProject = list.find((p) => 
+            (savedProjectId && p.id === savedProjectId) ||
+            (savedProjectTitle && p.title === savedProjectTitle)
+          );
+          
+          if (matchingProject) {
+            const hasAcceptedProposal = (matchingProject.proposals || []).some(
+              (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+            );
+            
+            if (hasAcceptedProposal) {
+              // Clear the saved proposal since it's been accepted
+              clearSavedProposalFromStorage();
+              setSavedProposal(null);
+            }
+          }
+        }
       } catch (error) {
         console.error("Failed to load projects", error);
         // Set empty metrics on error - no fallback to static data
@@ -792,6 +817,14 @@ const ClientDashboardContent = () => {
       const { projectId, proposalFromProject } = await resolveProject();
       if (!projectId) {
         throw new Error("No project available for this proposal.");
+      }
+
+      // IMPORTANT: Save the projectId to the saved proposal so subsequent sends use the SAME project
+      // This prevents creating duplicate projects when sending to multiple freelancers
+      if (savedProposal && !savedProposal.projectId) {
+        const updatedProposal = { ...savedProposal, projectId };
+        persistSavedProposalToStorage(updatedProposal);
+        setSavedProposal(updatedProposal);
       }
 
       // If the project creation already created the proposal, we are done.

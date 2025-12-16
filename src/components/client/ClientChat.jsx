@@ -337,21 +337,25 @@ const ClientChatContent = () => {
           // Filter: Exclude self if the current user is listed as the freelancer
           if (freelancer.id === user?.id) continue;
           
-          // Dedupe by freelancer ID
-          // Matching FreelancerChat logic: CHAT:CLIENT_ID:FREELANCER_ID
-          const sharedKey = `CHAT:${user?.id}:${freelancer.id}`;
+          const projectId = item.project?.id;
+          if (!projectId) continue;
+
+          // Create unique key PER PROJECT (not per freelancer)
+          // Format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
+          const sharedKey = `CHAT:${projectId}:${user?.id}:${freelancer.id}`;
           
+          // Dedupe by project (not by freelancer)
           if (seen.has(sharedKey)) continue;
           seen.add(sharedKey);
 
           uniq.push({
-            id: freelancer.id,
+            id: projectId, // Use projectId as the conversation id
+            freelancerId: freelancer.id,
             name: freelancer.fullName || freelancer.name || freelancer.email || "Freelancer",
             avatar: freelancer.avatar,
             label: item.project?.title || "Project Chat",
             serviceKey: sharedKey,
-            serviceKey: sharedKey,
-            serviceKey: sharedKey,
+            projectTitle: item.project?.title || "Project Chat",
             // Add timestamp for sorting - use backend provided lastActivity if available
             lastActivity: new Date(item.lastActivity || item.updatedAt || item.createdAt || 0).getTime(),
             unreadCount: 0
@@ -365,11 +369,11 @@ const ClientChatContent = () => {
           setConversations(finalList);
           // Default to param-based or first conversation if none selected
           if (!selectedConversation) {
-             const paramFreelancerId = searchParams.get("freelancerId");
+             const paramProjectId = searchParams.get("projectId");
              let target = null;
 
-             if (paramFreelancerId) {
-                target = finalList.find(c => String(c.id) === String(paramFreelancerId));
+             if (paramProjectId) {
+                target = finalList.find(c => String(c.id) === String(paramProjectId));
              }
 
              if (!target && finalList.length > 0) {
@@ -416,7 +420,8 @@ const ClientChatContent = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL
+            service: selectedConversation.serviceKey || selectedConversation.label || SERVICE_LABEL,
+            projectTitle: selectedConversation.projectTitle || selectedConversation.label || "Project Chat"
           }),
           skipLogoutOn401: true
         });
@@ -789,7 +794,7 @@ const ClientChatContent = () => {
                       <div className="flex-1 overflow-hidden">
                         <div className="flex justify-between items-center mb-1">
                           <p className={`truncate font-medium transition-colors ${nameClass}`}>
-                            {conversation.name}
+                            {conversation.label}
                           </p>
                           {conversation.unreadCount > 0 && (
                             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
@@ -798,7 +803,7 @@ const ClientChatContent = () => {
                           )}
                         </div>
                         <p className={`truncate text-xs transition-colors ${labelClass}`}>
-                          {conversation.label}
+                          {conversation.name}
                         </p>
                       </div>
                     </button>
@@ -812,7 +817,7 @@ const ClientChatContent = () => {
         {selectedConversation ? (
           <>
             <ChatArea
-              conversationName={selectedConversation?.name || selectedConversation?.label || SERVICE_LABEL}
+              conversationName={selectedConversation?.label || selectedConversation?.name || SERVICE_LABEL}
               avatar={selectedConversation?.avatar}
               messages={activeMessages}
               messageInput={messageInput}

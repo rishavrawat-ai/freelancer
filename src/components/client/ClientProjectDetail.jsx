@@ -251,14 +251,14 @@ const ProjectDashboard = () => {
     
     console.log("Chat Init - Project:", project?.id, "User:", user?.id, "Owner:", project?.ownerId);
     
-    // Logic matches ClientChat.jsx: CHAT:CLIENT_ID:FREELANCER_ID
+    // Logic matches ClientChat.jsx: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
     if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-       key = `CHAT:${user.id}:${acceptedProposal.freelancerId}`;
-       console.log("Using Shared Chat Key (User):", key);
+       key = `CHAT:${project.id}:${user.id}:${acceptedProposal.freelancerId}`;
+       console.log("Using Project-Based Chat Key (User):", key);
     } else if (acceptedProposal && project.ownerId && acceptedProposal.freelancerId) {
        // Fallback to ownerId if user isn't loaded yet (though auth should prevent this)
-       key = `CHAT:${project.ownerId}:${acceptedProposal.freelancerId}`;
-       console.log("Using Shared Chat Key (Owner Fallback):", key);
+       key = `CHAT:${project.id}:${project.ownerId}:${acceptedProposal.freelancerId}`;
+       console.log("Using Project-Based Chat Key (Owner Fallback):", key);
     } else {
        console.log("Using Project Chat Key (Fallback):", key);
     }
@@ -268,7 +268,10 @@ const ProjectDashboard = () => {
         const res = await authFetch("/chat/conversations", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ service: key })
+            body: JSON.stringify({ 
+              service: key,
+              projectTitle: project?.title || "Project Chat"
+            })
         });
         const payload = await res.json().catch(() => null);
         const convo = payload?.data || payload;
@@ -338,7 +341,7 @@ const ProjectDashboard = () => {
       const acceptedProposal = project?.proposals?.find(p => p.status === "ACCEPTED");
       let serviceKey = `project:${project?.id || projectId}`;
       if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-        serviceKey = `CHAT:${user.id}:${acceptedProposal.freelancerId}`;
+        serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId}`;
       }
 
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -389,7 +392,7 @@ const ProjectDashboard = () => {
          const acceptedProposal = project?.proposals?.find(p => p.status === "ACCEPTED");
          let serviceKey = `project:${project?.id || projectId}`;
          if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-           serviceKey = `CHAT:${user.id}:${acceptedProposal.freelancerId}`;
+           serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId}`;
          }
 
          await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -944,54 +947,7 @@ const ProjectDashboard = () => {
             </div>
 
             <div className="space-y-4">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <FileText className="w-4 h-4" />
-                    Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {docs.length > 0 ? (
-                    <div className="space-y-2">
-                      {docs.map((doc, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
-                           <FileText className="w-4 h-4 text-primary" />
-                           <span className="truncate flex-1">{doc.name}</span>
-                           <span className="text-xs text-muted-foreground">{doc.size}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No documents attached yet. Upload project documentation here.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <DollarSign className="w-4 h-4" />
-                    Budget Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">₹{totalBudget.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Spent</span>
-                    <span className="font-semibold text-emerald-600">₹{spentBudget.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Remaining</span>
-                    <span className="font-semibold text-foreground">₹{remainingBudget.toLocaleString()}</span>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60">
                   <CardTitle className="text-base text-foreground">Project Chat</CardTitle>
@@ -1060,6 +1016,57 @@ const ProjectDashboard = () => {
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
+              </Card>
+
+              {/* Documents - Second */}
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <FileText className="w-4 h-4" />
+                    Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {docs.length > 0 ? (
+                    <div className="space-y-2">
+                      {docs.map((doc, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
+                           <FileText className="w-4 h-4 text-primary" />
+                           <span className="truncate flex-1">{doc.name}</span>
+                           <span className="text-xs text-muted-foreground">{doc.size}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No documents attached yet. Upload project documentation here.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Budget Summary - Third */}
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <DollarSign className="w-4 h-4" />
+                    Budget Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                    <span>Total Budget</span>
+                    <span className="font-semibold text-foreground">₹{totalBudget.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                    <span>Spent</span>
+                    <span className="font-semibold text-emerald-600">₹{spentBudget.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Remaining</span>
+                    <span className="font-semibold text-foreground">₹{remainingBudget.toLocaleString()}</span>
+                  </div>
+                </CardContent>
               </Card>
             </div>
           </div>
