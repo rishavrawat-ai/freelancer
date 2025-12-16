@@ -831,6 +831,11 @@ const ClientDashboardContent = () => {
 
       toast.success(`Proposal sent to ${freelancer.name}`);
       setIsFreelancerModalOpen(false);
+      
+      // Clear the saved proposal from storage AND react state immediately
+      clearSavedProposalFromStorage();
+      setSavedProposal(null);
+      setProposalDeliveryState("cleared");
     } catch (error) {
       console.error("Failed to send proposal:", error);
       toast.error(error?.message || "Unable to send proposal right now.");
