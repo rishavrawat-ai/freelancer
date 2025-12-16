@@ -90,11 +90,26 @@ export const initSocket = (server) => {
     };
 
     // Join user's personal notification room
+    // SECURITY: Use the userId from socket handshake (set during connection) 
+    // instead of trusting client-provided userId to ensure users only join their own room
     socket.on("notification:join", ({ userId }) => {
-      if (!userId) return;
-      const roomName = `user:${userId}`;
+      // Use the authenticated userId from the socket's handshake query
+      const authenticatedUserId = socket.handshake?.query?.userId;
+      
+      if (!authenticatedUserId) {
+        console.log(`[Socket] notification:join rejected - no authenticated userId`);
+        return;
+      }
+      
+      // Only allow joining own notification room
+      if (userId && userId !== authenticatedUserId) {
+        console.log(`[Socket] notification:join rejected - userId mismatch: requested ${userId}, authenticated ${authenticatedUserId}`);
+        return;
+      }
+      
+      const roomName = `user:${authenticatedUserId}`;
       socket.join(roomName);
-      console.log(`[Socket] User ${userId} joined notification room: ${roomName}`);
+      console.log(`[Socket] User ${authenticatedUserId} joined notification room: ${roomName}`);
     });
 
     socket.on("chat:join", async ({ conversationId, service, senderId }) => {

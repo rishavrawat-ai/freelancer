@@ -23,7 +23,7 @@ export const createProposal = asyncHandler(async (req, res) => {
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { ownerId: true }
+    select: { ownerId: true, title: true }
   });
 
   if (!project) {
@@ -51,19 +51,22 @@ export const createProposal = asyncHandler(async (req, res) => {
     }
   });
 
-  // Notify project owner
-  try {
-    sendNotificationToUser(project.ownerId, {
-      type: "proposal",
-      title: "New Proposal Received",
-      message: `You received a new proposal for project "${project.title}" from a freelancer.`,
-      data: { 
-        projectId: project.id, 
-        proposalId: proposal.id 
-      }
-    });
-  } catch (error) {
-    console.error("Failed to send proposal notification:", error);
+  // Notify project owner ONLY if the proposal was created by a freelancer (not the owner)
+  // This prevents the client from getting a notification for their own proposal
+  if (project.ownerId !== userId) {
+    try {
+      sendNotificationToUser(project.ownerId, {
+        type: "proposal",
+        title: "New Proposal Received",
+        message: `You received a new proposal for project "${project.title}" from a freelancer.`,
+        data: { 
+          projectId: projectId,  // Use projectId from req.body, not project.id which is not selected
+          proposalId: proposal.id 
+        }
+      });
+    } catch (error) {
+      console.error("Failed to send proposal notification:", error);
+    }
   }
 
   res.status(201).json({ data: proposal });
@@ -240,7 +243,9 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
 
   try {
     // Use a transaction to atomically check and update to prevent race conditions
-    const updated = await prisma.$transaction(async (tx) => {
+    const { updated, rejectedFreelancerIds, projectTitle } = await prisma.$transaction(async (tx) => {
+      let rejectedFreelancerIds = [];
+      
       // Check AGAIN inside transaction to prevent race conditions
       if (normalizedStatus === "ACCEPTED") {
         const existingAccepted = await tx.proposal.findFirst({
@@ -258,19 +263,33 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           );
         }
         
-        // Auto-reject all other pending proposals for the same project
-        await tx.proposal.updateMany({
+        // Get list of other pending proposals to reject and notify their freelancers
+        const otherPendingProposals = await tx.proposal.findMany({
           where: {
             projectId: proposal.projectId,
             id: { not: proposalId },
             status: "PENDING"
           },
-          data: { status: "REJECTED" }
+          select: { id: true, freelancerId: true }
         });
+        
+        rejectedFreelancerIds = otherPendingProposals.map(p => p.freelancerId);
+        
+        // Auto-reject all other pending proposals for the same project
+        if (otherPendingProposals.length > 0) {
+          await tx.proposal.updateMany({
+            where: {
+              projectId: proposal.projectId,
+              id: { not: proposalId },
+              status: "PENDING"
+            },
+            data: { status: "REJECTED" }
+          });
+        }
       }
       
       // Now do the update atomically
-      return await tx.proposal.update({
+      const updated = await tx.proposal.update({
         where: { id: proposalId },
         data: { status: normalizedStatus },
         include: {
@@ -278,7 +297,32 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           freelancer: true
         }
       });
+      
+      return { 
+        updated, 
+        rejectedFreelancerIds,
+        projectTitle: updated.project?.title || "the project"
+      };
     });
+    
+    // Send notifications to freelancers whose proposals were auto-rejected
+    if (rejectedFreelancerIds && rejectedFreelancerIds.length > 0) {
+      for (const freelancerId of rejectedFreelancerIds) {
+        try {
+          sendNotificationToUser(freelancerId, {
+            type: "proposal",
+            title: "Project Awarded to Another",
+            message: `The project "${projectTitle}" has been awarded to another freelancer.`,
+            data: { 
+              projectId: proposal.projectId,
+              status: "REJECTED"
+            }
+          });
+        } catch (err) {
+          console.error(`Failed to notify freelancer ${freelancerId}:`, err);
+        }
+      }
+    }
 
     // Notify Freelancer if Client changes status
     if (isOwner && proposal.status !== normalizedStatus) {

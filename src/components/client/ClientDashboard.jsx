@@ -483,9 +483,17 @@ const ClientDashboardContent = () => {
         setProjects(list);
 
         // Build metrics from project data
-        const active = list.filter(
-          (p) => (p.status || "").toUpperCase() === "OPEN"
-        );
+        // Active projects = projects with at least one accepted proposal (work has started)
+        const projectsWithAccepted = list.filter((p) => {
+          const hasAccepted = (p.proposals || []).some(
+            (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+          );
+          return hasAccepted;
+        });
+        const activeCount = projectsWithAccepted.filter(
+          (p) => (p.status || "").toUpperCase() !== "COMPLETED"
+        ).length;
+        
         const completed = list.filter(
           (p) => (p.status || "").toUpperCase() === "COMPLETED"
         );
@@ -497,23 +505,25 @@ const ClientDashboardContent = () => {
           (p) => ["IN_PROGRESS", "OPEN"].includes((p.status || "").toUpperCase())
         );
         
-        // Total spend from projects with accepted proposals (shown in Project Tracker)
-        const projectsWithAccepted = list.filter((p) => {
-          const hasAccepted = (p.proposals || []).some(
-            (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
-          );
-          return hasAccepted;
-        });
+        // Total spend from projects with accepted proposals
         const totalSpend = projectsWithAccepted.reduce((acc, project) => {
           const budget = parseInt(project.budget) || 0;
           return acc + budget;
         }, 0);
+        
+        // Count projects awaiting review (pending proposals or no accepted freelancer yet)
+        const awaitingReview = list.filter((p) => {
+          const hasAccepted = (p.proposals || []).some(
+            (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+          );
+          return !hasAccepted && (p.status || "").toUpperCase() !== "COMPLETED";
+        }).length;
 
         setMetrics([
           {
             label: "Active projects",
-            value: String(active.length),
-            trend: `${list.length - active.length} awaiting review`,
+            value: String(activeCount),
+            trend: `${awaitingReview} awaiting review`,
             icon: Briefcase,
           },
           {
@@ -539,26 +549,26 @@ const ClientDashboardContent = () => {
         ]);
 
         // Check if saved proposal's project has an accepted proposal - if so, clear it
+        // IMPORTANT: Only clear if we have a matching projectId - title matching alone is too broad
+        // because proposals created via AI chat don't have a projectId yet
         const currentSavedProposal = loadSavedProposalFromStorage();
         if (currentSavedProposal) {
-          const savedProjectTitle = currentSavedProposal.projectTitle || currentSavedProposal.title || "";
           const savedProjectId = currentSavedProposal.projectId;
           
-          // Check if any project matching the saved proposal has an accepted proposal
-          const matchingProject = list.find((p) => 
-            (savedProjectId && p.id === savedProjectId) ||
-            (savedProjectTitle && p.title === savedProjectTitle)
-          );
-          
-          if (matchingProject) {
-            const hasAcceptedProposal = (matchingProject.proposals || []).some(
-              (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
-            );
+          // Only match by projectId - title matching can cause false positives
+          if (savedProjectId) {
+            const matchingProject = list.find((p) => p.id === savedProjectId);
             
-            if (hasAcceptedProposal) {
-              // Clear the saved proposal since it's been accepted
-              clearSavedProposalFromStorage();
-              setSavedProposal(null);
+            if (matchingProject) {
+              const hasAcceptedProposal = (matchingProject.proposals || []).some(
+                (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+              );
+              
+              if (hasAcceptedProposal) {
+                // Clear the saved proposal since it's been accepted
+                clearSavedProposalFromStorage();
+                setSavedProposal(null);
+              }
             }
           }
         }

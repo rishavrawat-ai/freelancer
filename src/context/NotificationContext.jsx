@@ -108,6 +108,16 @@ export const NotificationProvider = ({ children }) => {
     // Listen for new notifications
     newSocket.on("notification:new", (notification) => {
       console.log("[Notification] 📬 Received notification:new:", notification);
+      
+      // Filter "New Proposal Received" notifications - only clients should see these
+      // But allow freelancers to see their own proposal status updates (accepted, rejected, awarded to another)
+      if (notification.type === "proposal" && 
+          notification.title === "New Proposal Received" && 
+          user?.role?.toUpperCase() === "FREELANCER") {
+        console.log("[Notification] Skipping 'New Proposal Received' for freelancer");
+        return;
+      }
+      
       addNotification(notification);
     });
 
