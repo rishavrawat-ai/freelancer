@@ -24,6 +24,7 @@ export const NotificationProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [socket, setSocket] = useState(null);
   const connectedRef = useRef(false);
 
@@ -44,6 +45,10 @@ export const NotificationProvider = ({ children }) => {
       return updated;
     });
     setUnreadCount((prev) => prev + 1);
+    // Track chat-specific notifications for Messages badge
+    if (notification.type === "chat") {
+      setChatUnreadCount((prev) => prev + 1);
+    }
   }, []);
 
   // Mark a single notification as read
@@ -60,12 +65,14 @@ export const NotificationProvider = ({ children }) => {
   const markAllAsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
+    setChatUnreadCount(0);
   }, []);
 
   // Clear all notifications
   const clearAll = useCallback(() => {
     setNotifications([]);
     setUnreadCount(0);
+    setChatUnreadCount(0);
   }, []);
 
   // Connect to socket.io for real-time notifications
@@ -88,7 +95,7 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    console.log("[Notification] Connecting to:", SOCKET_IO_URL);
+    console.log("[Notification] Connecting to:", SOCKET_IO_URL, "with userId:", user.id, "type:", typeof user.id);
     
     const newSocket = io(SOCKET_IO_URL, {
       ...SOCKET_OPTIONS,
@@ -103,6 +110,16 @@ export const NotificationProvider = ({ children }) => {
       // Join the user's notification room
       newSocket.emit("notification:join", { userId: user.id });
       console.log("[Notification] Emitted notification:join for user:", user.id);
+    });
+
+    // Listen for room join confirmation
+    newSocket.on("notification:joined", ({ room, userId }) => {
+      console.log(`[Notification] 🎉 Successfully joined room: ${room} for user: ${userId}`);
+    });
+
+    // Listen for room join errors
+    newSocket.on("notification:join_error", ({ error }) => {
+      console.error(`[Notification] ❌ Failed to join notification room:`, error);
     });
 
     // Listen for new notifications
@@ -159,17 +176,24 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [isAuthenticated, user?.id, user?.role, addNotification]);
 
+  // Function to mark chat notifications as read (when opening Messages)
+  const markChatAsRead = useCallback(() => {
+    setChatUnreadCount(0);
+  }, []);
+
   const value = useMemo(
     () => ({
       notifications,
       unreadCount,
+      chatUnreadCount,
       socket,
       addNotification,
       markAsRead,
       markAllAsRead,
+      markChatAsRead,
       clearAll
     }),
-    [notifications, unreadCount, socket, addNotification, markAsRead, markAllAsRead, clearAll]
+    [notifications, unreadCount, chatUnreadCount, socket, addNotification, markAsRead, markAllAsRead, markChatAsRead, clearAll]
   );
 
   return (

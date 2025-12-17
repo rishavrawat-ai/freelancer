@@ -21,7 +21,7 @@ import { useNotifications } from "@/context/NotificationContext";
 export function NavMain({
   items
 }) {
-  const { unreadCount } = useNotifications();
+  const { chatUnreadCount, markChatAsRead } = useNotifications();
   const location = useLocation();
 
   return (
@@ -32,22 +32,30 @@ export function NavMain({
           const Icon = item.icon;
           const hasChildren = Array.isArray(item.items) && item.items.length > 0;
 
-          // Show badge on Messages item
-          const showBadge = item.title === "Messages" && unreadCount > 0;
+          // Show badge on Messages item when there are unread chat notifications
+          const showBadge = item.title === "Messages" && chatUnreadCount > 0;
 
           if (!hasChildren) {
              const isActive = location.pathname === item.url;
+             
+             // When clicking Messages, mark chat as read
+             const handleClick = () => {
+               if (item.title === "Messages") {
+                 markChatAsRead();
+               }
+             };
+             
              return (
                <SidebarMenuItem key={item.title}>
                  <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
-                   <Link to={item.url ?? "#"} className={`relative ${isActive ? "text-primary font-medium" : ""}`}>
+                   <Link to={item.url ?? "#"} className={`relative ${isActive ? "text-primary font-medium" : ""}`} onClick={handleClick}>
                      {Icon && <Icon className={isActive ? "text-primary" : ""} />}
                      <span>{item.title}</span>
                      {showBadge && (
-                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white">
-                         {unreadCount > 99 ? "99+" : unreadCount}
-                       </span>
-                     )}
+                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse">
+                          {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                        </span>
+                      )}
                    </Link>
                  </SidebarMenuButton>
                </SidebarMenuItem>

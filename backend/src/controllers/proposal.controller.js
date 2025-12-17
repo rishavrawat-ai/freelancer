@@ -384,6 +384,23 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
 
     // MARKIFY: If status is ACCEPTED (by freelancer), send an automated chat message to the client.
     if (normalizedStatus === "ACCEPTED" && isFreelancer) {
+      // Notify the client that freelancer accepted their proposal
+      try {
+        const freelancerName = updated.freelancer?.fullName || updated.freelancer?.name || "A freelancer";
+        sendNotificationToUser(updated.project.ownerId, {
+          type: "proposal",
+          title: "Proposal Accepted! 🎉",
+          message: `${freelancerName} has accepted your proposal for "${updated.project.title}".`,
+          data: { 
+            projectId: updated.projectId, 
+            proposalId: updated.id,
+            status: normalizedStatus
+          }
+        });
+      } catch (err) {
+        console.error("Failed to notify client about acceptance:", err);
+      }
+
       // 1. Update Project Status to "IN_PROGRESS" to close it for other proposals
       try {
         await prisma.project.update({
@@ -418,9 +435,12 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           });
         }
 
-        // 3. Create the message
+        // 3. Create the message with earnings after 30% platform fee
         const freelancerName = updated.freelancer.fullName || updated.freelancer.name || updated.freelancer.email || "Freelancer";
-        const messageContent = `I have accepted your proposal for "${projectTitle}". I'm ready to start!`;
+        const proposalAmount = updated.amount || 0;
+        const freelancerEarnings = Math.round(proposalAmount * 0.7); // 70% after 30% platform fee
+        const formattedEarnings = freelancerEarnings.toLocaleString('en-IN');
+        const messageContent = `I have accepted your proposal for "${projectTitle}". My earnings for this project: ₹${formattedEarnings} (after platform fee). I'm ready to start!`;
         const userMessage = await prisma.chatMessage.create({
           data: {
             conversationId: conversation.id,

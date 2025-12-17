@@ -1468,23 +1468,34 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
 
   if (convService.startsWith("CHAT:")) {
     const parts = convService.split(":");
-    if (parts.length >= 3) {
+    let recipientId = null;
+    
+    // Support both formats:
+    // Old: CHAT:clientId:freelancerId (3 parts)
+    // New: CHAT:projectId:clientId:freelancerId (4 parts)
+    if (parts.length === 4) {
+      // New format: CHAT:projectId:clientId:freelancerId
+      const [, , clientId, freelancerId] = parts;
+      recipientId = String(actualSenderId) === String(clientId) ? freelancerId : clientId;
+    } else if (parts.length >= 3) {
+      // Old format: CHAT:id1:id2
       const [, id1, id2] = parts;
-      const recipientId = actualSenderId === id1 ? id2 : id1;
-      console.log(`[Notification] Service: ${convService}, Sender: ${actualSenderId}, Recipient: ${recipientId}`);
-      if (recipientId && recipientId !== actualSenderId) {
-        sendNotificationToUser(recipientId, {
-          type: "chat",
-          title: "New Message",
-          message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
-          data: {
-            conversationId: conversation.id,
-            messageId: userMessage.id,
-            service: convService,
-            senderId: actualSenderId
-          }
-        });
-      }
+      recipientId = String(actualSenderId) === String(id1) ? id2 : id1;
+    }
+    
+    console.log(`[Notification] Service: ${convService}, Sender: ${actualSenderId}, Recipient: ${recipientId}`);
+    if (recipientId && String(recipientId) !== String(actualSenderId)) {
+      sendNotificationToUser(recipientId, {
+        type: "chat",
+        title: "New Message",
+        message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
+        data: {
+          conversationId: conversation.id,
+          messageId: userMessage.id,
+          service: convService,
+          senderId: actualSenderId
+        }
+      });
     }
   } else {
     console.log(`[Notification] Skipped - service doesn't start with CHAT: ${convService}`);

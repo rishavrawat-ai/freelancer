@@ -805,6 +805,7 @@ const ClientDashboardContent = () => {
       if (proposalFromProject?.id) {
         toast.success(`Proposal sent to ${freelancer.name}`);
         setIsFreelancerModalOpen(false);
+        setProposalDeliveryState("sent");
         return;
       }
 
@@ -832,10 +833,10 @@ const ClientDashboardContent = () => {
       toast.success(`Proposal sent to ${freelancer.name}`);
       setIsFreelancerModalOpen(false);
       
-      // Clear the saved proposal from storage AND react state immediately
-      clearSavedProposalFromStorage();
-      setSavedProposal(null);
-      setProposalDeliveryState("cleared");
+      // NOTE: We intentionally do NOT clear the saved proposal here.
+      // The proposal should remain visible so the client can send to more freelancers.
+      // It will only be cleared when a freelancer accepts (checked in loadProjects)
+      setProposalDeliveryState("sent");
     } catch (error) {
       console.error("Failed to send proposal:", error);
       toast.error(error?.message || "Unable to send proposal right now.");
