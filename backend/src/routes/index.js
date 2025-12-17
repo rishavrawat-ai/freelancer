@@ -6,6 +6,7 @@ import { profileRouter } from "./profile.route.js";
 import { chatRouter } from "./chat.routes.js";
 import { projectRouter } from "./project.routes.js";
 import { proposalRouter } from "./proposal.routes.js";
+import adminRouter from "./admin.routes.js";
 
 export const apiRouter = Router();
 
@@ -16,3 +17,5 @@ apiRouter.use("/profile", profileRouter);
 apiRouter.use("/chat", chatRouter);
 apiRouter.use("/projects", projectRouter);
 apiRouter.use("/proposals", proposalRouter);
+apiRouter.use("/admin", adminRouter);
+

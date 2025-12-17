@@ -14,6 +14,11 @@ enum UserRole {
   ADMIN
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum ProjectStatus {
   DRAFT
   OPEN
@@ -33,6 +38,7 @@ model User {
   fullName     String
   passwordHash String
   role         UserRole   @default(FREELANCER)
+  status       UserStatus @default(ACTIVE)
   bio          String?    @db.Text
   skills       String[]   @default([])
   hourlyRate   Decimal?   @db.Decimal(10, 2)

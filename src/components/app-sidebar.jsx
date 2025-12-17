@@ -3,11 +3,13 @@
 import * as React from "react";
 import {
   BarChart,
+  Briefcase,
   CreditCard,
   FileText,
   LayoutDashboard,
   MessageSquare,
   User,
+  Users,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -39,6 +41,11 @@ const brandPresets = {
     name: "Client Portal",
     plan: "Client workspace",
     logoText: "CL",
+  },
+  ADMIN: {
+    name: "Admin Portal",
+    plan: "System Administration",
+    logoText: "AD",
   },
 };
 
@@ -119,11 +126,51 @@ const navConfigs = {
       isActive: true,
     },
   ],
+  ADMIN: [
+    {
+      title: "Dashboard",
+      url: "/admin",
+      icon: LayoutDashboard,
+      isActive: true,
+    },
+    {
+      title: "Clients",
+      url: "/admin/clients",
+      icon: Users,
+      isActive: true,
+    },
+    {
+      title: "Freelancers",
+      url: "/admin/freelancers",
+      icon: User,
+      isActive: true,
+    },
+    {
+      title: "Projects",
+      url: "/admin/projects",
+      icon: Briefcase,
+      isActive: true,
+    },
+  ],
 };
 
 export function AppSidebar({ ...props }) {
-  const session = typeof window !== "undefined" ? getSession() : null;
-  const sessionUser = session?.user ?? null;
+  const [sessionUser, setSessionUser] = React.useState(null);
+  
+  React.useEffect(() => {
+    const session = getSession();
+    setSessionUser(session?.user ?? null);
+    
+    // Listen for storage changes (when user logs in/out in another component)
+    const handleStorageChange = () => {
+      const updatedSession = getSession();
+      setSessionUser(updatedSession?.user ?? null);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+  
   const role = sessionUser?.role ?? "FREELANCER";
   const brand = brandPresets[role] ?? brandPresets.FREELANCER;
   const navItems = navConfigs[role] ?? navConfigs.FREELANCER;

@@ -22,6 +22,11 @@ import FreelancerChat from "@/components/freelancer/FreelancerChat";
 import { useAuth } from "@/context/AuthContext";
 import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
 import NotepadPage from "@/components/ui/notepad-page";
+import AdminDashboard from "@/components/admin/AdminDashboard";
+import AdminUsers from "@/components/admin/AdminUsers";
+import AdminProjects from "@/components/admin/AdminProjects";
+import AdminLogin from "@/components/admin/AdminLogin";
+import AdminRoute from "@/components/auth/AdminRoute";
 
 const App = () => {
   return (
@@ -190,6 +195,39 @@ const App = () => {
             path="/notepad"
             element={
                 <NotepadPage />
+            }
+          />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/clients"
+            element={
+              <AdminRoute>
+                <AdminUsers roleFilter="CLIENT" />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/freelancers"
+            element={
+              <AdminRoute>
+                <AdminUsers roleFilter="FREELANCER" />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/projects"
+            element={
+              <AdminRoute>
+                <AdminProjects />
+              </AdminRoute>
             }
           />
           <Route
