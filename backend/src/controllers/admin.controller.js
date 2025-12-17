@@ -175,6 +175,38 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   res.json({ data: updatedUser });
 });
 
+// Get all projects for admin
+export const getProjects = asyncHandler(async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        budget: true,
+        status: true,
+        createdAt: true,
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
+        },
+        _count: {
+          select: { proposals: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ data: { projects } });
+  } catch (error) {
+    console.error("Get projects error:", error);
+    res.status(500).json({ error: "Failed to fetch projects" });
+  }
+});
+
 // Get detailed user information
 export const getUserDetails = asyncHandler(async (req, res) => {
   try {

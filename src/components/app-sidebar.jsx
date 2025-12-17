@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   BarChart,
+  Briefcase,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -142,6 +143,12 @@ const navConfigs = {
       title: "Freelancers",
       url: "/admin/freelancers",
       icon: User,
+      isActive: true,
+    },
+    {
+      title: "Projects",
+      url: "/admin/projects",
+      icon: Briefcase,
       isActive: true,
     },
   ],
