@@ -66,6 +66,9 @@ export const initSocket = (server) => {
   setIoInstance(io);
 
   io.on("connection", (socket) => {
+    const handshakeUserId = socket.handshake?.query?.userId;
+    console.log(`[Socket] 🔌 New connection: ${socket.id}, userId from query: ${handshakeUserId || 'none'}`);
+    
     const joinedConversations = new Set();
     const presenceKeys = new Map(); // conversationId -> userKey
 
@@ -97,19 +100,24 @@ export const initSocket = (server) => {
       const authenticatedUserId = socket.handshake?.query?.userId;
       
       if (!authenticatedUserId) {
-        console.log(`[Socket] notification:join rejected - no authenticated userId`);
+        console.log(`[Socket] ❌ notification:join rejected - no authenticated userId`);
+        socket.emit("notification:join_error", { error: "No authenticated userId" });
         return;
       }
       
       // Only allow joining own notification room
       if (userId && userId !== authenticatedUserId) {
-        console.log(`[Socket] notification:join rejected - userId mismatch: requested ${userId}, authenticated ${authenticatedUserId}`);
+        console.log(`[Socket] ❌ notification:join rejected - userId mismatch: requested ${userId}, authenticated ${authenticatedUserId}`);
+        socket.emit("notification:join_error", { error: "userId mismatch" });
         return;
       }
       
       const roomName = `user:${authenticatedUserId}`;
       socket.join(roomName);
-      console.log(`[Socket] User ${authenticatedUserId} joined notification room: ${roomName}`);
+      console.log(`[Socket] ✅ User ${authenticatedUserId} joined notification room: ${roomName}`);
+      
+      // Send confirmation back to client
+      socket.emit("notification:joined", { room: roomName, userId: authenticatedUserId });
     });
 
     socket.on("chat:join", async ({ conversationId, service, senderId }) => {
@@ -362,25 +370,35 @@ export const initSocket = (server) => {
             
             if (convService.startsWith("CHAT:")) {
               const parts = convService.split(":");
-              if (parts.length >= 3) {
+              let recipientId = null;
+              
+              // Support both formats:
+              // Old: CHAT:clientId:freelancerId (3 parts)
+              // New: CHAT:projectId:clientId:freelancerId (4 parts)
+              if (parts.length === 4) {
+                // New format: CHAT:projectId:clientId:freelancerId
+                const [, , clientId, freelancerId] = parts;
+                recipientId = String(senderId) === String(clientId) ? freelancerId : clientId;
+              } else if (parts.length >= 3) {
+                // Old format: CHAT:id1:id2
                 const [, id1, id2] = parts;
-                const recipientId = senderId === id1 ? id2 : id1;
+                recipientId = String(senderId) === String(id1) ? id2 : id1;
+              }
                 
-                console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
-                
-                if (recipientId && recipientId !== senderId) {
-                  sendNotificationToUser(recipientId, {
-                    type: "chat",
-                    title: "New Message",
-                    message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
-                    data: { 
-                      conversationId: conversation.id, 
-                      messageId: userMessage.id,
-                      service: convService,
-                      senderId
-                    }
-                  });
-                }
+              console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
+              
+              if (recipientId && String(recipientId) !== String(senderId)) {
+                sendNotificationToUser(recipientId, {
+                  type: "chat",
+                  title: "New Message",
+                  message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
+                  data: { 
+                    conversationId: conversation.id, 
+                    messageId: userMessage.id,
+                    service: convService,
+                    senderId
+                  }
+                });
               }
             } else {
               console.log(`[Socket] Skipping notification - service doesn't start with CHAT: ${convService}`);

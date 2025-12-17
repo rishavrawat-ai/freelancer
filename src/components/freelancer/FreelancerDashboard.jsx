@@ -49,10 +49,12 @@ export const DashboardContent = ({ roleOverride }) => {
         );
         const activeProjects = accepted.length;
         const proposalsReceived = pending.length;
-        const earnings = accepted.reduce(
+        // Calculate earnings after 30% platform fee (freelancer receives 70%)
+        const grossEarnings = accepted.reduce(
           (acc, p) => acc + (Number(p.amount) || 0),
           0
         );
+        const earnings = Math.round(grossEarnings * 0.7);
 
         setMetrics([
           {
