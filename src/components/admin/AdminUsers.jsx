@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Search, Eye, Ban, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import UserDetailsDialog from "./UserDetailsDialog";
 
 const AdminUsers = ({ roleFilter }) => {
   const { authFetch } = useAuth();
@@ -14,6 +15,8 @@ const AdminUsers = ({ roleFilter }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const pageTitle = roleFilter 
     ? (roleFilter === "CLIENT" ? "Clients" : "Freelancers")
@@ -74,11 +77,12 @@ const AdminUsers = ({ roleFilter }) => {
   };
 
   const handleView = (userId) => {
-    // For now just show a toast - can be extended to open a modal
-    toast.info("View user details functionality coming soon");
+    setSelectedUserId(userId);
+    setDetailsDialogOpen(true);
   };
 
   return (
+    <>
     <AdminLayout>
       <div className="relative flex flex-col gap-6 p-6">
         <AdminTopBar label={pageTitle} />
@@ -199,6 +203,13 @@ const AdminUsers = ({ roleFilter }) => {
         </div>
       </div>
     </AdminLayout>
+    
+    <UserDetailsDialog
+      userId={selectedUserId}
+      open={detailsDialogOpen}
+      onOpenChange={setDetailsDialogOpen}
+    />
+    </>
   );
 };
 

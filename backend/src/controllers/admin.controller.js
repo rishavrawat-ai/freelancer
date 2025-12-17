@@ -175,3 +175,143 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   res.json({ data: updatedUser });
 });
 
+// Get detailed user information
+export const getUserDetails = asyncHandler(async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!prisma) {
+      return res.status(500).json({ error: "Database connection not available" });
+    }
+
+    // Get user with their projects and proposals
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        bio: true,
+        skills: true,
+        hourlyRate: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        // For clients: get their owned projects
+        ownedProjects: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            budget: true,
+            createdAt: true,
+            proposals: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                freelancer: {
+                  select: { fullName: true, email: true }
+                }
+              }
+            }
+          }
+        },
+        // For freelancers: get their proposals
+        proposals: {
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+            project: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                budget: true,
+                owner: {
+                  select: { fullName: true, email: true }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Calculate statistics based on role
+    let stats = {};
+
+    if (user.role === "CLIENT") {
+      const totalProjects = user.ownedProjects.length;
+      const activeProjects = user.ownedProjects.filter(p => p.status === "IN_PROGRESS").length;
+      const completedProjects = user.ownedProjects.filter(p => p.status === "COMPLETED").length;
+      
+      // Calculate total spent from accepted proposals
+      let totalSpent = 0;
+      user.ownedProjects.forEach(project => {
+        project.proposals.forEach(proposal => {
+          if (proposal.status === "ACCEPTED") {
+            totalSpent += proposal.amount;
+          }
+        });
+      });
+
+      stats = {
+        totalProjects,
+        activeProjects,
+        completedProjects,
+        openProjects: user.ownedProjects.filter(p => p.status === "OPEN").length,
+        totalSpent,
+        moneyRemaining: user.ownedProjects.reduce((sum, p) => sum + (p.budget || 0), 0) - totalSpent
+      };
+    } else if (user.role === "FREELANCER") {
+      const totalProposals = user.proposals.length;
+      const acceptedProposals = user.proposals.filter(p => p.status === "ACCEPTED");
+      const pendingProposals = user.proposals.filter(p => p.status === "PENDING");
+      const rejectedProposals = user.proposals.filter(p => p.status === "REJECTED");
+      
+      const totalEarnings = acceptedProposals.reduce((sum, p) => sum + p.amount, 0);
+      const pendingAmount = pendingProposals.reduce((sum, p) => sum + p.amount, 0);
+
+      stats = {
+        totalProposals,
+        acceptedProposals: acceptedProposals.length,
+        pendingProposals: pendingProposals.length,
+        rejectedProposals: rejectedProposals.length,
+        totalEarnings,
+        pendingAmount,
+        activeProjects: acceptedProposals.length
+      };
+    }
+
+    res.json({
+      data: {
+        user: {
+          id: user.id,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          bio: user.bio,
+          skills: user.skills,
+          hourlyRate: user.hourlyRate,
+          status: user.status || 'ACTIVE',
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        },
+        stats,
+        projects: user.role === "CLIENT" ? user.ownedProjects : [],
+        proposals: user.role === "FREELANCER" ? user.proposals : []
+      }
+    });
+  } catch (error) {
+    console.error("getUserDetails error:", error.message);
+    res.status(500).json({ error: "Failed to fetch user details", details: error.message });
+  }
+});
