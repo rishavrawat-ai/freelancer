@@ -715,7 +715,13 @@ const ClientChatContent = () => {
 
   // Find the latest proposal
   const proposalMessage = useMemo(() => {
-    return [...messages].reverse().find(m => m.content && m.content.includes("PROJECT PROPOSAL"));
+    return [...messages]
+      .reverse()
+      .find(
+        (m) =>
+          typeof m?.content === "string" &&
+          /\[PROPOSAL_DATA\][\s\S]*?\[\/PROPOSAL_DATA\]/.test(m.content)
+      );
   }, [messages]);
 
   return (

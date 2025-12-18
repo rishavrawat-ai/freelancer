@@ -21,7 +21,7 @@ export const questions = [
       "business"
     ],
     "templates": [
-      "Nice to meet you, {name}! What's your company or project called?"
+      "Nice to meet you, {name}! What's the project name?"
     ],
     "suggestions": null
   },
@@ -35,8 +35,8 @@ export const questions = [
       "idea"
     ],
     "templates": [
-      "Awesome! Tell me a bit about what you're building — what's the vision? 🚀",
-      "Sounds exciting! What exactly are you looking to create?"
+      "In 1 simple sentence, describe your project in easy words. Example: A dashboard to manage orders and customers.",
+      "Briefly describe what you want to build (1 sentence)."
     ],
     "suggestions": null
   },
@@ -95,6 +95,8 @@ export const questions = [
       "Help/Support",
       "Resources",
       "Events",
+      "3D Animations",
+      "3D Model Viewer",
       "None"
     ],
     "multiSelect": true
@@ -145,24 +147,19 @@ export const questions = [
       "react"
     ],
     "templates": [
-      "What technology stack would you prefer? (Select all that apply) 🛠️"
+      "What technology stack would you prefer? (Select one) 🛠️"
     ],
     "suggestions": [
       "WordPress",
       "Next.js",
       "React.js",
       "React.js + Node.js",
-      "MERN Stack",
-      "PERN Stack",
       "Shopify",
       "Shopify + Hydrogen (React)",
       "Laravel + Vue",
       "Django + React",
-      "Frontend Only",
-      "Backend Only",
       "No preference"
-    ],
-    "multiSelect": true
+    ]
   },
   {
     "key": "deployment",
@@ -173,7 +170,7 @@ export const questions = [
       "cloud"
     ],
     "templates": [
-      "Where would you like the website deployed/hosted? 🚀"
+      "Where would you like the website deployed/hosted? (Select up to 2) 🚀"
     ],
     "suggestions": [
       "Vercel",
@@ -185,7 +182,8 @@ export const questions = [
       "VPS/Custom Server",
       "Not sure yet"
     ],
-    "multiSelect": true
+    "multiSelect": true,
+    "maxSelect": 2
   },
   {
     "key": "domain",
@@ -214,10 +212,13 @@ export const questions = [
       "What's your budget for this project? 💰"
     ],
     "suggestions": [
-      "Under ₹20,000",
-      "₹20,000 - ₹50,000",
-      "₹50,000 - ₹1,00,000",
-      "₹1,00,000+"
+      "WordPress (₹30,000+)",
+      "3D WordPress (₹45,000+)",
+      "Shopify (₹30,000+)",
+      "Custom Shopify (₹80,000+)",
+      "Custom React.js + Node.js (₹1,50,000+)",
+      "Next.js (₹1,75,000+)",
+      "3D Custom Website (₹1,00,000 - ₹4,00,000)"
     ]
   },
   {

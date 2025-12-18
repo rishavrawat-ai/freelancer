@@ -18,9 +18,27 @@ const stripUnavailableSections = (text = "") => {
     const withoutTags = text.replace(/\[PROPOSAL_DATA\]|\[\/PROPOSAL_DATA\]/g, "");
     const filtered = [];
 
+    const isDividerLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return false;
+
+        // Box-drawing separators (e.g., "══════") or similar glyph-only lines
+        if (/^[\u2500-\u257F]+$/.test(trimmed)) return true;
+
+        // ASCII separators ("-----", "=====", etc.)
+        if (/^[=\-_*]{10,}$/.test(trimmed)) return true;
+
+        // Fallback: long line with no alphanumerics (covers corrupted separator glyphs)
+        if (trimmed.length >= 20 && /^[^a-z0-9]+$/i.test(trimmed)) return true;
+
+        return false;
+    };
+
     const shouldDropLine = (line) => {
         const trimmed = line.trim();
         if (!trimmed) return false;
+        if (/^project proposal$/i.test(trimmed)) return true;
+        if (isDividerLine(line)) return true;
         if (/not provided/i.test(trimmed) || /not specified/i.test(trimmed)) return true;
         // Drop leftover placeholder tokens like [Portfolio]
         if (/^\[[^\]]+\]$/.test(trimmed)) return true;
@@ -95,7 +113,22 @@ const ProposalPanel = ({ content }) => {
             return match?.[1]?.trim() || "";
         };
 
-        const projectTitle = getValue("Project Title") || getValue("Project") || "Project Proposal";
+        const serviceName =
+            getValue("Service") ||
+            getValue("Service Type") ||
+            getValue("Category") ||
+            "";
+
+        const projectName =
+            getValue("Project Name") ||
+            getValue("Project Title") ||
+            getValue("Project") ||
+            "";
+
+        const projectTitle =
+            serviceName && projectName
+                ? `${serviceName}/${projectName}`
+                : projectName || serviceName || "Project Proposal";
         const preparedFor = getValue("Prepared for") || getValue("For") || "Client";
         
         // Parse budget to clean numbers for dashboard logic
@@ -126,7 +159,7 @@ const ProposalPanel = ({ content }) => {
            // fallback to raw string
         }
 
-        const service = projectTitle;
+        const service = serviceName || "General services";
 
         return {
             service,

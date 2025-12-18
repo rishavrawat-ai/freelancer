@@ -865,7 +865,9 @@ const rewriteProposalWithAI = async (rawProposal, apiKey) => {
     });
 
     // Extract the project overview section to rewrite
-    const overviewMatch = rawProposal.match(/PROJECT OVERVIEW\n═+\n([\s\S]*?)\n\nWebsite Type:/);
+    const overviewMatch = rawProposal.match(
+      /PROJECT OVERVIEW\s*\n(?:(?:[=\-_*]|[\u2500-\u257F])+\s*\n)?([\s\S]*?)\n\s*Website Type:/i
+    );
     if (!overviewMatch) {
       return rawProposal; // Return unchanged if pattern not found
     }
@@ -878,12 +880,12 @@ const rewriteProposalWithAI = async (rawProposal, apiKey) => {
       messages: [
         {
           role: "system",
-          content: `You are a professional proposal writer. Rewrite the following project description to be:
-1. Professional and formal
-2. Fix any spelling or grammar errors
-3. Keep it concise (2-3 sentences max)
-4. Keep the project name if mentioned
-5. Do NOT add any extra details, just clean up what's given
+          content: `Rewrite the following project description to be:
+1. Simple and easy to understand
+2. One short sentence (max 20 words)
+3. Fix any spelling or grammar errors
+4. Keep the project/brand name if mentioned
+5. Do NOT add any extra details, just simplify what's given
 6. Do NOT use quotes around the response
 
 Return ONLY the rewritten description, nothing else.`

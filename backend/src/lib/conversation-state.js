@@ -30,6 +30,27 @@ const canonicalize = (value = "") =>
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "");
 
+const CHANGE_TECH_SENTINEL = "__CHANGE_TECH__";
+
+const isChangeTechnologyMessage = (value = "") => {
+    const canon = canonicalize(value);
+    if (!canon) return false;
+
+    return (
+        canon === "changetechnology" ||
+        canon === "changetech" ||
+        canon === "switchtechnology" ||
+        canon === "switchtech" ||
+        canon === "differenttechnology" ||
+        canon === "chooseanothertechnology" ||
+        canon === "chooseanothertech" ||
+        canon === "changestack" ||
+        canon === "switchstack" ||
+        canon === "changeplatform" ||
+        canon === "switchplatform"
+    );
+};
+
 const getSuggestionAliases = (value = "") => {
     const text = normalizeText(value);
     if (!text) return [];
@@ -107,22 +128,44 @@ const matchSuggestionsInMessage = (question, rawMessage) => {
         if (!optionText) continue;
 
         let isMatch = false;
-        const aliases = getSuggestionAliases(optionText);
-        for (const alias of aliases) {
-            const aliasLower = normalizeText(alias).toLowerCase();
-            const aliasCanonical = canonicalize(aliasLower);
-            if (!aliasCanonical) continue;
 
-            if (!aliasLower.includes(" ")) {
-                // For single tokens, require whole-token matching to avoid false positives
-                // like "help" matching "helps" or "search" matching "research".
-                isMatch = tokenSet.has(aliasCanonical);
-            } else {
-                // For multi-word phrases, allow canonical containment.
-                isMatch = messageCanonical.includes(aliasCanonical) || messageLower.includes(aliasLower);
+        // Handle composite options like "React.js + Node.js" where users often type "react and node".
+        if (/[+&]/.test(optionText)) {
+            const parts = optionText
+                .split(/[+&]/)
+                .map((part) => normalizeText(part.replace(/\([^)]*\)/g, "")))
+                .filter(Boolean);
+
+            const partCanons = parts
+                .map((part) => canonicalize(part.toLowerCase()))
+                .filter((canon) => canon && canon.length >= 3);
+
+            if (partCanons.length >= 2) {
+                const allPresent = partCanons.every(
+                    (canon) => tokenSet.has(canon) || messageCanonical.includes(canon)
+                );
+                if (allPresent) isMatch = true;
             }
+        }
 
-            if (isMatch) break;
+        if (!isMatch) {
+            const aliases = getSuggestionAliases(optionText);
+            for (const alias of aliases) {
+                const aliasLower = normalizeText(alias).toLowerCase();
+                const aliasCanonical = canonicalize(aliasLower);
+                if (!aliasCanonical) continue;
+
+                if (!aliasLower.includes(" ")) {
+                    // For single tokens, require whole-token matching to avoid false positives
+                    // like "help" matching "helps" or "search" matching "research".
+                    isMatch = tokenSet.has(aliasCanonical);
+                } else {
+                    // For multi-word phrases, allow canonical containment.
+                    isMatch = messageCanonical.includes(aliasCanonical) || messageLower.includes(aliasLower);
+                }
+
+                if (isMatch) break;
+            }
         }
 
         if (isMatch) matches.push(optionText);
@@ -170,6 +213,62 @@ const trimEntity = (value = "") => {
     text = text.split(/[,.!\n]/)[0];
 
     return normalizeText(text).replace(/\s+/g, " ");
+};
+
+const extractDescriptionFromMixedMessage = (value = "") => {
+    const text = normalizeText(value);
+    if (!text) return null;
+
+    const startPatterns = [
+        // Match only the project/brand name segment, stopping before common separators like "and", commas, or budget/tech markers.
+        /\b(?:my\s+)?(?:company|business|brand|project)\s*(?:name\s*)?(?:is|:|called|named)\s+[^\n,.;]{1,80}?(?=(?:\s+(?:and|with|\bbudget\b|\btech\b|\btimeline\b))|[,.!\n]|$)/i,
+    ];
+
+    let startIndex = 0;
+    for (const pattern of startPatterns) {
+        const match = text.match(pattern);
+        if (match && typeof match.index === "number") {
+            startIndex = match.index + match[0].length;
+            break;
+        }
+    }
+
+    const tail = text.slice(startIndex);
+    const tailLower = tail.toLowerCase();
+
+    const markerIndexes = [
+        tailLower.search(/\bbudget\b/),
+        tailLower.search(/\btech(?:nology)?\b/),
+        tailLower.search(/\btimeline\b/),
+        tailLower.search(/\bdeploy(?:ment)?\b|\bhost(?:ed|ing)?\b/),
+        tailLower.search(/\bdomain\b/),
+        tailLower.search(/\bintegration\b/),
+    ].filter((idx) => idx >= 0);
+
+    const endIndex = markerIndexes.length ? Math.min(...markerIndexes) : tail.length;
+    let candidate = tail.slice(0, endIndex);
+
+    candidate = candidate
+        .replace(/^[\s,.;:-]+/, "")
+        .replace(/^\s*(?:and\s+)?(?:it\s+is|it's|its)\s+/i, "")
+        .replace(/^\s*(?:and|also|plus)\b\s*/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    // If we didn't find a project/brand marker, strip common lead-ins like "my name ..."
+    if (startIndex === 0) {
+        candidate = candidate
+            .replace(/\b(?:my\s+name|name)\s*(?:is|:)?\s+[a-z0-9][a-z0-9' -]{0,80}\b/gi, "")
+            .replace(
+                /\b(?:my\s+)?(?:company|business|brand|project)\s*(?:name\s*)?(?:is|:|called|named)\s+[^\n,.;]{1,80}?(?=(?:\s+(?:and|with|\bbudget\b|\btech\b|\btimeline\b))|[,.!\n]|$)/gi,
+                ""
+            )
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    if (candidate.length < 20) return null;
+    return candidate;
 };
 
 const extractOrganizationName = (value = "") => {
@@ -253,7 +352,18 @@ const extractBudget = (value = "") => {
     if (!text) return null;
     if (/^flexible$/i.test(text)) return "Flexible";
 
-    let match = text.match(/(?:\u20B9|inr|rs\.?|rupees?)\s*([\d,]+(?:\.\d+)?)\b/i);
+    // Range budget: "₹1,00,000 - ₹4,00,000" or "100000-400000"
+    let match = text.match(
+        /(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,}(?:\.\d+)?)\s*(?:-|to)\s*(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,}(?:\.\d+)?)\b/i
+    );
+    if (match) {
+        return `${match[1].replace(/,/g, "")}-${match[2].replace(/,/g, "")}`;
+    }
+
+    match = text.match(/under\s+(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,})\b/i);
+    if (match) return match[1].replace(/,/g, "");
+
+    match = text.match(/(?:\u20B9|inr|rs\.?|rupees?)\s*([\d,]+(?:\.\d+)?)\b/i);
     if (match) return match[1].replace(/,/g, "");
 
     match = text.match(/\b(\d+(?:\.\d+)?)\s*(k)\b/i);
@@ -264,6 +374,10 @@ const extractBudget = (value = "") => {
 
     match = text.match(/\b(\d+(?:\.\d+)?)\s*lakh(s)?\b/i);
     if (match) return `${match[1]} lakh`;
+
+    // Bare numeric budgets are common replies when the budget question is active.
+    match = text.match(/^\s*([\d,]{4,})\s*(?:\+|\/-)?\s*$/);
+    if (match) return match[1].replace(/,/g, "");
 
     match = text.match(/\b(\d{4,})\b/);
     if (match && /(budget|cost|price|inr|\u20B9|rs|rupees?)/i.test(text)) return match[1];
@@ -295,6 +409,179 @@ const extractTimeline = (value = "") => {
     if (/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(text)) return text;
 
     return null;
+};
+
+const formatInr = (amount) => {
+    if (!Number.isFinite(amount)) return "";
+    try {
+        return `₹${Math.round(amount).toLocaleString("en-IN")}`;
+    } catch {
+        return `₹${Math.round(amount)}`;
+    }
+};
+
+const splitSelections = (value = "") =>
+    normalizeText(value)
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+const parseInrAmount = (value = "") => {
+    const text = normalizeText(value)
+        .replace(/\?/g, "")
+        .replace(/[₹,]/g, "")
+        .replace(/\/-|\+/g, "")
+        .trim()
+        .toLowerCase();
+
+    if (!text) return null;
+
+    let match = text.match(/^(\d+(?:\.\d+)?)\s*k$/i);
+    if (match) return Math.round(parseFloat(match[1]) * 1000);
+
+    match = text.match(/^(\d+(?:\.\d+)?)\s*l$/i);
+    if (match) return Math.round(parseFloat(match[1]) * 100000);
+
+    match = text.match(/^(\d+(?:\.\d+)?)\s*lakh$/i);
+    if (match) return Math.round(parseFloat(match[1]) * 100000);
+
+    match = text.match(/^(\d+(?:\.\d+)?)\s*lakhs$/i);
+    if (match) return Math.round(parseFloat(match[1]) * 100000);
+
+    match = text.match(/^(\d{4,})$/);
+    if (match) return parseInt(match[1], 10);
+
+    return null;
+};
+
+const parseInrBudgetRange = (value = "") => {
+    const text = normalizeText(value).replace(/\?/g, "");
+    if (!text) return null;
+    if (/^flexible$/i.test(text)) return { flexible: true };
+
+    const rangeMatch = text.match(/(.+?)\s*(?:-|–|to)\s*(.+)/i);
+    if (rangeMatch) {
+        const min = parseInrAmount(rangeMatch[1]);
+        const max = parseInrAmount(rangeMatch[2]);
+        if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+        return {
+            min: Math.min(min, max),
+            max: Math.max(min, max),
+        };
+    }
+
+    const single = parseInrAmount(text);
+    if (!Number.isFinite(single)) return null;
+    return { min: single, max: single };
+};
+
+const formatBudgetDisplay = (range) => {
+    if (!range) return "";
+    if (range.flexible) return "Flexible";
+    if (!Number.isFinite(range.min) || !Number.isFinite(range.max)) return "";
+    if (range.min === range.max) return formatInr(range.min);
+    return `${formatInr(range.min)} - ${formatInr(range.max)}`;
+};
+
+const resolveMinimumWebsiteBudget = (collectedData = {}) => {
+    const techSelections = splitSelections(collectedData.tech);
+    const tech = techSelections.join(" ").toLowerCase();
+    const pages = splitSelections(collectedData.pages).join(" ").toLowerCase();
+    const description = normalizeText(collectedData.description).toLowerCase();
+
+    const wants3D =
+        pages.includes("3d ") ||
+        pages.startsWith("3d") ||
+        pages.includes("3d animations") ||
+        pages.includes("3d model") ||
+        /\b3d\b/.test(description);
+
+    const hasWordPress = tech.includes("wordpress");
+    const hasCustomShopify = tech.includes("hydrogen");
+    const hasShopify = tech.includes("shopify");
+    const hasNext = tech.includes("next.js");
+    const hasCustomReactNode =
+        tech.includes("react.js + node.js") ||
+        tech.includes("mern") ||
+        tech.includes("pern");
+
+    const bases = [
+        { when: hasWordPress, key: "wordpress", label: "WordPress", min: 30000 },
+        { when: hasCustomShopify, key: "custom_shopify", label: "Custom Shopify", min: 80000 },
+        { when: hasShopify, key: "shopify", label: "Shopify", min: 30000 },
+        { when: hasNext, key: "nextjs", label: "Next.js", min: 175000 },
+        { when: hasCustomReactNode, key: "custom_react_node", label: "Custom React.js + Node.js", min: 150000 },
+    ].filter((b) => b.when);
+
+    const base =
+        bases.length > 0
+            ? bases.reduce((best, current) => (current.min > best.min ? current : best))
+            : { key: "website", label: "Website", min: 30000 };
+
+    if (!wants3D) {
+        return { ...base, wants3D: false, range: null };
+    }
+
+    if (base.key === "wordpress") {
+        return { key: "wordpress_3d", label: "3D WordPress", min: 45000, wants3D: true, range: null };
+    }
+
+    const range = { min: 100000, max: 400000 };
+    return {
+        key: "custom_3d",
+        label: "3D Custom Website",
+        min: Math.max(base.min, range.min),
+        wants3D: true,
+        range,
+        baseKey: base.key,
+        baseLabel: base.label,
+    };
+};
+
+const validateWebsiteBudget = (collectedData = {}) => {
+    const rawBudget = collectedData?.budget;
+    const requirement = resolveMinimumWebsiteBudget(collectedData);
+
+    if (!rawBudget || rawBudget === "[skipped]" || /^flexible$/i.test(rawBudget)) {
+        return { isValid: true, reason: null, requirement, parsed: null };
+    }
+
+    const parsed = parseInrBudgetRange(rawBudget);
+    if (!parsed || parsed.flexible) {
+        return { isValid: false, reason: "unparsed", requirement, parsed: null };
+    }
+
+    if (Number.isFinite(requirement?.min) && parsed.max < requirement.min) {
+        return { isValid: false, reason: "too_low", requirement, parsed };
+    }
+
+    return { isValid: true, reason: null, requirement, parsed };
+};
+
+const buildWebsiteBudgetSuggestions = (requirement) => {
+    if (!requirement) return null;
+
+    const requiredMin = Number.isFinite(requirement?.min) ? requirement.min : null;
+    const minLabel = requiredMin ? formatInr(requiredMin) : "";
+    const suggestions = [];
+
+    if (requirement?.range && Number.isFinite(requirement.range?.max)) {
+        const rangeMin = Number.isFinite(requiredMin) ? requiredMin : requirement.range.min;
+        const rangeMax = requirement.range.max;
+        if (Number.isFinite(rangeMin) && Number.isFinite(rangeMax)) {
+            suggestions.push(
+                `${requirement.label} (${formatInr(rangeMin)} - ${formatInr(rangeMax)})`
+            );
+        }
+    } else if (requirement?.label && minLabel) {
+        suggestions.push(`${requirement.label} (${minLabel}+)`);
+    } else if (minLabel) {
+        suggestions.push(minLabel);
+    }
+
+    suggestions.push("Change technology");
+
+    return suggestions.filter(Boolean);
 };
 
 const isBareBudgetAnswer = (value = "") => {
@@ -411,7 +698,9 @@ const extractName = (value = "") => {
         if (isGreetingMessage(text)) return null;
     }
 
-    const explicitMatch = text.match(/\b(?:my\s+name\s+is|name\s+is)\s+(.+)$/i);
+    const explicitMatch =
+        text.match(/\b(?:my\s+name|name)\s*(?:is|:)?\s+(.+)$/i) ||
+        text.match(/\b(?:i\s+am|i'm|im|this\s+is)\s+(.+)$/i);
     if (explicitMatch) {
         const candidate = trimEntity(explicitMatch[1]);
         const limited = candidate.split(/\s+/).slice(0, 3).join(" ");
@@ -425,9 +714,19 @@ const extractExplicitName = (value = "") => {
     const text = normalizeText(value).replace(/\?/g, "");
     if (!text) return null;
 
-    const explicitMatch = text.match(
-        /\b(?:my\s+name\s+is|name\s+is|i\s+am|i'm|im|this\s+is)\s+(.+)$/i
-    );
+    const patterns = [
+        /\b(?:my\s+name|name)\s*(?:is|:)?\s+(.+)/i,
+        /\b(?:i\s+am|i'm|im|this\s+is)\s+(.+)/i,
+    ];
+
+    let explicitMatch = null;
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+            explicitMatch = match;
+            break;
+        }
+    }
     if (!explicitMatch) return null;
 
     const candidate = trimEntity(explicitMatch[1]);
@@ -436,7 +735,9 @@ const extractExplicitName = (value = "") => {
 };
 
 const stripInternalTags = (value = "") =>
-    normalizeText(value).replace(/\[(?:QUESTION_KEY|SUGGESTIONS|MULTI_SELECT):[\s\S]*?\]/gi, "").trim();
+    normalizeText(value)
+        .replace(/\[(?:QUESTION_KEY|SUGGESTIONS|MULTI_SELECT|MAX_SELECT):[\s\S]*?\]/gi, "")
+        .trim();
 
 const extractNameFromAssistantMessage = (value = "") => {
     const text = stripInternalTags(value);
@@ -454,12 +755,23 @@ const extractNameFromAssistantMessage = (value = "") => {
 };
 
 const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
+    const applyWebsiteBudgetRules =
+        questions.some((q) => q?.key === "tech") &&
+        questions.some((q) => q?.key === "pages");
+
     for (let i = 0; i < questions.length; i++) {
         const key = questions[i]?.key;
         if (!key) continue;
         const value = collectedData[key];
         if (value === undefined || value === null || normalizeText(value) === "") {
             return i;
+        }
+
+        if (key === "budget" && applyWebsiteBudgetRules) {
+            const budgetCheck = validateWebsiteBudget(collectedData);
+            if (!budgetCheck.isValid) {
+                return i;
+            }
         }
     }
     return questions.length;
@@ -578,7 +890,12 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
         const looksDescriptive =
             text.length >= 25 && (hasIntentVerb || (hasIsA && hasProjectNoun));
         if (looksDescriptive) {
-            updates[descriptionKey] = text;
+            const refined = extractDescriptionFromMixedMessage(text);
+            if (refined) {
+                updates[descriptionKey] = refined;
+            } else if (!/\b(budget|tech|timeline)\b/i.test(text) && text.length <= 240) {
+                updates[descriptionKey] = text;
+            }
         }
     }
 
@@ -619,7 +936,12 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
             continue;
         }
 
-        updates[key] = question.multiSelect ? matches.join(", ") : matches[0];
+        const limitedMatches =
+            question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
+                ? matches.slice(0, question.maxSelect)
+                : matches;
+
+        updates[key] = question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
     }
 
     return updates;
@@ -649,6 +971,7 @@ const extractAnswerForQuestion = (question, rawMessage) => {
             return message.length <= 60 ? trimEntity(message) : null;
         }
         case "budget": {
+            if (isChangeTechnologyMessage(message)) return CHANGE_TECH_SENTINEL;
             return extractBudget(message);
         }
         case "timeline": {
@@ -660,9 +983,12 @@ const extractAnswerForQuestion = (question, rawMessage) => {
         default: {
             const suggestionMatches = matchSuggestionsInMessage(question, message);
             if (suggestionMatches.length) {
-                return question.multiSelect
-                    ? suggestionMatches.join(", ")
-                    : suggestionMatches[0];
+                const limitedMatches =
+                    question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
+                        ? suggestionMatches.slice(0, question.maxSelect)
+                        : suggestionMatches;
+
+                return question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
             }
 
             if (Array.isArray(question.suggestions) && question.suggestions.length) {
@@ -740,6 +1066,11 @@ export function buildConversationState(history, service) {
         if (!question) continue;
 
         const answer = extractAnswerForQuestion(question, userMsg.content);
+        if (question.key === "budget" && answer === CHANGE_TECH_SENTINEL) {
+            collectedData.tech = "";
+            collectedData.budget = "";
+            continue;
+        }
         if (answer !== null && answer !== undefined) {
             collectedData[question.key] = answer;
         }
@@ -788,6 +1119,11 @@ export function processUserAnswer(state, message) {
     const activeKey = activeQuestion?.key || null;
     const beforeActiveValue = activeKey ? collectedData[activeKey] : undefined;
 
+    if (activeKey === "budget" && isChangeTechnologyMessage(normalized)) {
+        collectedData.tech = "";
+        collectedData.budget = "";
+    }
+
     const extracted = extractKnownFieldsFromMessage(questions, normalized, collectedData);
     Object.assign(collectedData, extracted);
 
@@ -813,6 +1149,11 @@ export function processUserAnswer(state, message) {
                 answeredKey = activeQuestion.key;
             }
         }
+    }
+
+    if (activeKey === "budget" && collectedData.budget === CHANGE_TECH_SENTINEL) {
+        collectedData.tech = "";
+        collectedData.budget = "";
     }
 
     const currentStep = getCurrentStepFromCollected(questions, collectedData);
@@ -848,6 +1189,9 @@ export function processUserAnswer(state, message) {
  */
 export function getNextHumanizedQuestion(state) {
     const { collectedData, currentStep, questions } = state;
+    const applyWebsiteBudgetRules =
+        questions.some((q) => q?.key === "tech") &&
+        questions.some((q) => q?.key === "pages");
 
     if (currentStep >= questions.length) {
         return null; // Ready for proposal
@@ -874,10 +1218,76 @@ export function getNextHumanizedQuestion(state) {
         text = text.replace(new RegExp(`\\{${key}\\}`, "gi"), value);
     }
 
+    let suggestionsOverride = null;
+
+    if (question?.key === "budget" && applyWebsiteBudgetRules) {
+        const budgetCheck = validateWebsiteBudget(collectedData);
+        const requirement = budgetCheck?.requirement || null;
+        const requiredMin = Number.isFinite(requirement?.min) ? requirement.min : null;
+        const minLabel = requiredMin ? formatInr(requiredMin) : "";
+        suggestionsOverride = buildWebsiteBudgetSuggestions(requirement);
+        const hasRange = Boolean(requirement?.range);
+        const rangeHint =
+            hasRange && requirement?.range
+                ? `${formatInr(requirement.range.min)} - ${formatInr(requirement.range.max)}`
+                : "";
+        const requirementLabel = (() => {
+            if (requirement?.baseLabel && requirement?.wants3D) {
+                return `${requirement.baseLabel} + 3D`;
+            }
+            return requirement?.label || "this project";
+        })();
+
+        const providedRaw = normalizeText(collectedData?.budget);
+        if (providedRaw && !budgetCheck.isValid) {
+            if (budgetCheck.reason === "too_low" && budgetCheck.parsed && minLabel) {
+                const provided = formatBudgetDisplay(budgetCheck.parsed) || providedRaw;
+                const extra = rangeHint
+                    ? ` 3D custom websites typically range ${rangeHint}.`
+                    : "";
+
+                const reply =
+                    `Your budget of ${provided} is below the minimum for ${requirementLabel} ` +
+                    `(minimum: ${minLabel}). Can you increase it to at least ${minLabel}?${extra}`;
+
+                const suggestionsText =
+                    Array.isArray(suggestionsOverride) && suggestionsOverride.length
+                        ? suggestionsOverride.join(" | ")
+                        : [minLabel, "Change technology"].filter(Boolean).join(" | ");
+
+                return withQuestionKeyTag(
+                    `${reply}\n[SUGGESTIONS: ${suggestionsText}]`,
+                    question.key
+                );
+            }
+
+            if (budgetCheck.reason === "unparsed" && minLabel) {
+                const extra = rangeHint ? ` 3D projects typically range ${rangeHint}.` : "";
+                text =
+                    `What budget are you comfortable with in INR? Minimum for ${requirementLabel} ` +
+                    `is ${minLabel}.${extra}`;
+            }
+        } else if (minLabel) {
+            const extra = rangeHint ? ` 3D projects typically range ${rangeHint}.` : "";
+            text =
+                `What's your budget for this project? Minimum for ${requirementLabel} ` +
+                `is ${minLabel}.${extra}`;
+        }
+    }
+
     // Add suggestions if available
-    if (question.suggestions) {
+    const suggestionsToUse =
+        Array.isArray(suggestionsOverride) && suggestionsOverride.length
+            ? suggestionsOverride
+            : question.suggestions;
+
+    if (suggestionsToUse) {
         const tag = question.multiSelect ? "MULTI_SELECT" : "SUGGESTIONS";
-        text += `\n[${tag}: ${question.suggestions.join(" | ")}]`;
+        text += `\n[${tag}: ${suggestionsToUse.join(" | ")}]`;
+    }
+
+    if (question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0) {
+        text += `\n[MAX_SELECT: ${question.maxSelect}]`;
     }
 
     return withQuestionKeyTag(text, question.key);
@@ -891,16 +1301,7 @@ export function getNextHumanizedQuestion(state) {
 export function shouldGenerateProposal(state) {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const collectedData = state?.collectedData || {};
-
-    // Ready when every question has *some* value (including explicit skips).
-    for (const q of questions) {
-        if (!q?.key) continue;
-        const val = collectedData[q.key];
-        if (val === undefined || val === null || normalizeText(val) === "") {
-            return false;
-        }
-    }
-    return true;
+    return getCurrentStepFromCollected(questions, collectedData) >= questions.length;
 }
 
 /**
@@ -971,6 +1372,11 @@ export function generateProposalFromState(state) {
         // Skip if already assigned as name
         if (key === "name") continue;
 
+        if (key === "pages" && !pages) {
+            pages = val;
+            continue;
+        }
+
         // Check patterns in order of specificity
         if (isBudget(val) && !budget) {
             budget = val;
@@ -1037,6 +1443,10 @@ export function generateProposalFromState(state) {
     designStatus = designStatus || "Design assistance required";
     techStack = techStack || "To be recommended based on requirements";
     deploymentPlatform = deploymentPlatform || "To be discussed";
+    if (budget) {
+        const parsedBudget = parseInrBudgetRange(budget);
+        budget = parsedBudget ? formatBudgetDisplay(parsedBudget) || budget : budget;
+    }
     budget = budget || "To be discussed";
     timeline = timeline || "Flexible";
 
@@ -1070,7 +1480,10 @@ export function generateProposalFromState(state) {
     const defaultPages = ["Home", "About", "Contact", "Privacy Policy", "Terms of Service"];
     let additionalPages = [];
     if (pages && pages !== "Standard pages") {
-        additionalPages = pages.split(",").map(p => p.trim()).filter(p => p);
+        additionalPages = pages
+            .split(",")
+            .map((p) => p.trim())
+            .filter((p) => p && p.toLowerCase() !== "none");
     }
 
     const formattedPages = `  • Default: ${defaultPages.join(", ")}${additionalPages.length > 0 ? "\n  • Additional: " + additionalPages.join(", ") : ""}`;
