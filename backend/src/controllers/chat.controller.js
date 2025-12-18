@@ -23,6 +23,7 @@ import {
   getNextHumanizedQuestion,
   shouldGenerateProposal,
   generateProposalFromState,
+  generateRoadmapFromState,
 } from "../lib/conversation-state.js";
 
 
@@ -953,6 +954,29 @@ export const generateChatReply = async ({
   const state = buildConversationState(historyForStateMachine, service);
   const updatedState = processUserAnswer(state, normalizedMessage);
 
+  const isRoadmapOrEstimateRequest = (value = "") => {
+    const text = (value || "").toString().toLowerCase();
+    if (!text) return false;
+
+    // Strong signals for "give me a plan/roadmap/cost breakdown".
+    const patterns = [
+      /\broadmap\b/,
+      /\bmilestones?\b/,
+      /\btimeline\s*(?:breakdown|plan)\b/,
+      /\bcost\s*(?:breakdown|estimate)\b/,
+      /\bprice\s*(?:breakdown|estimate)\b/,
+      /\b(?:total\s+)?cost\b/,
+      /\bestimate\b/,
+      /\bquote\b/,
+      /\bdeliverables?\b/,
+      /\bwhat\s+all\s+will\s+be\s+included\b/,
+      /\bplan\s+to\s+complete\b/,
+      /\bphases?\b/,
+    ];
+
+    return patterns.some((re) => re.test(text));
+  };
+
   const answerServiceQuestionWithAI = async () => {
     const known = Object.entries(updatedState.collectedData || {})
       .filter(([, v]) => v && v !== "[skipped]")
@@ -965,7 +989,11 @@ export const generateChatReply = async ({
         role: "system",
         content:
           `You are a helpful assistant for the service "${service || "General"}" on a freelancer platform. ` +
-          `Answer the user's question in 1-5 concise sentences. ` +
+          `Answer the user's question concisely (bullets allowed, keep it under ~12 lines). ` +
+          `If the user asks for a roadmap/cost/timeline breakdown, provide a compact milestone plan with rough effort split. ` +
+          `If the requested scope looks unrealistic for the stated budget/timeline, say so plainly and suggest 2-3 options (reduce scope, phased delivery, or adjust budget/stack). ` +
+          `Do NOT use markdown tables. ` +
+          `Do NOT invent specific tech/integrations the user did not mention; if unknown, present as options. ` +
           `Do NOT ask follow-up questions and do NOT include any extra questions in your answer. ` +
           `Do not output any bracket tags like [SUGGESTIONS] or [PROPOSAL_DATA].`,
       },
@@ -1012,7 +1040,10 @@ export const generateChatReply = async ({
   };
 
   let aiAnswer = "";
-  if (updatedState?.meta?.wasQuestion) {
+  const wantsRoadmap = isRoadmapOrEstimateRequest(normalizedMessage);
+  if (wantsRoadmap) {
+    aiAnswer = generateRoadmapFromState(updatedState);
+  } else if (updatedState?.meta?.wasQuestion) {
     try {
       aiAnswer = await answerServiceQuestionWithAI();
     } catch (error) {
