@@ -9,10 +9,12 @@ import ClientProjects from "@/components/client/ClientProjects.jsx";
 import ClientProjectDetail from "@/components/client/ClientProjectDetail.jsx";
 import ClientChat from "@/components/client/ClientChat.jsx";
 import ClientProfile from "@/components/client/ClientProfile.jsx";
+import ProjectManagerDashboard from "@/components/project-manager/ProjectManagerDashboard";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
+import PMLogin from "@/components/project-manager/PMLogin";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
 import FreelancerProposal from "@/components/freelancer/FreelancerProposal";
 import FreelancerProfile from "@/components/freelancer/FreelancerProfile";
@@ -20,7 +22,7 @@ import FreelancerProjects from "@/components/freelancer/FreelancerProjects";
 import FreelancerProjectDetail from "@/components/freelancer/FreelancerProjectDetail";
 import FreelancerChat from "@/components/freelancer/FreelancerChat";
 import { useAuth } from "@/context/AuthContext";
-import  FreelancerMultiStepForm  from "./components/freelancer/multi-step-form";
+import FreelancerMultiStepForm from "./components/freelancer/multi-step-form";
 import NotepadPage from "@/components/ui/notepad-page";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -44,7 +46,7 @@ const App = () => {
           <Route
             path="/signup"
             element={
-                <SignupPage />
+              <SignupPage />
             }
           />
           <Route
@@ -53,6 +55,12 @@ const App = () => {
               <LayoutWithNavbar>
                 <LoginPage />
               </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/project-manager/login"
+            element={
+              <PMLogin />
             }
           />
           <Route
@@ -108,6 +116,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ClientProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ProjectManagerDashboard />
               </ProtectedRoute>
             }
           />
@@ -194,7 +210,7 @@ const App = () => {
           <Route
             path="/notepad"
             element={
-                <NotepadPage />
+              <NotepadPage />
             }
           />
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -255,7 +271,7 @@ LayoutWithNavbar.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, loginPath = "/login" }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -267,7 +283,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
   return children;
@@ -275,6 +291,7 @@ const ProtectedRoute = ({ children }) => {
 
 ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
+  loginPath: PropTypes.string,
 };
 
 const NotFound = () => (

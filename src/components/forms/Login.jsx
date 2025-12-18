@@ -57,8 +57,14 @@ function Login({ className, ...props }) {
       const redirectTo = location?.state?.redirectTo;
       if (redirectTo) {
         navigate(redirectTo, { replace: true });
+      } else if (nextRole === "CLIENT") {
+        navigate("/client", { replace: true });
+      } else if (nextRole === "PROJECT_MANAGER") {
+        navigate("/project-manager", { replace: true });
+      } else if (nextRole === "ADMIN") {
+        navigate("/admin", { replace: true });
       } else {
-        navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", { replace: true });
+        navigate("/freelancer", { replace: true });
       }
     } catch (error) {
       const message = error?.message || "Unable to log in with those details.";
@@ -116,15 +122,15 @@ function Login({ className, ...props }) {
                         required
                       />
                       <div
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </div>
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </div>
 
                     </div>
                     <FieldDescription>
@@ -148,19 +154,19 @@ function Login({ className, ...props }) {
                     Or continue with
                   </FieldSeparator>
                   <Field>
-  <Button
-    variant="outline"
-    type="button"
-    className="flex items-center justify-center gap-2 w-full"
-  >
-    <img
-      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-      alt="Google logo"
-      className="h-5 w-5"
-    />
-    <span className="font-medium">Continue with Google</span>
-  </Button>
-</Field>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="flex items-center justify-center gap-2 w-full"
+                    >
+                      <img
+                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                        alt="Google logo"
+                        className="h-5 w-5"
+                      />
+                      <span className="font-medium">Continue with Google</span>
+                    </Button>
+                  </Field>
                   <FieldDescription className="text-center">
                     Don&apos;t have an account? <a href="/signup">Sign up</a>
                   </FieldDescription>
