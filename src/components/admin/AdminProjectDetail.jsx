@@ -203,10 +203,6 @@ const AdminProjectDetail = () => {
                     <FileText className="h-4 w-4 mr-2" />
                     View Description
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setProposalsDialogOpen(true)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    View Proposals ({project.proposals?.length || 0})
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -229,8 +225,8 @@ const AdminProjectDetail = () => {
                   </div>
                   <div>
                      <span className="text-xs text-muted-foreground block mb-1">Disputes</span>
-                     <span className={`font-semibold text-lg ${project.disputes?.length > 0 ? 'text-red-500' : ''}`}>
-                       {project.disputes?.length || 0}
+                     <span className={`font-semibold text-lg ${project.disputes?.filter(d => d.status !== 'RESOLVED').length > 0 ? 'text-red-500' : ''}`}>
+                       {project.disputes?.filter(d => d.status !== 'RESOLVED').length || 0}
                      </span>
                   </div>
                 </div>
