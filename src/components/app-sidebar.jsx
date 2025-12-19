@@ -42,6 +42,11 @@ const brandPresets = {
     plan: "Client workspace",
     logoText: "CL",
   },
+  PROJECT_MANAGER: {
+    name: "Project Manager",
+    plan: "Management Portal",
+    logoText: "PM",
+  },
   ADMIN: {
     name: "Admin Portal",
     plan: "System Administration",
@@ -126,6 +131,14 @@ const navConfigs = {
       isActive: true,
     },
   ],
+  PROJECT_MANAGER: [
+    {
+      title: "Overview",
+      url: "/project-manager",
+      icon: LayoutDashboard,
+      isActive: true,
+    },
+  ],
   ADMIN: [
     {
       title: "Dashboard",
@@ -156,21 +169,21 @@ const navConfigs = {
 
 export function AppSidebar({ ...props }) {
   const [sessionUser, setSessionUser] = React.useState(null);
-  
+
   React.useEffect(() => {
     const session = getSession();
     setSessionUser(session?.user ?? null);
-    
+
     // Listen for storage changes (when user logs in/out in another component)
     const handleStorageChange = () => {
       const updatedSession = getSession();
       setSessionUser(updatedSession?.user ?? null);
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
-  
+
   const role = sessionUser?.role ?? "FREELANCER";
   const brand = brandPresets[role] ?? brandPresets.FREELANCER;
   const navItems = navConfigs[role] ?? navConfigs.FREELANCER;

@@ -228,7 +228,8 @@ export const initSocket = (server) => {
         senderId,
         senderRole,
         senderName,
-        skipAssistant = false
+        skipAssistant = false,
+        history: clientHistory
       }) => {
         if (!content) {
           socket.emit("chat:error", {
@@ -250,7 +251,7 @@ export const initSocket = (server) => {
               createdById: senderId || null
             });
 
-            if (!conversationId) {
+            if (!conversationId || conversation.id !== conversationId) {
               socket.emit("chat:joined", { conversationId: conversation.id });
             }
 
@@ -272,14 +273,25 @@ export const initSocket = (server) => {
 
             if (skipAssistant) return;
 
-            const dbHistory = listMessages(conversation.id, 100);
+            const serverHistory = listMessages(conversation.id, 100).map(toHistoryMessage);
+            const fallbackHistory = Array.isArray(clientHistory)
+              ? clientHistory.map(toHistoryMessage)
+              : [];
+
+            // Prefer server-side history when it exists; otherwise use client-provided history.
+            // This prevents repeated questions when the in-memory conversation is missing
+            // (e.g., after a restart or in multi-instance deployments).
+            const dbHistory =
+              fallbackHistory.length > 0 && serverHistory.length <= 1
+                ? fallbackHistory
+                : serverHistory;
 
             let assistantReply = null;
             try {
               assistantReply = await generateChatReply({
                 message: content,
                 service: service || conversation.service || "",
-                history: dbHistory.map(toHistoryMessage)
+                history: dbHistory
               });
             } catch (error) {
               console.error("Assistant generation failed", error);

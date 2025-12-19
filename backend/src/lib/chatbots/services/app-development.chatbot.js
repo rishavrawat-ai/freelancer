@@ -22,6 +22,7 @@ export const questions = [
     ],
     "templates": [
       "Nice to meet you, {name}! What's your company or project called?"
+      "Nice to meet you, {name}! What's the project name?"
     ],
     "suggestions": null
   },
@@ -37,6 +38,8 @@ export const questions = [
     "templates": [
       "Awesome! Tell me a bit about what you're building — what's the vision? 🚀",
       "Sounds exciting! What exactly are you looking to create?"
+      "In 1 simple sentence, describe your project in easy words. Example: An app for customers to browse and buy my products.",
+      "Briefly describe what you want to build (1 sentence)."
     ],
     "suggestions": null
   },
@@ -50,6 +53,7 @@ export const questions = [
     ],
     "templates": [
       "What kind of website do you need? (Select all that apply) 🌐"
+      "What kind of website do you need?"
     ],
     "suggestions": [
       "Landing Page",
@@ -61,6 +65,7 @@ export const questions = [
       "Other"
     ],
     "multiSelect": true
+    ]
   },
   {
     "key": "pages",
@@ -96,6 +101,8 @@ export const questions = [
       "Help/Support",
       "Resources",
       "Events",
+      "3D Animations",
+      "3D Model Viewer",
       "None"
     ],
     "multiSelect": true
@@ -147,6 +154,7 @@ export const questions = [
     ],
     "templates": [
       "What technology stack would you prefer? (Select all that apply) 🛠️"
+      "What technology stack would you prefer? (Select one) 🛠️"
     ],
     "suggestions": [
       "WordPress",
@@ -164,6 +172,8 @@ export const questions = [
       "No preference"
     ],
     "multiSelect": true
+      "No preference"
+    ]
   },
   {
     "key": "deployment",
@@ -175,6 +185,7 @@ export const questions = [
     ],
     "templates": [
       "Where would you like the website deployed/hosted? 🚀"
+      "Where would you like the website deployed/hosted? (Select up to 2) 🚀"
     ],
     "suggestions": [
       "Vercel",
@@ -187,6 +198,8 @@ export const questions = [
       "Not sure yet"
     ],
     "multiSelect": true
+    "multiSelect": true,
+    "maxSelect": 2
   },
   {
     "key": "domain",
@@ -219,6 +232,13 @@ export const questions = [
       "₹20,000 - ₹50,000",
       "₹50,000 - ₹1,00,000",
       "₹1,00,000+"
+      "WordPress (₹30,000+)",
+      "3D WordPress (₹45,000+)",
+      "Shopify (₹30,000+)",
+      "Custom Shopify (₹80,000+)",
+      "Custom React.js + Node.js (₹1,50,000+)",
+      "Next.js (₹1,75,000+)",
+      "3D Custom Website (₹1,00,000 - ₹4,00,000)"
     ]
   },
   {

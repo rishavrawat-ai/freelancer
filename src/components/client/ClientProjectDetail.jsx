@@ -26,6 +26,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -178,6 +181,38 @@ const ProjectDashboard = () => {
   const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const fileInputRef = useRef(null);
 
+  // Dispute Report State
+  const [reportOpen, setReportOpen] = useState(false);
+  const [issueText, setIssueText] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
+
+  const handleReport = async () => {
+    if (!issueText.trim()) {
+      toast.error("Please describe the issue");
+      return;
+    }
+    setIsReporting(true);
+    try {
+      const res = await authFetch('/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: issueText, projectId: project?.id || projectId })
+      });
+      if (res.ok) {
+        toast.success("Dispute raised. A Project Manager will review it shortly.");
+        setReportOpen(false);
+        setIssueText("");
+      } else {
+        toast.error("Failed to raise dispute");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Error raising dispute");
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) {
       setIsLoading(false);
@@ -219,22 +254,22 @@ const ProjectDashboard = () => {
 
   const updateProjectProgress = async (newProgress, completedArr, verifiedArr) => {
     if (!project?.id) return;
-    
+
     // Optimistic update
     setProject((prev) => ({ ...prev, progress: newProgress }));
 
     try {
-        await authFetch(`/projects/${project.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              progress: newProgress,
-              completedTasks: completedArr,
-              verifiedTasks: verifiedArr
-            })
-        });
+      await authFetch(`/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          progress: newProgress,
+          completedTasks: completedArr,
+          verifiedTasks: verifiedArr
+        })
+      });
     } catch (error) {
-        console.error("Failed to update project progress:", error);
+      console.error("Failed to update project progress:", error);
     }
   };
 
@@ -249,30 +284,30 @@ const ProjectDashboard = () => {
     let key = `project:${project.id}`;
     // Check for accepted proposal to sync with DM chat
     const acceptedProposal = project.proposals?.find(p => p.status === "ACCEPTED");
-    
+
     console.log("Chat Init - Project:", project?.id, "User:", user?.id, "Owner:", project?.ownerId);
-    
+
     // Logic matches ClientChat.jsx: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
     if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-       key = `CHAT:${project.id}:${user.id}:${acceptedProposal.freelancerId}`;
-       console.log("Using Project-Based Chat Key (User):", key);
+      key = `CHAT:${project.id}:${user.id}:${acceptedProposal.freelancerId}`;
+      console.log("Using Project-Based Chat Key (User):", key);
     } else if (acceptedProposal && project.ownerId && acceptedProposal.freelancerId) {
-       // Fallback to ownerId if user isn't loaded yet (though auth should prevent this)
-       key = `CHAT:${project.id}:${project.ownerId}:${acceptedProposal.freelancerId}`;
-       console.log("Using Project-Based Chat Key (Owner Fallback):", key);
+      // Fallback to ownerId if user isn't loaded yet (though auth should prevent this)
+      key = `CHAT:${project.id}:${project.ownerId}:${acceptedProposal.freelancerId}`;
+      console.log("Using Project-Based Chat Key (Owner Fallback):", key);
     } else {
-       console.log("Using Project Chat Key (Fallback):", key);
+      console.log("Using Project Chat Key (Fallback):", key);
     }
-    
+
     const initChat = async () => {
       try {
         const res = await authFetch("/chat/conversations", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              service: key,
-              projectTitle: project?.title || "Project Chat"
-            })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service: key,
+            projectTitle: project?.title || "Project Chat"
+          })
         });
         const payload = await res.json().catch(() => null);
         const convo = payload?.data || payload;
@@ -292,7 +327,7 @@ const ProjectDashboard = () => {
         const res = await authFetch(`/chat/conversations/${conversationId}/messages`);
         const payload = await res.json().catch(() => null);
         const msgs = payload?.data?.messages || [];
-        
+
         const mapped = msgs.map(m => {
           const isMe = (user?.id && m.senderId === user.id) || m.senderRole === "CLIENT";
           return {
@@ -306,10 +341,10 @@ const ProjectDashboard = () => {
         });
         // Merge logic: Use backend data but preserve local pending messages if not yet in backend
         setMessages(prev => {
-           const pending = prev.filter(m => m.pending); 
-           const backendIds = new Set(mapped.map(m => m.id));
-           const stillPending = pending.filter(p => !backendIds.has(p.id)); 
-           return [...mapped, ...stillPending];
+          const pending = prev.filter(m => m.pending);
+          const backendIds = new Set(mapped.map(m => m.id));
+          const stillPending = pending.filter(p => !backendIds.has(p.id));
+          return [...mapped, ...stillPending];
         });
       } catch (e) {
         console.error("Fetch messages error:", e);
@@ -349,11 +384,11 @@ const ProjectDashboard = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-           content: userMessage.text,
-           service: serviceKey,
-           senderRole: "CLIENT",
-           senderName: user?.fullName || user?.name || user?.email || "Client",
-           skipAssistant: true // Force persistence to DB
+          content: userMessage.text,
+          service: serviceKey,
+          senderRole: "CLIENT",
+          senderName: user?.fullName || user?.name || user?.email || "Client",
+          skipAssistant: true // Force persistence to DB
         })
       });
       // Optionally refetch or let poller handle it. 
@@ -369,48 +404,48 @@ const ProjectDashboard = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file && conversationId) {
-       // Ideally we upload to an /upload endpoint -> get URL.
-       // Since we don't have one, we mock the upload URL but store metadata in chat.
-       const attachment = {
-         name: file.name,
-         size: `${(file.size / 1024).toFixed(2)} KB`,
-         type: file.type
-       };
-       
-       const tempId = Date.now().toString();
-       const userMessage = {
-          id: tempId,
-          sender: "user",
-          text: `Uploaded document: ${file.name}`,
-          timestamp: new Date(),
-          attachment,
-          pending: true
-       };
-       setMessages(prev => [...prev, userMessage]);
-       
-       try {
-         // Build the correct service key for notifications
-         const acceptedProposal = project?.proposals?.find(p => p.status === "ACCEPTED");
-         let serviceKey = `project:${project?.id || projectId}`;
-         if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-           serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId}`;
-         }
+      // Ideally we upload to an /upload endpoint -> get URL.
+      // Since we don't have one, we mock the upload URL but store metadata in chat.
+      const attachment = {
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(2)} KB`,
+        type: file.type
+      };
 
-         await authFetch(`/chat/conversations/${conversationId}/messages`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                content: `Uploaded document: ${file.name}`,
-                service: serviceKey,
-                senderRole: "CLIENT",
-                senderName: user?.fullName || user?.name || user?.email || "Client",
-                attachment, // Send attachment metadata
-                skipAssistant: true // Force persistence to DB
-            })
-         });
-       } catch (err) {
-         console.error("Upload error:", err);
-       }
+      const tempId = Date.now().toString();
+      const userMessage = {
+        id: tempId,
+        sender: "user",
+        text: `Uploaded document: ${file.name}`,
+        timestamp: new Date(),
+        attachment,
+        pending: true
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      try {
+        // Build the correct service key for notifications
+        const acceptedProposal = project?.proposals?.find(p => p.status === "ACCEPTED");
+        let serviceKey = `project:${project?.id || projectId}`;
+        if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
+          serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId}`;
+        }
+
+        await authFetch(`/chat/conversations/${conversationId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `Uploaded document: ${file.name}`,
+            service: serviceKey,
+            senderRole: "CLIENT",
+            senderName: user?.fullName || user?.name || user?.email || "Client",
+            attachment, // Send attachment metadata
+            skipAssistant: true // Force persistence to DB
+          })
+        });
+      } catch (err) {
+        console.error("Upload error:", err);
+      }
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -432,17 +467,17 @@ const ProjectDashboard = () => {
     }
     return 0;
   }, [project]);
-  
+
   const spentBudget = useMemo(() => {
-      // Use dynamic spent if available
-      return project?.spent ? Number(project.spent) : 0;
+    // Use dynamic spent if available
+    return project?.spent ? Number(project.spent) : 0;
   }, [project]);
-  
+
   const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
 
   // Render ...
   // Update Documents Card to use `docs`
-  
+
   /* Inside JSX for Documents Card: */
   /*
      <CardContent>
@@ -621,14 +656,14 @@ const ProjectDashboard = () => {
     // Determine the progress value required to complete THIS phase
     const phases = activeSOP.phases;
     const step = 100 / phases.length;
-    
+
     // If clicking the current phase, verify if we should complete it or uncomplete it?
     // Simplified logic: Clicking a phase completes it (and all before it).
     // If it's already complete, maybe doing nothing or toggle?
     // Let's assume clicking sets the progress to the end of that phase.
-    
+
     const targetProgress = Math.round((phaseIndex + 1) * step);
-    
+
     // Logic refinement: if I click the last completed phase, maybe I want to undo it?
     // Let's stick to "Click to complete up to here".
     updateProjectProgress(targetProgress);
@@ -661,7 +696,7 @@ const ProjectDashboard = () => {
       const isVerified = verifiedTaskIds.has(uniqueKey);
       const taskPhase = derivedPhases.find((p) => p.id === task.phase);
       const phaseStatus = taskPhase?.status || task.status;
-      
+
       // Check if task is manually completed by user
       if (isCompleted) {
         return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
@@ -672,10 +707,10 @@ const ProjectDashboard = () => {
       if (phaseStatus === "in-progress" && task.status === "completed") {
         return { ...task, uniqueKey, verified: isVerified, phaseName: taskPhase?.name };
       }
-      return { 
-        ...task, 
-        uniqueKey, 
-        status: phaseStatus === "in-progress" ? "in-progress" : "pending", 
+      return {
+        ...task,
+        uniqueKey,
+        status: phaseStatus === "in-progress" ? "in-progress" : "pending",
         verified: false,
         phaseName: taskPhase?.name
       };
@@ -704,9 +739,9 @@ const ProjectDashboard = () => {
   const handleTaskClick = async (e, uniqueKey) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     let newCompleted, newVerified;
-    
+
     setCompletedTaskIds((prev) => {
       const updated = new Set(prev);
       if (updated.has(uniqueKey)) {
@@ -717,7 +752,7 @@ const ProjectDashboard = () => {
       newCompleted = Array.from(updated);
       return updated;
     });
-    
+
     // Also remove from verified if unchecking
     setVerifiedTaskIds((prev) => {
       const updated = new Set(prev);
@@ -727,14 +762,14 @@ const ProjectDashboard = () => {
       newVerified = Array.from(updated);
       return updated;
     });
-    
+
     // Save to database
     if (project?.id && authFetch) {
       try {
         await authFetch(`/projects/${project.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             completedTasks: newCompleted,
             verifiedTasks: newVerified
           })
@@ -744,29 +779,29 @@ const ProjectDashboard = () => {
       }
     }
   };
-  
+
   // Handle verify button click - this updates progress
   const handleVerifyTask = async (e, uniqueKey) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     let newVerified;
-    
+
     setVerifiedTaskIds((prev) => {
       const updated = new Set(prev);
       updated.add(uniqueKey);
       newVerified = Array.from(updated);
       return updated;
     });
-    
+
     // Calculate new progress
     const allTasks = activeSOP.tasks;
     const totalTasks = allTasks.length;
-    const verifiedCount = allTasks.filter((t) => 
+    const verifiedCount = allTasks.filter((t) =>
       newVerified.includes(`${t.phase}-${t.id}`)
     ).length;
     const newProgress = Math.round((verifiedCount / totalTasks) * 100);
-    
+
     // Save to database
     const currentCompleted = Array.from(completedTaskIds);
     updateProjectProgress(newProgress, currentCompleted, newVerified);
@@ -791,9 +826,9 @@ const ProjectDashboard = () => {
   return (
     <RoleAwareSidebar>
       <div className="mt-5 ml-5">
-      <ClientTopBar title={pageTitle} />
+        <ClientTopBar title={pageTitle} />
       </div>
-        
+
       <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
         <div className="w-full max-w-full mx-auto space-y-6">
           <div className="flex items-center justify-between">
@@ -803,7 +838,13 @@ const ProjectDashboard = () => {
                 {isLoading ? "Loading project details..." : "Track project progress and manage tasks efficiently"}
               </p>
             </div>
-            <ProjectNotepad projectId={project?.id || projectId} />
+            <div className="flex items-center gap-2">
+              <Button variant="destructive" size="sm" onClick={() => setReportOpen(true)}>
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Report Issue
+              </Button>
+              <ProjectNotepad projectId={project?.id || projectId} />
+            </div>
           </div>
           {!isLoading && !project && (
             <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
@@ -861,8 +902,8 @@ const ProjectDashboard = () => {
                             {phase.status === "in-progress"
                               ? "In Progress"
                               : phase.status === "completed"
-                              ? "Completed"
-                              : "Pending"}
+                                ? "Completed"
+                                : "Pending"}
                           </Badge>
                         </div>
                         <Progress value={phase.progress} className="h-2" />
@@ -894,12 +935,12 @@ const ProjectDashboard = () => {
                                 {phaseGroup.tasks.filter((t) => t.verified).length} of {phaseGroup.tasks.length} verified
                               </div>
                             </div>
-                            <Badge 
+                            <Badge
                               variant={phaseGroup.phaseStatus === "completed" ? "default" : "outline"}
                               className={phaseGroup.phaseStatus === "completed" ? "bg-emerald-500 text-white" : ""}
                             >
-                              {phaseGroup.phaseStatus === "completed" ? "Completed" : 
-                               phaseGroup.phaseStatus === "in-progress" ? "In Progress" : "Pending"}
+                              {phaseGroup.phaseStatus === "completed" ? "Completed" :
+                                phaseGroup.phaseStatus === "in-progress" ? "In Progress" : "Pending"}
                             </Badge>
                           </div>
                         </AccordionTrigger>
@@ -917,9 +958,8 @@ const ProjectDashboard = () => {
                                   <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                                 )}
                                 <span
-                                  className={`flex-1 text-sm ${
-                                    task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                                  }`}
+                                  className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
+                                    }`}
                                 >
                                   {task.title}
                                 </span>
@@ -968,21 +1008,19 @@ const ProjectDashboard = () => {
                           <span className="text-[10px] text-muted-foreground ml-1">{message.senderName}</span>
                         )}
                         <div
-                          className={`max-w-xs px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
-                            message.sender === "user"
+                          className={`max-w-xs px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${message.sender === "user"
                               ? "bg-primary text-primary-foreground rounded-br-none"
                               : "bg-muted text-foreground rounded-bl-none border border-border/60"
-                          }`}
+                            }`}
                         >
                           {message.text}
                         </div>
                         {message.attachment && (
                           <div
-                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                              message.sender === "user"
+                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${message.sender === "user"
                                 ? "bg-primary/20 text-foreground"
                                 : "bg-accent text-accent-foreground border border-border/60"
-                            }`}
+                              }`}
                           >
                             <FileText className="w-3 h-3" />
                             {message.attachment.name} ({message.attachment.size})
@@ -1035,9 +1073,9 @@ const ProjectDashboard = () => {
                     <div className="space-y-2">
                       {docs.map((doc, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
-                           <FileText className="w-4 h-4 text-primary" />
-                           <span className="truncate flex-1">{doc.name}</span>
-                           <span className="text-xs text-muted-foreground">{doc.size}</span>
+                          <FileText className="w-4 h-4 text-primary" />
+                          <span className="truncate flex-1">{doc.name}</span>
+                          <span className="text-xs text-muted-foreground">{doc.size}</span>
                         </div>
                       ))}
                     </div>
@@ -1076,7 +1114,32 @@ const ProjectDashboard = () => {
           </div>
         </div>
       </div>
-    </RoleAwareSidebar>
+
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report an Issue</DialogTitle>
+            <DialogDescription>
+              Describe the issue or dispute regarding this project. A Project Manager will get involved to resolve it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Textarea
+              placeholder="Describe the issue..."
+              value={issueText}
+              onChange={e => setIssueText(e.target.value)}
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReport} disabled={isReporting}>
+              {isReporting ? "Sending..." : "Submit Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </RoleAwareSidebar >
   );
 };
 

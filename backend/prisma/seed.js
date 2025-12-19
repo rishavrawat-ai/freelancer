@@ -49,6 +49,19 @@ const main = async () => {
     }
   });
 
+  const manager = await prisma.user.upsert({
+    where: { email: "manager@example.com" },
+    update: {},
+    create: {
+      email: "manager@example.com",
+      fullName: "Sample Project Manager",
+      passwordHash: defaultPasswordHash,
+      role: "PROJECT_MANAGER",
+      bio: "Overseeing disputes and project delivery.",
+      skills: ["Management", "Agile", "Conflict Resolution"]
+    }
+  });
+
   const project = await prisma.project.upsert({
     where: { id: "sample-project" },
     update: {},
