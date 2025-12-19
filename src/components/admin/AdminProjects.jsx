@@ -119,7 +119,7 @@ const AdminProjects = () => {
                       <User className="h-4 w-4 text-blue-500" />
                       <div className="min-w-0">
                         <span className="text-xs text-muted-foreground mr-1">Client:</span>
-                        <span className="font-medium">{project.owner?.fullName || "N/A"}</span>
+                        <span className="font-medium text-foreground">{project.owner?.fullName || "N/A"}</span>
                         {project.owner?.email && (
                           <span className="text-muted-foreground ml-1 text-xs">
                             ({project.owner.email})
@@ -131,27 +131,29 @@ const AdminProjects = () => {
                     {/* Freelancer Info */}
                     <div className="flex items-center gap-2 text-sm">
                       <Briefcase className={`h-4 w-4 ${
-                        project.proposalStatus === 'ACCEPTED' ? 'text-emerald-500' : 
-                        (project.proposalStatus === 'PENDING' || project.status === 'OPEN') ? 'text-yellow-500' : 
+                        project.freelancer ? 'text-emerald-500' : 
+                        (project.status === 'OPEN' || project.status === 'IN_PROGRESS') ? 'text-yellow-500' : 
                         'text-muted-foreground'
                       }`} />
                       <div className="min-w-0">
                         <span className="text-xs text-muted-foreground mr-1">Freelancer:</span>
-                        {project.proposalStatus === 'ACCEPTED' && project.freelancer ? (
+                        {project.freelancer ? (
                           <>
-                            <span className="font-medium">{project.freelancer.fullName}</span>
+                            <span className="font-medium text-foreground">{project.freelancer.fullName}</span>
                             {project.freelancer.email && (
                               <span className="text-muted-foreground ml-1 text-xs">
                                 ({project.freelancer.email})
                               </span>
                             )}
                           </>
-                        ) : project.proposalStatus === 'PENDING' ? (
-                          <span className="text-yellow-500 font-medium">Pending Proposals</span>
-                        ) : project.status === 'OPEN' ? (
-                          <span className="text-yellow-500 font-medium">Pending</span>
                         ) : (
-                          <span className="text-muted-foreground italic">No proposals</span>
+                          (project.status === 'OPEN' && (project._count?.proposals || 0) > 0) ? (
+                            <span className="text-yellow-500 font-medium">Pending Proposals</span>
+                          ) : project.status === 'OPEN' ? (
+                            <span className="text-yellow-500 font-medium">Pending</span>
+                          ) : (
+                            <span className="text-muted-foreground italic">No proposals</span>
+                          )
                         )}
                       </div>
                     </div>

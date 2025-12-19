@@ -380,3 +380,79 @@ export const getUserDetails = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Failed to fetch user details", details: error.message });
   }
 });
+
+export const getProjectDetails = asyncHandler(async (req, res) => {
+  const { projectId } = req.params;
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true
+        }
+      },
+      proposals: {
+        include: {
+          freelancer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              status: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      },
+      disputes: {
+        include: {
+          raisedBy: {
+            select: { fullName: true }
+          },
+          manager: {
+            select: { fullName: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  // Determine accepted freelancer if any
+  const acceptedProposal = project.proposals.find(p => p.status === 'ACCEPTED');
+  
+  // Fetch conversation associated with the project
+  const conversation = await prisma.chatConversation.findFirst({
+    where: {
+      projectTitle: project.title,
+      createdById: project.owner.id
+    },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          sender: {
+            select: { fullName: true, role: true }
+          }
+        }
+      }
+    }
+  });
+
+  const projectWithDetails = {
+    ...project,
+    freelancer: acceptedProposal ? acceptedProposal.freelancer : null,
+    conversation: conversation
+  };
+
+  res.json({ data: { project: projectWithDetails } });
+});
