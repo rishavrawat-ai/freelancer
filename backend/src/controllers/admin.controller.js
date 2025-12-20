@@ -5,18 +5,21 @@ import { prisma } from "../lib/prisma.js";
 export const getDashboardStats = asyncHandler(async (req, res) => {
   try {
     // Get basic counts - these should always work
-    const totalUsers = await prisma.user.count();
+    const totalUsers = await prisma.user.count({
+      where: {
+        role: { not: 'ADMIN' }
+      }
+    });
     const totalProjects = await prisma.project.count();
     const totalProposals = await prisma.proposal.count();
     
-    // Get revenue - handle if no accepted proposals
+    // Get revenue - sum of actual 'spent' amounts from all projects (actual payments made)
     let totalRevenue = 0;
     try {
-      const revenueResult = await prisma.proposal.aggregate({
-        where: { status: "ACCEPTED" },
-        _sum: { amount: true }
+      const revenueResult = await prisma.project.aggregate({
+        _sum: { spent: true }
       });
-      totalRevenue = revenueResult._sum?.amount || 0;
+      totalRevenue = revenueResult._sum?.spent || 0;
     } catch (e) {
       console.error("Revenue query failed:", e);
     }
@@ -193,6 +196,20 @@ export const getProjects = asyncHandler(async (req, res) => {
             email: true
           }
         },
+        proposals: {
+          where: { status: "ACCEPTED" },
+          take: 1,
+          select: {
+            id: true,
+            freelancer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true
+              }
+            }
+          }
+        },
         _count: {
           select: { proposals: true }
         }
@@ -200,7 +217,14 @@ export const getProjects = asyncHandler(async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ data: { projects } });
+    // Transform to include freelancer at top level for easier frontend access
+    const transformedProjects = projects.map(project => ({
+      ...project,
+      freelancer: project.proposals?.[0]?.freelancer || null,
+      proposals: undefined // Remove proposals from response
+    }));
+
+    res.json({ data: { projects: transformedProjects } });
   } catch (error) {
     console.error("Get projects error:", error);
     res.status(500).json({ error: "Failed to fetch projects" });
@@ -237,6 +261,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             title: true,
             status: true,
             budget: true,
+            spent: true,
             createdAt: true,
             proposals: {
               select: {
@@ -263,6 +288,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
                 title: true,
                 status: true,
                 budget: true,
+                spent: true,
                 owner: {
                   select: { fullName: true, email: true }
                 }
@@ -285,15 +311,8 @@ export const getUserDetails = asyncHandler(async (req, res) => {
       const activeProjects = user.ownedProjects.filter(p => p.status === "IN_PROGRESS").length;
       const completedProjects = user.ownedProjects.filter(p => p.status === "COMPLETED").length;
       
-      // Calculate total spent from accepted proposals
-      let totalSpent = 0;
-      user.ownedProjects.forEach(project => {
-        project.proposals.forEach(proposal => {
-          if (proposal.status === "ACCEPTED") {
-            totalSpent += proposal.amount;
-          }
-        });
-      });
+      // Calculate total spent from actual 'spent' field on each project
+      const totalSpent = user.ownedProjects.reduce((sum, project) => sum + (project.spent || 0), 0);
 
       stats = {
         totalProjects,
@@ -309,8 +328,26 @@ export const getUserDetails = asyncHandler(async (req, res) => {
       const pendingProposals = user.proposals.filter(p => p.status === "PENDING");
       const rejectedProposals = user.proposals.filter(p => p.status === "REJECTED");
       
-      const totalEarnings = acceptedProposals.reduce((sum, p) => sum + p.amount, 0);
-      const pendingAmount = pendingProposals.reduce((sum, p) => sum + p.amount, 0);
+      // Platform fee - freelancer receives 70%
+      const PLATFORM_FEE_PERCENTAGE = 0.30;
+      const FREELANCER_SHARE = 1 - PLATFORM_FEE_PERCENTAGE;
+      
+      // Calculate actual earnings from paid amounts (project.spent field)
+      // This is the actual money paid to the freelancer
+      let grossPaidAmount = 0;
+      acceptedProposals.forEach(proposal => {
+        const projectSpent = proposal.project?.spent || 0;
+        grossPaidAmount += projectSpent;
+      });
+      const totalEarnings = Math.round(grossPaidAmount * FREELANCER_SHARE);
+      
+      // Calculate pending amount = (accepted proposal amounts - already paid amounts) * 70%
+      // This is money from accepted proposals that hasn't been paid yet
+      let grossAcceptedAmount = 0;
+      acceptedProposals.forEach(proposal => {
+        grossAcceptedAmount += proposal.amount;
+      });
+      const pendingAmount = Math.round((grossAcceptedAmount - grossPaidAmount) * FREELANCER_SHARE);
 
       stats = {
         totalProposals,
@@ -318,7 +355,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         pendingProposals: pendingProposals.length,
         rejectedProposals: rejectedProposals.length,
         totalEarnings,
-        pendingAmount,
+        pendingAmount: pendingAmount > 0 ? pendingAmount : 0,
         activeProjects: acceptedProposals.length
       };
     }
@@ -346,4 +383,80 @@ export const getUserDetails = asyncHandler(async (req, res) => {
     console.error("getUserDetails error:", error.message);
     res.status(500).json({ error: "Failed to fetch user details", details: error.message });
   }
+});
+
+export const getProjectDetails = asyncHandler(async (req, res) => {
+  const { projectId } = req.params;
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true
+        }
+      },
+      proposals: {
+        include: {
+          freelancer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              status: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      },
+      disputes: {
+        include: {
+          raisedBy: {
+            select: { fullName: true }
+          },
+          manager: {
+            select: { fullName: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  // Determine accepted freelancer if any
+  const acceptedProposal = project.proposals.find(p => p.status === 'ACCEPTED');
+  
+  // Fetch conversation associated with the project
+  const conversation = await prisma.chatConversation.findFirst({
+    where: {
+      projectTitle: project.title,
+      createdById: project.owner.id
+    },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          sender: {
+            select: { fullName: true, role: true }
+          }
+        }
+      }
+    }
+  });
+
+  const projectWithDetails = {
+    ...project,
+    freelancer: acceptedProposal ? acceptedProposal.freelancer : null,
+    conversation: conversation
+  };
+
+  res.json({ data: { project: projectWithDetails } });
 });

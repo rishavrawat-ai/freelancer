@@ -37,7 +37,7 @@ const AdminDashboard = () => {
     { title: "Total Users", value: stats.totalUsers, icon: Users, description: "Active users on platform" },
     { title: "Projects Posted", value: stats.totalProjects, icon: Briefcase, description: "Total projects created" },
     { title: "Proposals Sent", value: stats.totalProposals, icon: FileText, description: "Total proposals submitted" },
-    { title: "Total Revenue", value: `₹${Number(stats.totalRevenue).toLocaleString()}`, icon: DollarSign, description: "Total platform revenue" }
+    { title: "Total Revenue", value: `₹${Number(stats.totalRevenue).toLocaleString("en-IN")}`, icon: DollarSign, description: "Amount paid by clients" }
   ];
 
   return (

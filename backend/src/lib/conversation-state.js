@@ -1273,6 +1273,26 @@ const extractNameFromAssistantMessage = (value = "") => {
     return isLikelyName(limited) ? limited : null;
 };
 
+const stripInternalTags = (value = "") =>
+    normalizeText(value)
+        .replace(/\[(?:QUESTION_KEY|SUGGESTIONS|MULTI_SELECT|MAX_SELECT):[\s\S]*?\]/gi, "")
+        .trim();
+
+const extractNameFromAssistantMessage = (value = "") => {
+    const text = stripInternalTags(value);
+    if (!text) return null;
+
+    // Common template across services: "Nice to meet you, {name}!"
+    const match = text.match(/\bnice\s+to\s+meet\s+you,?\s+(.+?)(?:[!.,\n]|$)/i);
+    if (!match) return null;
+
+    const candidate = trimEntity(match[1]);
+    const limited = candidate.split(/\s+/).slice(0, 3).join(" ");
+    if (!limited) return null;
+    if (isGreetingMessage(limited)) return null;
+    return isLikelyName(limited) ? limited : null;
+};
+
 const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
     const applyWebsiteBudgetRules =
         questions.some((q) => q?.key === "tech") &&
@@ -1595,6 +1615,51 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
                 updates.tech = `${base}, ${extras.join(", ")}`;
             }
         }
+    }
+
+    // Out-of-sequence extraction for closed-set questions (suggestions).
+    // This helps when users mention things early like "React + Node" or "host on Vercel".
+    for (const question of questions) {
+        const key = question?.key;
+        if (!key) continue;
+        if (!keys.has(key)) continue;
+        if (updates[key] !== undefined) continue;
+
+        // Avoid inferring selections from user questions (they're often exploratory, not confirmations).
+        if (userAskedQuestion) continue;
+        if (collectedData[key] !== undefined && collectedData[key] !== null && normalizeText(collectedData[key]) !== "") {
+            continue;
+        }
+        if (!Array.isArray(question?.suggestions) || question.suggestions.length === 0) continue;
+
+        // Pages can be accidentally inferred from generic words (e.g. "help"), so always ask explicitly.
+        if (key === "pages") continue;
+
+        const matches = matchSuggestionsInMessage(question, text);
+        if (!matches.length) continue;
+
+        const textCanonical = canonicalize(text.toLowerCase());
+        const isShort = text.length <= 90;
+        const hasListSeparators = /[,|\n]/.test(text);
+        const hasKeyPatterns = Array.isArray(question.patterns)
+            ? question.patterns.some((pattern) => {
+                const canon = canonicalize(pattern || "");
+                return canon ? textCanonical.includes(canon) : false;
+            })
+            : false;
+
+        // Only accept out-of-sequence suggestion inference when the message looks like a direct selection.
+        // This avoids accidental matches in long, descriptive messages.
+        if (!isShort && !hasListSeparators && !hasKeyPatterns && !(question.multiSelect && matches.length >= 2)) {
+            continue;
+        }
+
+        const limitedMatches =
+            question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
+                ? matches.slice(0, question.maxSelect)
+                : matches;
+
+        updates[key] = question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
     }
 
     return updates;

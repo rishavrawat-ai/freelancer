@@ -20,6 +20,9 @@ import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
 import { SOP_TEMPLATES } from "@/data/sopTemplates";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -139,6 +142,39 @@ const FreelancerProjectDetailContent = () => {
   const [conversationId, setConversationId] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Dispute Report State
+  const [reportOpen, setReportOpen] = useState(false);
+  const [issueText, setIssueText] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
+
+  // Handle reporting a dispute (same logic as client)
+  const handleReport = async () => {
+    if (!issueText.trim()) {
+      toast.error("Please describe the issue");
+      return;
+    }
+    setIsReporting(true);
+    try {
+      const res = await authFetch('/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: issueText, projectId: project?.id || projectId })
+      });
+      if (res.ok) {
+        toast.success("Dispute raised. A Project Manager will review it shortly.");
+        setReportOpen(false);
+        setIssueText("");
+      } else {
+        toast.error("Failed to raise dispute");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Error raising dispute");
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -627,7 +663,13 @@ const FreelancerProjectDetailContent = () => {
                   : "Track project progress and deliverables in one place."}
               </p>
             </div>
-            <ProjectNotepad projectId={project?.id || projectId} />
+            <div className="flex items-center gap-2">
+              <Button variant="destructive" size="sm" onClick={() => setReportOpen(true)}>
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Report Issue
+              </Button>
+              <ProjectNotepad projectId={project?.id || projectId} />
+            </div>
           </div>
 
           {!isLoading && isFallback && (
@@ -862,6 +904,30 @@ const FreelancerProjectDetailContent = () => {
           </div>
         </div>
       </div>
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report an Issue</DialogTitle>
+            <DialogDescription>
+              Describe the issue or dispute regarding this project. A Project Manager will get involved to resolve it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Textarea
+              placeholder="Describe the issue..."
+              value={issueText}
+              onChange={e => setIssueText(e.target.value)}
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReport} disabled={isReporting}>
+              {isReporting ? "Sending..." : "Submit Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </RoleAwareSidebar>
   );
 };

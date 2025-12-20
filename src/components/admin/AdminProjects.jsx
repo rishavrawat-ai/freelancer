@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Search, Briefcase, User, Calendar, FileText, DollarSign } from "lucide-
 
 const AdminProjects = () => {
   const { authFetch } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -98,16 +100,15 @@ const AdminProjects = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project) => (
-                <Card key={project.id} className="bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg">
+                <Card 
+                  key={project.id} 
+                  className="bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg cursor-pointer group"
+                  onClick={() => navigate(`/admin/projects/${project.id}`)}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{project.title}</CardTitle>
-                        {project.description && (
-                          <CardDescription className="mt-1 line-clamp-2">
-                            {project.description}
-                          </CardDescription>
-                        )}
+                        <CardTitle className="text-lg truncate group-hover:text-primary transition-colors">{project.title}</CardTitle>
                       </div>
                       {getStatusBadge(project.status)}
                     </div>
@@ -115,13 +116,44 @@ const AdminProjects = () => {
                   <CardContent className="space-y-4">
                     {/* Client Info */}
                     <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                      <User className="h-4 w-4 text-blue-500" />
                       <div className="min-w-0">
-                        <span className="font-medium">{project.owner?.fullName || "N/A"}</span>
+                        <span className="text-xs text-muted-foreground mr-1">Client:</span>
+                        <span className="font-medium text-foreground">{project.owner?.fullName || "N/A"}</span>
                         {project.owner?.email && (
                           <span className="text-muted-foreground ml-1 text-xs">
                             ({project.owner.email})
                           </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Freelancer Info */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Briefcase className={`h-4 w-4 ${
+                        project.freelancer ? 'text-emerald-500' : 
+                        (project.status === 'OPEN' || project.status === 'IN_PROGRESS') ? 'text-yellow-500' : 
+                        'text-muted-foreground'
+                      }`} />
+                      <div className="min-w-0">
+                        <span className="text-xs text-muted-foreground mr-1">Freelancer:</span>
+                        {project.freelancer ? (
+                          <>
+                            <span className="font-medium text-foreground">{project.freelancer.fullName}</span>
+                            {project.freelancer.email && (
+                              <span className="text-muted-foreground ml-1 text-xs">
+                                ({project.freelancer.email})
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          (project.status === 'OPEN' && (project._count?.proposals || 0) > 0) ? (
+                            <span className="text-yellow-500 font-medium">Pending Proposals</span>
+                          ) : project.status === 'OPEN' ? (
+                            <span className="text-yellow-500 font-medium">Pending</span>
+                          ) : (
+                            <span className="text-muted-foreground italic">No proposals</span>
+                          )
                         )}
                       </div>
                     </div>

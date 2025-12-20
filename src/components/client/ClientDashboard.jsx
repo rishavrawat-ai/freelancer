@@ -462,7 +462,7 @@ const ClientDashboardContent = () => {
           (p) => (p.status || "").toUpperCase() === "COMPLETED"
         );
         const proposalsSent = list.reduce(
-          (acc, project) => acc + (project.proposals?.length || 0),
+          (acc, project) => acc + (project.proposals?.filter(p => p.status !== 'DRAFT').length || 0),
           0
         );
         const inProgress = list.filter(
@@ -1046,6 +1046,7 @@ const ClientDashboardContent = () => {
           )}
         </section>
 
+        {hasSavedProposal && (
         <section className="grid gap-6">
           <Card className="overflow-hidden border border-border bg-card text-card-foreground shadow-lg">
             <CardHeader className="space-y-1 border-b border-border bg-card">
@@ -1201,6 +1202,7 @@ const ClientDashboardContent = () => {
             </CardContent>
           </Card>
         </section>
+        )}
         <Dialog
           open={isFreelancerModalOpen}
           onOpenChange={(open) => {

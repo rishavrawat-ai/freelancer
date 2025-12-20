@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   BarChart,
   Briefcase,
+  ClipboardList,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -156,6 +157,12 @@ const navConfigs = {
       title: "Freelancers",
       url: "/admin/freelancers",
       icon: User,
+      isActive: true,
+    },
+    {
+      title: "Project Managers",
+      url: "/admin/project-managers",
+      icon: ClipboardList,
       isActive: true,
     },
     {

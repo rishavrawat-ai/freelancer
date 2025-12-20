@@ -21,7 +21,7 @@ const AuthContext = createContext(null);
 AuthContext.displayName = "AuthContext";
 
 const VERIFY_TIMEOUT_MS = 4000;
-const PROTECTED_PATH_PREFIXES = ["/client", "/freelancer", "/dashboard"];
+const PROTECTED_PATH_PREFIXES = ["/client", "/freelancer", "/dashboard", "/admin"];
 const SAVED_PROPOSAL_KEY = "markify:savedProposal";
 const SAVED_PROPOSAL_SYNCED_KEY = "markify:savedProposalSynced";
 
